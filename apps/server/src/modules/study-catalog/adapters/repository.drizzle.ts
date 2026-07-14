@@ -14,9 +14,13 @@ import {
   type StudyNodeSourcesOfId,
   type StudyNodeTargetsOfId,
 } from "@proxus/shared/study-catalog"
-import * as PgDrizzle from "drizzle-orm/effect-pglite"
 import { and, asc, eq, inArray } from "drizzle-orm"
-import { DateTime, Effect, Layer, Option, Schema } from "effect"
+import type {
+  EffectPgQueryEffectHKT,
+  EffectPgQueryResultHKT,
+} from "drizzle-orm/effect-pglite"
+import type { PgEffectDatabase } from "drizzle-orm/pg-core/effect"
+import { DateTime, Effect, Option, Schema } from "effect"
 import {
   studyEdges,
   studyNodes,
@@ -67,11 +71,12 @@ const edgeValues = (edge: StudyEdgeType): typeof studyEdges.$inferInsert => ({
   position: edge.position,
 })
 
-export const StudyCatalogRepositoryDrizzleLive = Layer.effect(
-  StudyCatalogRepository,
-  Effect.gen(function*() {
-    const db = yield* PgDrizzle.makeWithDefaults()
+type StudyDatabase = PgEffectDatabase<
+  EffectPgQueryEffectHKT,
+  EffectPgQueryResultHKT
+>
 
+export const makeStudyCatalogRepositoryDrizzle = (db: StudyDatabase) => {
     const failRepository = (operation: string) =>
       Effect.mapError((cause: unknown) => repositoryError(operation, cause))
 
@@ -281,5 +286,4 @@ export const StudyCatalogRepositoryDrizzleLive = Layer.effect(
       listTargets,
       listSources,
     })
-  }),
-)
+}

@@ -11,14 +11,17 @@
     "db:migrate": "tsx src/infrastructure/database/migrate.ts"
   },
   "dependencies": {
+    "@effect/sql-pg": "4.0.0-beta.98",
     "@effect/sql-pglite": "4.0.0-beta.98",
     "@electric-sql/pglite": "0.5.4",
     "@proxus/shared": "workspace:*",
     "drizzle-orm": "1.0.0-rc.4",
-    "effect": "4.0.0-beta.98"
+    "effect": "4.0.0-beta.98",
+    "pg": "8.16.3"
   },
   "devDependencies": {
     "@types/node": "^25.0.0",
+    "@types/pg": "8.15.5",
     "drizzle-kit": "1.0.0-rc.4",
     "tsx": "^4.21.0",
     "typescript": "^5.8.3",
