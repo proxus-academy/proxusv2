@@ -1,0 +1,21 @@
+{
+  "name": "proxus-v2",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.32.1",
+  "scripts": {
+    "dev": "pnpm -r --parallel --filter @proxus/server --filter @proxus/web --filter @proxus/mobile-web dev",
+    "dev:api": "pnpm --filter @proxus/server dev",
+    "dev:web": "pnpm --filter @proxus/web dev",
+    "dev:mobile-web": "pnpm --filter @proxus/mobile-web dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "check": "pnpm typecheck && pnpm build",
+    "effect:diagnostics": "effect-language-service diagnostics --project apps/server/tsconfig.json --strict && effect-language-service diagnostics --project packages/shared/tsconfig.json --strict",
+    "postinstall": "effect-language-service patch"
+  },
+  "devDependencies": {
+    "@effect/language-service": "0.87.0",
+    "typescript": "^5.8.3"
+  }
+}

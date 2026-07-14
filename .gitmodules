@@ -1,0 +1,27 @@
+[submodule ".repos/effect-smol"]
+	path = .repos/effect-smol
+	url = https://github.com/Effect-TS/effect-smol/
+[submodule ".repos/opencode"]
+	path = .repos/opencode
+	url = https://github.com/anomalyco/opencode.git
+[submodule ".repos/effect-solutions"]
+	path = .repos/effect-solutions
+	url = https://github.com/kitlangton/effect-solutions.git
+[submodule ".repos/proxus"]
+	path = .repos/proxus
+	url = git@github.com:proxus-academy/proxus.git
+[submodule ".repos/effect-atom-practical-examples"]
+	path = .repos/effect-atom-practical-examples
+	url = https://github.com/lucas-barake/effect-atom-practical-examples.git
+[submodule ".repos/building-an-app-with-effect"]
+	path = .repos/building-an-app-with-effect
+	url = https://github.com/lucas-barake/building-an-app-with-effect.git
+[submodule ".repos/foldkit"]
+	path = .repos/foldkit
+	url = https://github.com/foldkit/foldkit.git
+[submodule ".repos/effect-ai-chat-example"]
+	path = .repos/effect-ai-chat-example
+	url = https://github.com/lucas-barake/effect-ai-chat-example.git
+[submodule ".repos/effect-form"]
+	path = .repos/effect-form
+	url = https://github.com/lucas-barake/effect-form.git

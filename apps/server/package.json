@@ -1,0 +1,27 @@
+{
+  "name": "@proxus/server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/dev.ts",
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate --config drizzle.config.ts",
+    "db:migrate": "tsx src/infrastructure/database/migrate.ts"
+  },
+  "dependencies": {
+    "@effect/sql-pglite": "4.0.0-beta.98",
+    "@electric-sql/pglite": "0.5.4",
+    "@proxus/shared": "workspace:*",
+    "drizzle-orm": "1.0.0-rc.4",
+    "effect": "4.0.0-beta.98"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.0",
+    "drizzle-kit": "1.0.0-rc.4",
+    "tsx": "^4.21.0",
+    "typescript": "^5.8.3",
+    "vitest": "3.2.7"
+  }
+}
