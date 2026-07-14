@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx src/dev.ts",
+    "start": "tsx src/prod.ts",
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

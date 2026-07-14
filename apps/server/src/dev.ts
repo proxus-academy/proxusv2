@@ -1,9 +1,11 @@
-import { Config, Effect } from "effect"
+import { Effect, Layer } from "effect"
+import { StudyCatalogDevLive } from "./layers/study-catalog.dev.js"
 
-const program = Effect.gen(function*() {
-  const port = yield* Config.number("PORT").pipe(Config.withDefault(3001))
-  yield* Effect.log(`[server] shell ready on port ${port}; HTTP API pending`)
-  return yield* Effect.never
-})
+const program = Effect.scoped(
+  Effect.gen(function*() {
+    yield* Layer.build(StudyCatalogDevLive)
+    yield* Effect.log("[server] development services initialized with PGlite")
+  }),
+)
 
 await Effect.runPromise(program)

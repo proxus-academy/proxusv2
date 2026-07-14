@@ -1,7 +1,13 @@
 import { PgliteClient } from "@effect/sql-pglite"
 import * as PgDrizzle from "drizzle-orm/effect-pglite"
 import { migrate } from "drizzle-orm/effect-pglite/migrator"
-import { Effect } from "effect"
+import { Config, Effect } from "effect"
+
+export const PgliteDevelopmentLive = PgliteClient.layerConfig({
+  dataDir: Config.string("PGLITE_DATA_DIR").pipe(
+    Config.withDefault("./.data"),
+  ),
+})
 
 export const PgliteLive = (dataDir?: string) =>
   PgliteClient.layer(dataDir === undefined ? {} : { dataDir })
