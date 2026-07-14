@@ -146,16 +146,26 @@ export const makeStudyCatalogRepositoryDrizzle = (db: StudyDatabase) => {
             .returning()
           return decodeEdge(rows[0]!) as Edge
         }),
-      ).pipe(failRepository("createEdge"))
+      ).pipe(
+        Effect.mapError((error) => {
+          switch (error._tag) {
+            case "StudyNodeNotFound":
+            case "StudyEdgeAlreadyExists":
+              return error
+            default:
+              return repositoryError("createEdge", error)
+          }
+        }),
+      )
 
     const removeEdge = (edgeId: StudyEdgeId) =>
       db.delete(studyEdges).where(eq(studyEdges.id, edgeId)).returning().pipe(
+        failRepository("removeEdge"),
         Effect.flatMap((rows) =>
           rows.length === 0
             ? Effect.fail(new StudyEdgeNotFound({ edgeId }))
             : Effect.void,
         ),
-        failRepository("removeEdge"),
       )
 
     const renameNode = <Id extends AnyStudyNodeId>(
@@ -169,12 +179,12 @@ export const makeStudyCatalogRepositoryDrizzle = (db: StudyDatabase) => {
         .where(eq(studyNodes.id, nodeId))
         .returning()
         .pipe(
+          failRepository("renameNode"),
           Effect.flatMap((rows) =>
             rows[0] === undefined
               ? Effect.fail(new StudyNodeNotFound({ nodeId }))
               : Effect.succeed(decodeNode(rows[0]) as StudyNodeOfId<Id>),
           ),
-          failRepository("renameNode"),
         )
 
     const archiveNode = <Id extends AnyStudyNodeId>(
@@ -187,12 +197,12 @@ export const makeStudyCatalogRepositoryDrizzle = (db: StudyDatabase) => {
         .where(eq(studyNodes.id, nodeId))
         .returning()
         .pipe(
+          failRepository("archiveNode"),
           Effect.flatMap((rows) =>
             rows[0] === undefined
               ? Effect.fail(new StudyNodeNotFound({ nodeId }))
               : Effect.succeed(decodeNode(rows[0]) as StudyNodeOfId<Id>),
           ),
-          failRepository("archiveNode"),
         )
 
     const ensureNode = (nodeId: AnyStudyNodeId) =>
@@ -214,10 +224,10 @@ export const makeStudyCatalogRepositoryDrizzle = (db: StudyDatabase) => {
             .select()
             .from(studyEdges)
             .where(eq(studyEdges.fromNodeId, sourceNodeId))
-            .orderBy(asc(studyEdges.position), asc(studyEdges.id)),
+            .orderBy(asc(studyEdges.position), asc(studyEdges.id))
+            .pipe(failRepository("listOutgoingEdges")),
         ),
         Effect.map((rows) => rows.map(decodeEdge) as unknown as ReadonlyArray<StudyEdgesFromId<Id>>),
-        failRepository("listOutgoingEdges"),
       )
 
     const listIncomingEdges = <Id extends StudyEdgeType["to"]>(
@@ -229,10 +239,10 @@ export const makeStudyCatalogRepositoryDrizzle = (db: StudyDatabase) => {
             .select()
             .from(studyEdges)
             .where(eq(studyEdges.toNodeId, targetNodeId))
-            .orderBy(asc(studyEdges.position), asc(studyEdges.id)),
+            .orderBy(asc(studyEdges.position), asc(studyEdges.id))
+            .pipe(failRepository("listIncomingEdges")),
         ),
         Effect.map((rows) => rows.map(decodeEdge) as unknown as ReadonlyArray<StudyEdgesToId<Id>>),
-        failRepository("listIncomingEdges"),
       )
 
     const listTargets = <Id extends StudyEdgeType["from"]>(sourceNodeId: Id) =>
@@ -243,7 +253,8 @@ export const makeStudyCatalogRepositoryDrizzle = (db: StudyDatabase) => {
             .from(studyEdges)
             .innerJoin(studyNodes, eq(studyNodes.id, studyEdges.toNodeId))
             .where(eq(studyEdges.fromNodeId, sourceNodeId))
-            .orderBy(asc(studyEdges.position), asc(studyEdges.id)),
+            .orderBy(asc(studyEdges.position), asc(studyEdges.id))
+            .pipe(failRepository("listTargets")),
         ),
         Effect.map(
           (rows) =>
@@ -251,7 +262,6 @@ export const makeStudyCatalogRepositoryDrizzle = (db: StudyDatabase) => {
               StudyNodeTargetsOfId<Id>
             >,
         ),
-        failRepository("listTargets"),
       )
 
     const listSources = <Id extends StudyEdgeType["to"]>(targetNodeId: Id) =>
@@ -262,7 +272,8 @@ export const makeStudyCatalogRepositoryDrizzle = (db: StudyDatabase) => {
             .from(studyEdges)
             .innerJoin(studyNodes, eq(studyNodes.id, studyEdges.fromNodeId))
             .where(eq(studyEdges.toNodeId, targetNodeId))
-            .orderBy(asc(studyEdges.position), asc(studyEdges.id)),
+            .orderBy(asc(studyEdges.position), asc(studyEdges.id))
+            .pipe(failRepository("listSources")),
         ),
         Effect.map(
           (rows) =>
@@ -270,7 +281,6 @@ export const makeStudyCatalogRepositoryDrizzle = (db: StudyDatabase) => {
               StudyNodeSourcesOfId<Id>
             >,
         ),
-        failRepository("listSources"),
       )
 
     return StudyCatalogRepository.of({
