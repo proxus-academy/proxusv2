@@ -42,14 +42,15 @@ Before adopting an example, verify its imports and signatures against the instal
 5. [Resources, runtime, and integration](./resources-runtime-and-integration.md)
 6. [HTTP API servers and middleware](./http-api-server-and-middleware.md)
 7. [HTTP clients](./http-clients.md)
-8. [Testing](./testing.md)
-9. [Observability](./observability.md)
+8. [React and Effect Atom](./react-and-effect-atom.md)
+9. [Testing](./testing.md)
+10. [Observability](./observability.md)
 
 ## Guide map
 
 | Area | Guide | Adoption in this template |
 | --- | --- | --- |
-| Setup, strict TypeScript, Language Service | [Setup and TypeScript](./setup-and-typescript.md) | TypeScript baseline adopted; Language Service is recommended/target |
+| Setup, strict TypeScript, Language Service | [Setup and TypeScript](./setup-and-typescript.md) | Adopted and enforced |
 | Effect construction, `gen`, `fn`, Promise/callback adapters | [Effect programs](./effect-programs.md) | Required |
 | Services, references, Layers, config providers | [Services, Layers, and configuration](./services-layers-and-config.md) | Required |
 | Schema, brands, tagged errors, defects | [Schema and errors](./schema-and-errors.md) | Required |
@@ -58,6 +59,7 @@ Before adopting an example, verify its imports and signatures against the instal
 | Stream, encoding, PubSub, backpressure | [Streams, PubSub, and dataflow](./streams-pubsub-and-dataflow.md) | Available |
 | Schema-first server, handlers, middleware, auth/scope | [HTTP API servers and middleware](./http-api-server-and-middleware.md) | Required |
 | Low-level and generated HTTP clients | [HTTP clients](./http-clients.md) | Required for remote integrations and first-party clients |
+| React state and effects through Effect Atom | [React and Effect Atom](./react-and-effect-atom.md) | Required for web and admin |
 | Effect-aware, layered, SQL, and HTTP tests | [Testing](./testing.md) | Required |
 | Logging, tracing, OTLP, privacy, cardinality | [Observability](./observability.md) | Required for meaningful remote/use-case work |
 | Typed CLI and child processes | [CLI and child processes](./cli-and-child-processes.md) | Available |
