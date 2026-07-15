@@ -33,17 +33,25 @@ export const DegreeNodeId = StudyNodeUuid.pipe(
 export type DegreeNodeId = typeof DegreeNodeId.Type
 export const makeDegreeNodeId = Schema.decodeUnknownSync(DegreeNodeId)
 
+export const SubjectNodeId = StudyNodeUuid.pipe(
+  Schema.brand("SubjectNodeId"),
+)
+export type SubjectNodeId = typeof SubjectNodeId.Type
+export const makeSubjectNodeId = Schema.decodeUnknownSync(SubjectNodeId)
+
 export type AnyStudyNodeId =
   | CountryNodeId
   | StudyTypeNodeId
   | UniversityNodeId
   | DegreeNodeId
+  | SubjectNodeId
 
 export const StudyNodeKind = Schema.Literals([
   "country",
   "type",
   "university",
   "degree",
+  "subject",
 ])
 export type StudyNodeKind = typeof StudyNodeKind.Type
 
@@ -94,11 +102,18 @@ export class DegreeNode extends Schema.Class<DegreeNode>("DegreeNode")({
   kind: Schema.Literal("degree"),
 }) {}
 
+export class SubjectNode extends Schema.Class<SubjectNode>("SubjectNode")({
+  ...StudyNodeFields,
+  id: SubjectNodeId,
+  kind: Schema.Literal("subject"),
+}) {}
+
 export const StudyNode = Schema.Union([
   CountryNode,
   StudyTypeNode,
   UniversityNode,
   DegreeNode,
+  SubjectNode,
 ])
 export type StudyNode = typeof StudyNode.Type
 
@@ -146,10 +161,30 @@ export class UniversityDegreeEdge extends Schema.TaggedClass<UniversityDegreeEdg
   },
 ) {}
 
+export class UniversitySubjectEdge extends Schema.TaggedClass<UniversitySubjectEdge>()(
+  "UniversitySubjectEdge",
+  {
+    ...StudyEdgeFields,
+    from: UniversityNodeId,
+    to: SubjectNodeId,
+  },
+) {}
+
+export class DegreeSubjectEdge extends Schema.TaggedClass<DegreeSubjectEdge>()(
+  "DegreeSubjectEdge",
+  {
+    ...StudyEdgeFields,
+    from: DegreeNodeId,
+    to: SubjectNodeId,
+  },
+) {}
+
 export const StudyEdge = Schema.Union([
   CountryTypeEdge,
   TypeUniversityEdge,
   UniversityDegreeEdge,
+  UniversitySubjectEdge,
+  DegreeSubjectEdge,
 ])
 export type StudyEdge = typeof StudyEdge.Type
 
@@ -191,11 +226,17 @@ export class CreateDegreeInput extends Schema.TaggedClass<CreateDegreeInput>()(
   { name: Schema.NonEmptyString },
 ) {}
 
+export class CreateSubjectInput extends Schema.TaggedClass<CreateSubjectInput>()(
+  "CreateSubject",
+  { name: Schema.NonEmptyString },
+) {}
+
 export const CreateStudyNodeInput = Schema.Union([
   CreateCountryInput,
   CreateStudyTypeInput,
   CreateUniversityInput,
   CreateDegreeInput,
+  CreateSubjectInput,
 ])
 export type CreateStudyNodeInput = typeof CreateStudyNodeInput.Type
 
@@ -208,7 +249,9 @@ export type CreatedStudyNode<Input extends CreateStudyNodeInput> =
         ? UniversityNode
         : Input extends CreateDegreeInput
           ? DegreeNode
-          : never
+          : Input extends CreateSubjectInput
+            ? SubjectNode
+            : never
 
 export class CreateCountryTypeEdgeInput extends Schema.TaggedClass<CreateCountryTypeEdgeInput>()(
   "CountryTypeEdge",
@@ -237,10 +280,30 @@ export class CreateUniversityDegreeEdgeInput extends Schema.TaggedClass<CreateUn
   },
 ) {}
 
+export class CreateUniversitySubjectEdgeInput extends Schema.TaggedClass<CreateUniversitySubjectEdgeInput>()(
+  "UniversitySubjectEdge",
+  {
+    from: UniversityNodeId,
+    to: SubjectNodeId,
+    position: Schema.optional(NonNegativeInt),
+  },
+) {}
+
+export class CreateDegreeSubjectEdgeInput extends Schema.TaggedClass<CreateDegreeSubjectEdgeInput>()(
+  "DegreeSubjectEdge",
+  {
+    from: DegreeNodeId,
+    to: SubjectNodeId,
+    position: Schema.optional(NonNegativeInt),
+  },
+) {}
+
 export const CreateStudyEdgeInput = Schema.Union([
   CreateCountryTypeEdgeInput,
   CreateTypeUniversityEdgeInput,
   CreateUniversityDegreeEdgeInput,
+  CreateUniversitySubjectEdgeInput,
+  CreateDegreeSubjectEdgeInput,
 ])
 export type CreateStudyEdgeInput = typeof CreateStudyEdgeInput.Type
 

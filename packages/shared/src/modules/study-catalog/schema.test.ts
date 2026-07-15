@@ -3,15 +3,23 @@ import { Schema } from "effect"
 import {
   CountryTypeEdge,
   DegreeNode,
+  DegreeSubjectEdge,
   StudyEdge,
   StudyNode,
+  SubjectNode,
   UniversityNode,
+  UniversitySubjectEdge,
   makeCountryNodeId,
   makeDegreeNodeId,
   makeStudyEdgeId,
   makeStudyTypeNodeId,
+  makeSubjectNodeId,
   makeUniversityNodeId,
   type CountryNodeId,
+  type DegreeNodeId,
+  type StudyNodeSourcesOfId,
+  type StudyNodeTargetsOfId,
+  type SubjectNodeId,
   type UniversityNodeId,
 } from "./schema.js"
 
@@ -20,6 +28,7 @@ const studyTypeIdValue = "00000000-0000-4000-8000-000000000002"
 const universityIdValue = "00000000-0000-4000-8000-000000000003"
 const degreeIdValue = "00000000-0000-4000-8000-000000000004"
 const edgeIdValue = "00000000-0000-4000-8000-000000000005"
+const subjectIdValue = "00000000-0000-4000-8000-000000000006"
 const timestampValue = "2026-07-14T12:00:00.000Z"
 
 const countryId = makeCountryNodeId(countryIdValue)
@@ -27,6 +36,7 @@ const studyTypeId = makeStudyTypeNodeId(studyTypeIdValue)
 const universityId = makeUniversityNodeId(universityIdValue)
 const degreeId = makeDegreeNodeId(degreeIdValue)
 const edgeId = makeStudyEdgeId(edgeIdValue)
+const subjectId = makeSubjectNodeId(subjectIdValue)
 const timestamp = Schema.decodeUnknownSync(Schema.DateTimeUtcFromString)(
   timestampValue,
 )
@@ -113,6 +123,31 @@ describe("StudyEdge", () => {
 
     expect(edge).toBeInstanceOf(CountryTypeEdge)
     expect(edge._tag).toBe("CountryTypeEdge")
+  })
+
+  it("derives university and degree paths to a shared subject", () => {
+    const universitySubject = new UniversitySubjectEdge({
+      id: edgeId,
+      from: universityId,
+      to: subjectId,
+      position: 0,
+    })
+    const degreeSubject = new DegreeSubjectEdge({
+      id: makeStudyEdgeId("00000000-0000-4000-8000-000000000007"),
+      from: degreeId,
+      to: subjectId,
+      position: 0,
+    })
+
+    expect(universitySubject.to).toBe(subjectIdValue)
+    expect(degreeSubject.to).toBe(subjectIdValue)
+    expectTypeOf<StudyNodeTargetsOfId<UniversityNodeId>>().toEqualTypeOf<
+      DegreeNode | SubjectNode
+    >()
+    expectTypeOf<StudyNodeSourcesOfId<SubjectNodeId>>().toEqualTypeOf<
+      UniversityNode | DegreeNode
+    >()
+    expectTypeOf(degreeSubject.from).toEqualTypeOf<DegreeNodeId>()
   })
 
   it("rejects edge variants outside the union", () => {

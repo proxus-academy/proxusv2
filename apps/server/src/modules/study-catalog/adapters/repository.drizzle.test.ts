@@ -2,10 +2,18 @@ import { PgliteClient } from "@effect/sql-pglite"
 import {
   CountryNode,
   CountryTypeEdge,
+  DegreeNode,
+  DegreeSubjectEdge,
+  SubjectNode,
   StudyTypeNode,
+  UniversityNode,
+  UniversitySubjectEdge,
   makeCountryNodeId,
+  makeDegreeNodeId,
   makeStudyEdgeId,
   makeStudyTypeNodeId,
+  makeSubjectNodeId,
+  makeUniversityNodeId,
 } from "@proxus/shared/study-catalog"
 import { describe, expect, test } from "vitest"
 import { DateTime, Effect, Layer, Option } from "effect"
@@ -21,6 +29,11 @@ const missingTypeId = makeStudyTypeNodeId(
 const edgeId = makeStudyEdgeId("00000000-0000-4000-8000-000000000101")
 const now = DateTime.makeUnsafe("2026-07-14T12:00:00.000Z")
 const later = DateTime.makeUnsafe("2026-07-14T13:00:00.000Z")
+const universityId = makeUniversityNodeId(
+  "00000000-0000-4000-8000-000000000004",
+)
+const degreeId = makeDegreeNodeId("00000000-0000-4000-8000-000000000005")
+const subjectId = makeSubjectNodeId("00000000-0000-4000-8000-000000000006")
 
 const country = new CountryNode({
   id: countryId,
@@ -68,6 +81,65 @@ const withRepository = <A, E>(
 }
 
 describe("StudyCatalogRepository Drizzle contract", () => {
+  test("persists both university and degree paths to a subject", () =>
+    Effect.runPromise(
+      withRepository(
+        Effect.gen(function*() {
+          const repository = yield* StudyCatalogRepository
+          const university = new UniversityNode({
+            id: universityId,
+            kind: "university",
+            name: "Complutense University",
+            status: "published",
+            createdAt: now,
+            updatedAt: now,
+          })
+          const degree = new DegreeNode({
+            id: degreeId,
+            kind: "degree",
+            name: "Computer Science",
+            status: "published",
+            createdAt: now,
+            updatedAt: now,
+          })
+          const subject = new SubjectNode({
+            id: subjectId,
+            kind: "subject",
+            name: "Algebra",
+            status: "published",
+            createdAt: now,
+            updatedAt: now,
+          })
+          const universitySubject = new UniversitySubjectEdge({
+            id: makeStudyEdgeId("00000000-0000-4000-8000-000000000103"),
+            from: universityId,
+            to: subjectId,
+            position: 1,
+          })
+          const degreeSubject = new DegreeSubjectEdge({
+            id: makeStudyEdgeId("00000000-0000-4000-8000-000000000104"),
+            from: degreeId,
+            to: subjectId,
+            position: 0,
+          })
+
+          yield* repository.createNode(university)
+          yield* repository.createNode(degree)
+          yield* repository.createNode(subject)
+          yield* repository.createEdge(universitySubject)
+          yield* repository.createEdge(degreeSubject)
+
+          expect(yield* repository.listTargets(universityId)).toEqual([subject])
+          expect(yield* repository.listTargets(degreeId)).toEqual([subject])
+          expect(yield* repository.listSources(subjectId)).toEqual([
+            degree,
+            university,
+          ])
+        }),
+      ),
+    ),
+  )
+
   test("persists nodes, edges, graph queries, updates and domain failures", () =>
     Effect.runPromise(
       withRepository(

@@ -2,16 +2,20 @@ import {
   CountryNode,
   CountryTypeEdge,
   DegreeNode,
+  DegreeSubjectEdge,
   StudyEdgeNotFound,
   StudyNodeNotFound,
   StudyTypeNode,
+  SubjectNode,
   TypeUniversityEdge,
   UniversityDegreeEdge,
   UniversityNode,
+  UniversitySubjectEdge,
   makeCountryNodeId,
   makeDegreeNodeId,
   makeStudyEdgeId,
   makeStudyTypeNodeId,
+  makeSubjectNodeId,
   makeUniversityNodeId,
   type AnyStudyNodeId,
   type CreatedStudyEdge,
@@ -117,6 +121,17 @@ export const StudyCatalogLive: Layer.Layer<
                 updatedAt: now,
               }),
             )
+          case "CreateSubject":
+            return yield* repository.createNode(
+              new SubjectNode({
+                id: makeSubjectNodeId(yield* randomUUIDv4),
+                kind: "subject",
+                name: input.name,
+                status: "draft",
+                createdAt: now,
+                updatedAt: now,
+              }),
+            )
         }
       }).pipe(Effect.map((node) => node as CreatedStudyNode<Input>))
 
@@ -148,6 +163,24 @@ export const StudyCatalogLive: Layer.Layer<
           case "UniversityDegreeEdge":
             return yield* repository.createEdge(
               new UniversityDegreeEdge({
+                id,
+                from: input.from,
+                to: input.to,
+                position: input.position ?? 0,
+              }),
+            )
+          case "UniversitySubjectEdge":
+            return yield* repository.createEdge(
+              new UniversitySubjectEdge({
+                id,
+                from: input.from,
+                to: input.to,
+                position: input.position ?? 0,
+              }),
+            )
+          case "DegreeSubjectEdge":
+            return yield* repository.createEdge(
+              new DegreeSubjectEdge({
                 id,
                 from: input.from,
                 to: input.to,
