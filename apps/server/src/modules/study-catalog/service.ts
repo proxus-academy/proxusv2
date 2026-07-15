@@ -6,6 +6,7 @@ import type {
   CreateStudyNodeInput,
   StudyEdge,
   StudyEdgeAlreadyExists,
+  StudyEdgeEndpointKindMismatch,
   StudyEdgeId,
   StudyEdgeNotFound,
   StudyEdgesFromId,
@@ -30,6 +31,7 @@ export type CreateStudyNodeError = StudyCatalogRepositoryError
 
 export type ConnectStudyNodesError =
   | StudyNodeNotFound
+  | StudyEdgeEndpointKindMismatch
   | StudyEdgeAlreadyExists
   | StudyCatalogRepositoryError
 

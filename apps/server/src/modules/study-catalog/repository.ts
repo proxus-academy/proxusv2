@@ -2,6 +2,7 @@ import type {
   AnyStudyNodeId,
   StudyEdge,
   StudyEdgeAlreadyExists,
+  StudyEdgeEndpointKindMismatch,
   StudyEdgeId,
   StudyEdgeNotFound,
   StudyEdgesFromId,
@@ -49,6 +50,7 @@ export class StudyCatalogRepository extends Context.Service<
     ) => Effect.Effect<
       Edge,
       | StudyNodeNotFound
+      | StudyEdgeEndpointKindMismatch
       | StudyEdgeAlreadyExists
       | StudyCatalogRepositoryError
     >

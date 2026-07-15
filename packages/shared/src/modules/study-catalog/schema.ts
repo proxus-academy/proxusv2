@@ -142,50 +142,88 @@ const StudyEdgeFields = {
   position: NonNegativeInt,
 }
 
+const CountryTypeEdgeDefinition = {
+  tag: "CountryTypeEdge",
+  fromNode: CountryNode,
+  toNode: StudyTypeNode,
+} as const
+
 export class CountryTypeEdge extends Schema.TaggedClass<CountryTypeEdge>()(
-  "CountryTypeEdge",
+  CountryTypeEdgeDefinition.tag,
   {
     ...StudyEdgeFields,
-    from: CountryNodeId,
-    to: StudyTypeNodeId,
+    from: CountryTypeEdgeDefinition.fromNode.fields.id,
+    to: CountryTypeEdgeDefinition.toNode.fields.id,
   },
 ) {}
+
+const TypeUniversityEdgeDefinition = {
+  tag: "TypeUniversityEdge",
+  fromNode: StudyTypeNode,
+  toNode: UniversityNode,
+} as const
 
 export class TypeUniversityEdge extends Schema.TaggedClass<TypeUniversityEdge>()(
-  "TypeUniversityEdge",
+  TypeUniversityEdgeDefinition.tag,
   {
     ...StudyEdgeFields,
-    from: StudyTypeNodeId,
-    to: UniversityNodeId,
+    from: TypeUniversityEdgeDefinition.fromNode.fields.id,
+    to: TypeUniversityEdgeDefinition.toNode.fields.id,
   },
 ) {}
+
+const UniversityDegreeEdgeDefinition = {
+  tag: "UniversityDegreeEdge",
+  fromNode: UniversityNode,
+  toNode: DegreeNode,
+} as const
 
 export class UniversityDegreeEdge extends Schema.TaggedClass<UniversityDegreeEdge>()(
-  "UniversityDegreeEdge",
+  UniversityDegreeEdgeDefinition.tag,
   {
     ...StudyEdgeFields,
-    from: UniversityNodeId,
-    to: DegreeNodeId,
+    from: UniversityDegreeEdgeDefinition.fromNode.fields.id,
+    to: UniversityDegreeEdgeDefinition.toNode.fields.id,
   },
 ) {}
+
+const UniversitySubjectEdgeDefinition = {
+  tag: "UniversitySubjectEdge",
+  fromNode: UniversityNode,
+  toNode: SubjectNode,
+} as const
 
 export class UniversitySubjectEdge extends Schema.TaggedClass<UniversitySubjectEdge>()(
-  "UniversitySubjectEdge",
+  UniversitySubjectEdgeDefinition.tag,
   {
     ...StudyEdgeFields,
-    from: UniversityNodeId,
-    to: SubjectNodeId,
+    from: UniversitySubjectEdgeDefinition.fromNode.fields.id,
+    to: UniversitySubjectEdgeDefinition.toNode.fields.id,
   },
 ) {}
 
+const DegreeSubjectEdgeDefinition = {
+  tag: "DegreeSubjectEdge",
+  fromNode: DegreeNode,
+  toNode: SubjectNode,
+} as const
+
 export class DegreeSubjectEdge extends Schema.TaggedClass<DegreeSubjectEdge>()(
-  "DegreeSubjectEdge",
+  DegreeSubjectEdgeDefinition.tag,
   {
     ...StudyEdgeFields,
-    from: DegreeNodeId,
-    to: SubjectNodeId,
+    from: DegreeSubjectEdgeDefinition.fromNode.fields.id,
+    to: DegreeSubjectEdgeDefinition.toNode.fields.id,
   },
 ) {}
+
+const StudyEdgeDefinitions = [
+  CountryTypeEdgeDefinition,
+  TypeUniversityEdgeDefinition,
+  UniversityDegreeEdgeDefinition,
+  UniversitySubjectEdgeDefinition,
+  DegreeSubjectEdgeDefinition,
+] as const
 
 export const StudyEdge = Schema.Union([
   CountryTypeEdge,
@@ -195,6 +233,26 @@ export const StudyEdge = Schema.Union([
   DegreeSubjectEdge,
 ])
 export type StudyEdge = typeof StudyEdge.Type
+
+export type StudyEdgeEndpoint = "from" | "to"
+
+export const findStudyEdgeEndpointKindMismatch = (
+  edge: StudyEdge,
+  fromNode: StudyNode,
+  toNode: StudyNode,
+): StudyEdgeEndpoint | undefined => {
+  const definition = StudyEdgeDefinitions.find(
+    ({ tag }) => tag === edge._tag,
+  )!
+
+  if (!Schema.is(definition.fromNode)(fromNode)) {
+    return "from"
+  }
+  if (!Schema.is(definition.toNode)(toNode)) {
+    return "to"
+  }
+  return undefined
+}
 
 export type StudyEdgesFromId<Id> = Extract<
   StudyEdge,

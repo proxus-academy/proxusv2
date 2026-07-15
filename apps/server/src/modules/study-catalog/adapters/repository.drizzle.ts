@@ -1,9 +1,11 @@
 import {
   StudyEdge,
   StudyEdgeAlreadyExists,
+  StudyEdgeEndpointKindMismatch,
   StudyEdgeNotFound,
   StudyNode,
   StudyNodeNotFound,
+  findStudyEdgeEndpointKindMismatch,
   type AnyStudyNodeId,
   type StudyEdge as StudyEdgeType,
   type StudyEdgeId,
@@ -115,15 +117,34 @@ export const makeStudyCatalogRepositoryDrizzle = (db: StudyDatabase) => {
       db.transaction((tx) =>
         Effect.gen(function*() {
           const endpoints = yield* tx
-            .select({ id: studyNodes.id })
+            .select()
             .from(studyNodes)
             .where(inArray(studyNodes.id, [edge.from, edge.to]))
+          const fromRow = endpoints.find(({ id }) => id === edge.from)
+          const toRow = endpoints.find(({ id }) => id === edge.to)
 
-          if (!endpoints.some(({ id }) => id === edge.from)) {
+          if (fromRow === undefined) {
             return yield* new StudyNodeNotFound({ nodeId: edge.from })
           }
-          if (!endpoints.some(({ id }) => id === edge.to)) {
+          if (toRow === undefined) {
             return yield* new StudyNodeNotFound({ nodeId: edge.to })
+          }
+
+          const fromNode = decodeNode(fromRow)
+          const toNode = decodeNode(toRow)
+          const mismatchedEndpoint = findStudyEdgeEndpointKindMismatch(
+            edge,
+            fromNode,
+            toNode,
+          )
+          if (mismatchedEndpoint !== undefined) {
+            const node = mismatchedEndpoint === "from" ? fromNode : toNode
+            return yield* new StudyEdgeEndpointKindMismatch({
+              edge,
+              endpoint: mismatchedEndpoint,
+              nodeId: node.id,
+              actualKind: node.kind,
+            })
           }
 
           const duplicate = yield* tx
@@ -152,6 +173,7 @@ export const makeStudyCatalogRepositoryDrizzle = (db: StudyDatabase) => {
         Effect.mapError((error) => {
           switch (error._tag) {
             case "StudyNodeNotFound":
+            case "StudyEdgeEndpointKindMismatch":
             case "StudyEdgeAlreadyExists":
               return error
             default:

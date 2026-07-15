@@ -1,4 +1,5 @@
 import { PgliteClient } from "@effect/sql-pglite"
+import { eq } from "drizzle-orm"
 import * as PgliteDrizzle from "drizzle-orm/effect-pglite"
 import {
   CountryNode,
@@ -20,7 +21,11 @@ import {
 import { describe, expect, test } from "vitest"
 import { DateTime, Effect, Layer, Option } from "effect"
 import { migratePglite } from "../../../infrastructure/database/pglite.js"
-import { studyAssets } from "../../../infrastructure/database/schema.js"
+import {
+  studyAssets,
+  studyEdges,
+  studyNodes,
+} from "../../../infrastructure/database/schema.js"
 import { StudyCatalogRepository } from "../repository.js"
 import { makeStudyCatalogRepositoryDrizzle } from "./repository.drizzle.js"
 import { StudyCatalogRepositoryPgliteLive } from "./repository.pglite.layer.js"
@@ -87,6 +92,67 @@ const withRepository = <A, E>(
 }
 
 describe("StudyCatalogRepository Drizzle contract", () => {
+  test("rejects persisted endpoint kinds that contradict the edge", () => {
+    const ClientLive = PgliteClient.layer()
+
+    return Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function*() {
+          const context = yield* Layer.build(ClientLive)
+          return yield* Effect.gen(function*() {
+            const db = yield* PgliteDrizzle.makeWithDefaults()
+            yield* migratePglite("./drizzle")
+            yield* db.insert(studyNodes).values([
+              {
+                id: countryId,
+                kind: "degree",
+                name: "Wrong source",
+                imageAssetId: null,
+                status: "draft",
+                createdAt: DateTime.toDateUtc(now),
+                updatedAt: DateTime.toDateUtc(now),
+              },
+              {
+                id: typeId,
+                kind: "subject",
+                name: "Wrong target",
+                imageAssetId: null,
+                status: "draft",
+                createdAt: DateTime.toDateUtc(now),
+                updatedAt: DateTime.toDateUtc(now),
+              },
+            ])
+            const repository = makeStudyCatalogRepositoryDrizzle(db)
+
+            const wrongSource = yield* repository
+              .createEdge(edge)
+              .pipe(Effect.flip)
+            expect(wrongSource._tag).toBe("StudyEdgeEndpointKindMismatch")
+            if (wrongSource._tag === "StudyEdgeEndpointKindMismatch") {
+              expect(wrongSource.endpoint).toBe("from")
+              expect(wrongSource.actualKind).toBe("degree")
+            }
+
+            yield* db
+              .update(studyNodes)
+              .set({ kind: "country" })
+              .where(eq(studyNodes.id, countryId))
+            const wrongTarget = yield* repository
+              .createEdge(edge)
+              .pipe(Effect.flip)
+            expect(wrongTarget._tag).toBe("StudyEdgeEndpointKindMismatch")
+            if (wrongTarget._tag === "StudyEdgeEndpointKindMismatch") {
+              expect(wrongTarget.endpoint).toBe("to")
+              expect(wrongTarget.actualKind).toBe("subject")
+            }
+
+            expect(yield* db.select().from(studyEdges)).toEqual([])
+          }).pipe(Effect.provide(context))
+        }),
+      ),
+    )
+  }, 15_000)
+
   test("round-trips a node image asset relationship", () => {
     const ClientLive = PgliteClient.layer()
     const assetId = makeStudyAssetId(
