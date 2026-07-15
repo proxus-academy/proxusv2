@@ -13,7 +13,9 @@
     "db:check:postgres": "tsx src/infrastructure/database/check.postgres.ts",
     "db:migrate": "tsx src/infrastructure/database/migrate.ts",
     "db:migrate:pglite": "tsx src/infrastructure/database/migrate.ts",
-    "db:migrate:postgres": "tsx src/infrastructure/database/migrate.postgres.ts"
+    "db:migrate:postgres": "tsx src/infrastructure/database/migrate.postgres.ts",
+    "db:seed:pglite": "tsx src/infrastructure/database/seed.pglite.ts",
+    "db:reset:pglite": "tsx src/infrastructure/database/reset.pglite.ts"
   },
   "dependencies": {
     "@effect/sql-pg": "4.0.0-beta.98",
