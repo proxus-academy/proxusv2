@@ -5,14 +5,14 @@ import {
   StudyEdgeNotFound,
   StudyNodeNotFound,
   StudyTypeNode,
-  TypeUniversitiesEdge,
-  UniversitiesDegreeEdge,
-  UniversitiesNode,
+  TypeUniversityEdge,
+  UniversityDegreeEdge,
+  UniversityNode,
   makeCountryNodeId,
   makeDegreeNodeId,
   makeStudyEdgeId,
   makeStudyTypeNodeId,
-  makeUniversitiesNodeId,
+  makeUniversityNodeId,
   type AnyStudyNodeId,
   type CreatedStudyEdge,
   type CreatedStudyNode,
@@ -95,11 +95,11 @@ export const StudyCatalogLive: Layer.Layer<
                 updatedAt: now,
               }),
             )
-          case "CreateUniversities":
+          case "CreateUniversity":
             return yield* repository.createNode(
-              new UniversitiesNode({
-                id: makeUniversitiesNodeId(yield* randomUUIDv4),
-                kind: "universities",
+              new UniversityNode({
+                id: makeUniversityNodeId(yield* randomUUIDv4),
+                kind: "university",
                 name: input.name,
                 status: "draft",
                 createdAt: now,
@@ -136,18 +136,18 @@ export const StudyCatalogLive: Layer.Layer<
                 position: input.position ?? 0,
               }),
             )
-          case "TypeUniversitiesEdge":
+          case "TypeUniversityEdge":
             return yield* repository.createEdge(
-              new TypeUniversitiesEdge({
+              new TypeUniversityEdge({
                 id,
                 from: input.from,
                 to: input.to,
                 position: input.position ?? 0,
               }),
             )
-          case "UniversitiesDegreeEdge":
+          case "UniversityDegreeEdge":
             return yield* repository.createEdge(
-              new UniversitiesDegreeEdge({
+              new UniversityDegreeEdge({
                 id,
                 from: input.from,
                 to: input.to,

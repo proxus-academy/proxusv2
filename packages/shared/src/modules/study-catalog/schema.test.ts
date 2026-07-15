@@ -5,14 +5,14 @@ import {
   DegreeNode,
   StudyEdge,
   StudyNode,
-  UniversitiesNode,
+  UniversityNode,
   makeCountryNodeId,
   makeDegreeNodeId,
   makeStudyEdgeId,
   makeStudyTypeNodeId,
-  makeUniversitiesNodeId,
+  makeUniversityNodeId,
   type CountryNodeId,
-  type UniversitiesNodeId,
+  type UniversityNodeId,
 } from "./schema.js"
 
 const countryIdValue = "00000000-0000-4000-8000-000000000001"
@@ -24,7 +24,7 @@ const timestampValue = "2026-07-14T12:00:00.000Z"
 
 const countryId = makeCountryNodeId(countryIdValue)
 const studyTypeId = makeStudyTypeNodeId(studyTypeIdValue)
-const universityId = makeUniversitiesNodeId(universityIdValue)
+const universityId = makeUniversityNodeId(universityIdValue)
 const degreeId = makeDegreeNodeId(degreeIdValue)
 const edgeId = makeStudyEdgeId(edgeIdValue)
 const timestamp = Schema.decodeUnknownSync(Schema.DateTimeUtcFromString)(
@@ -35,18 +35,18 @@ describe("StudyNode", () => {
   it("decodes the discriminated variant and brands its id", () => {
     const node = Schema.decodeUnknownSync(StudyNode)({
       id: universityIdValue,
-      kind: "universities",
+      kind: "university",
       name: "Universidad Complutense",
       status: "published",
       createdAt: timestampValue,
       updatedAt: timestampValue,
     })
 
-    expect(node).toBeInstanceOf(UniversitiesNode)
-    expect(node.kind).toBe("universities")
+    expect(node).toBeInstanceOf(UniversityNode)
+    expect(node.kind).toBe("university")
 
-    if (node.kind === "universities") {
-      expectTypeOf(node.id).toEqualTypeOf<UniversitiesNodeId>()
+    if (node.kind === "university") {
+      expectTypeOf(node.id).toEqualTypeOf<UniversityNodeId>()
     }
   })
 
