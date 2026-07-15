@@ -1,13 +1,13 @@
 import { Layer } from "effect"
 import {
-  PostgresMigrationLive,
+  PostgresMigrationCheckLive,
   PostgresProductionLive,
 } from "../infrastructure/database/postgres.js"
 import { StudyCatalogRepositoryPostgresLive } from "../modules/study-catalog/adapters/repository.postgres.layer.js"
 import { StudyCatalogLive } from "../modules/study-catalog/service.live.js"
 
 const PersistenceLive = Layer.merge(
-  PostgresMigrationLive,
+  PostgresMigrationCheckLive,
   StudyCatalogRepositoryPostgresLive,
 ).pipe(Layer.provide(PostgresProductionLive))
 

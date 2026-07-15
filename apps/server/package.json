@@ -10,7 +10,10 @@
     "test": "vitest run",
     "db:generate": "drizzle-kit generate --config drizzle.config.ts",
     "db:check": "drizzle-kit check --config drizzle.config.ts",
-    "db:migrate": "tsx src/infrastructure/database/migrate.ts"
+    "db:check:postgres": "tsx src/infrastructure/database/check.postgres.ts",
+    "db:migrate": "tsx src/infrastructure/database/migrate.ts",
+    "db:migrate:pglite": "tsx src/infrastructure/database/migrate.ts",
+    "db:migrate:postgres": "tsx src/infrastructure/database/migrate.postgres.ts"
   },
   "dependencies": {
     "@effect/sql-pg": "4.0.0-beta.98",
