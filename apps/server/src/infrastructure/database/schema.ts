@@ -8,12 +8,31 @@ import {
   uuid,
 } from "drizzle-orm/pg-core"
 
+export const studyAssets = pgTable(
+  "study_assets",
+  {
+    id: uuid("id").primaryKey(),
+    storageKey: text("storage_key").notNull(),
+    contentType: text("content_type").notNull(),
+    createdAt: timestamp("created_at", {
+      withTimezone: true,
+      mode: "date",
+    }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("study_assets_storage_key_uidx").on(table.storageKey),
+  ],
+)
+
 export const studyNodes = pgTable(
   "study_nodes",
   {
     id: uuid("id").primaryKey(),
     kind: text("kind").notNull(),
     name: text("name").notNull(),
+    imageAssetId: uuid("image_asset_id").references(() => studyAssets.id, {
+      onDelete: "set null",
+    }),
     status: text("status").notNull(),
     createdAt: timestamp("created_at", {
       withTimezone: true,
@@ -54,5 +73,6 @@ export const studyEdges = pgTable(
   ],
 )
 
+export type StudyAssetRow = typeof studyAssets.$inferSelect
 export type StudyNodeRow = typeof studyNodes.$inferSelect
 export type StudyEdgeRow = typeof studyEdges.$inferSelect

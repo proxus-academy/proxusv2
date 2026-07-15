@@ -1,4 +1,5 @@
 import { PgliteClient } from "@effect/sql-pglite"
+import * as PgliteDrizzle from "drizzle-orm/effect-pglite"
 import {
   CountryNode,
   CountryTypeEdge,
@@ -10,6 +11,7 @@ import {
   UniversitySubjectEdge,
   makeCountryNodeId,
   makeDegreeNodeId,
+  makeStudyAssetId,
   makeStudyEdgeId,
   makeStudyTypeNodeId,
   makeSubjectNodeId,
@@ -18,7 +20,9 @@ import {
 import { describe, expect, test } from "vitest"
 import { DateTime, Effect, Layer, Option } from "effect"
 import { migratePglite } from "../../../infrastructure/database/pglite.js"
+import { studyAssets } from "../../../infrastructure/database/schema.js"
 import { StudyCatalogRepository } from "../repository.js"
+import { makeStudyCatalogRepositoryDrizzle } from "./repository.drizzle.js"
 import { StudyCatalogRepositoryPgliteLive } from "./repository.pglite.layer.js"
 
 const countryId = makeCountryNodeId("00000000-0000-4000-8000-000000000001")
@@ -39,6 +43,7 @@ const country = new CountryNode({
   id: countryId,
   kind: "country",
   name: "Spain",
+  imageAssetId: null,
   status: "published",
   createdAt: now,
   updatedAt: now,
@@ -48,6 +53,7 @@ const studyType = new StudyTypeNode({
   id: typeId,
   kind: "type",
   name: "University studies",
+  imageAssetId: null,
   status: "draft",
   createdAt: now,
   updatedAt: now,
@@ -81,6 +87,41 @@ const withRepository = <A, E>(
 }
 
 describe("StudyCatalogRepository Drizzle contract", () => {
+  test("round-trips a node image asset relationship", () => {
+    const ClientLive = PgliteClient.layer()
+    const assetId = makeStudyAssetId(
+      "00000000-0000-4000-8000-000000000201",
+    )
+
+    return Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function*() {
+          const context = yield* Layer.build(ClientLive)
+          return yield* Effect.gen(function*() {
+            const db = yield* PgliteDrizzle.makeWithDefaults()
+            yield* migratePglite("./drizzle")
+            yield* db.insert(studyAssets).values({
+              id: assetId,
+              storageKey: "study-catalog/countries/spain.webp",
+              contentType: "image/webp",
+              createdAt: DateTime.toDateUtc(now),
+            })
+
+            const repository = makeStudyCatalogRepositoryDrizzle(db)
+            const nodeWithImage = new CountryNode({
+              ...country,
+              imageAssetId: assetId,
+            })
+            yield* repository.createNode(nodeWithImage)
+
+            const stored = yield* repository.findNodeById(countryId)
+            expect(Option.getOrThrow(stored).imageAssetId).toBe(assetId)
+          }).pipe(Effect.provide(context))
+        }),
+      ),
+    )
+  }, 15_000)
+
   test("persists both university and degree paths to a subject", () =>
     Effect.runPromise(
       withRepository(
@@ -90,6 +131,7 @@ describe("StudyCatalogRepository Drizzle contract", () => {
             id: universityId,
             kind: "university",
             name: "Complutense University",
+            imageAssetId: null,
             status: "published",
             createdAt: now,
             updatedAt: now,
@@ -98,6 +140,7 @@ describe("StudyCatalogRepository Drizzle contract", () => {
             id: degreeId,
             kind: "degree",
             name: "Computer Science",
+            imageAssetId: null,
             status: "published",
             createdAt: now,
             updatedAt: now,
@@ -106,6 +149,7 @@ describe("StudyCatalogRepository Drizzle contract", () => {
             id: subjectId,
             kind: "subject",
             name: "Algebra",
+            imageAssetId: null,
             status: "published",
             createdAt: now,
             updatedAt: now,
@@ -138,6 +182,7 @@ describe("StudyCatalogRepository Drizzle contract", () => {
         }),
       ),
     ),
+    15_000,
   )
 
   test("persists nodes, edges, graph queries, updates and domain failures", () =>
@@ -199,5 +244,6 @@ describe("StudyCatalogRepository Drizzle contract", () => {
         }),
       ),
     ),
+    15_000,
   )
 })

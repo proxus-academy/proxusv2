@@ -9,6 +9,13 @@ export const StudyNodeId = StudyNodeUuid
 export type StudyNodeId = typeof StudyNodeId.Type
 export const makeStudyNodeId = Schema.decodeUnknownSync(StudyNodeId)
 
+export const StudyAssetId = Schema.String.pipe(
+  Schema.check(Schema.isUUID(4)),
+  Schema.brand("StudyAssetId"),
+)
+export type StudyAssetId = typeof StudyAssetId.Type
+export const makeStudyAssetId = Schema.decodeUnknownSync(StudyAssetId)
+
 export const CountryNodeId = StudyNodeUuid.pipe(
   Schema.brand("CountryNodeId"),
 )
@@ -69,6 +76,7 @@ export const NonNegativeInt = Schema.Number.pipe(
 
 const StudyNodeFields = {
   name: Schema.NonEmptyString,
+  imageAssetId: Schema.NullOr(StudyAssetId),
   status: StudyNodeStatus,
   createdAt: Schema.DateTimeUtcFromString,
   updatedAt: Schema.DateTimeUtcFromString,

@@ -11,12 +11,14 @@ import {
   UniversitySubjectEdge,
   makeCountryNodeId,
   makeDegreeNodeId,
+  makeStudyAssetId,
   makeStudyEdgeId,
   makeStudyTypeNodeId,
   makeSubjectNodeId,
   makeUniversityNodeId,
   type CountryNodeId,
   type DegreeNodeId,
+  type StudyAssetId,
   type StudyNodeSourcesOfId,
   type StudyNodeTargetsOfId,
   type SubjectNodeId,
@@ -29,6 +31,7 @@ const universityIdValue = "00000000-0000-4000-8000-000000000003"
 const degreeIdValue = "00000000-0000-4000-8000-000000000004"
 const edgeIdValue = "00000000-0000-4000-8000-000000000005"
 const subjectIdValue = "00000000-0000-4000-8000-000000000006"
+const assetIdValue = "00000000-0000-4000-8000-000000000008"
 const timestampValue = "2026-07-14T12:00:00.000Z"
 
 const countryId = makeCountryNodeId(countryIdValue)
@@ -37,6 +40,7 @@ const universityId = makeUniversityNodeId(universityIdValue)
 const degreeId = makeDegreeNodeId(degreeIdValue)
 const edgeId = makeStudyEdgeId(edgeIdValue)
 const subjectId = makeSubjectNodeId(subjectIdValue)
+const assetId = makeStudyAssetId(assetIdValue)
 const timestamp = Schema.decodeUnknownSync(Schema.DateTimeUtcFromString)(
   timestampValue,
 )
@@ -47,6 +51,7 @@ describe("StudyNode", () => {
       id: universityIdValue,
       kind: "university",
       name: "Universidad Complutense",
+      imageAssetId: assetIdValue,
       status: "published",
       createdAt: timestampValue,
       updatedAt: timestampValue,
@@ -54,9 +59,11 @@ describe("StudyNode", () => {
 
     expect(node).toBeInstanceOf(UniversityNode)
     expect(node.kind).toBe("university")
+    expect(node.imageAssetId).toBe(assetId)
 
     if (node.kind === "university") {
       expectTypeOf(node.id).toEqualTypeOf<UniversityNodeId>()
+      expectTypeOf(node.imageAssetId).toEqualTypeOf<StudyAssetId | null>()
     }
   })
 
@@ -66,6 +73,7 @@ describe("StudyNode", () => {
         id: universityIdValue,
         kind: "unknown",
         name: "Unknown",
+        imageAssetId: null,
         status: "published",
         createdAt: timestampValue,
         updatedAt: timestampValue,
@@ -78,6 +86,7 @@ describe("StudyNode", () => {
       id: degreeId,
       kind: "degree",
       name: "Ingeniería Informática",
+      imageAssetId: null,
       status: "published",
       createdAt: timestamp,
       updatedAt: timestamp,
@@ -91,6 +100,7 @@ describe("StudyNode", () => {
         id: universityId,
         kind: "degree",
         name: "Invalid",
+        imageAssetId: null,
         status: "published",
         createdAt: timestamp,
         updatedAt: timestamp,
