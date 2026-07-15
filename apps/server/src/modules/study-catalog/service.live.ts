@@ -17,7 +17,6 @@ import {
   makeStudyTypeNodeId,
   makeSubjectNodeId,
   makeUniversityNodeId,
-  type AnyStudyNodeId,
   type CreatedStudyEdge,
   type CreatedStudyNode,
   type CreateStudyEdgeInput,
@@ -26,6 +25,7 @@ import {
   type StudyEdgeId,
   type StudyEdgesFromId,
   type StudyEdgesToId,
+  type StudyNodeId,
   type StudyNodeOfId,
   type StudyNodeSourcesOfId,
   type StudyNodeTargetsOfId,
@@ -195,7 +195,7 @@ export const StudyCatalogLive: Layer.Layer<
         }
       }).pipe(Effect.map((edge) => edge as CreatedStudyEdge<Input>))
 
-    const getNode = <Id extends AnyStudyNodeId>(
+    const getNode = <Id extends StudyNodeId>(
       nodeId: Id,
     ): Effect.Effect<StudyNodeOfId<Id>, ReadStudyNodeError> =>
       repository.findNodeById(nodeId).pipe(
@@ -219,7 +219,7 @@ export const StudyCatalogLive: Layer.Layer<
         ),
       )
 
-    const renameNode = <Id extends AnyStudyNodeId>(
+    const renameNode = <Id extends StudyNodeId>(
       nodeId: Id,
       name: string,
     ): Effect.Effect<StudyNodeOfId<Id>, UpdateStudyNodeError> =>
@@ -233,7 +233,7 @@ export const StudyCatalogLive: Layer.Layer<
         ),
       )
 
-    const archiveNode = <Id extends AnyStudyNodeId>(
+    const archiveNode = <Id extends StudyNodeId>(
       nodeId: Id,
     ): Effect.Effect<StudyNodeOfId<Id>, UpdateStudyNodeError> =>
       Clock.currentTimeMillis.pipe(
@@ -245,28 +245,28 @@ export const StudyCatalogLive: Layer.Layer<
     const disconnect = (edgeId: StudyEdgeId) =>
       repository.removeEdge(edgeId)
 
-    const listOutgoingEdges = <Id extends StudyEdge["from"]>(
+    const listOutgoingEdges = <Id extends StudyNodeId>(
       sourceNodeId: Id,
     ): Effect.Effect<
       ReadonlyArray<StudyEdgesFromId<Id>>,
       ReadStudyNodeError
     > => repository.listOutgoingEdges(sourceNodeId)
 
-    const listIncomingEdges = <Id extends StudyEdge["to"]>(
+    const listIncomingEdges = <Id extends StudyNodeId>(
       targetNodeId: Id,
     ): Effect.Effect<
       ReadonlyArray<StudyEdgesToId<Id>>,
       ReadStudyNodeError
     > => repository.listIncomingEdges(targetNodeId)
 
-    const listTargets = <Id extends StudyEdge["from"]>(
+    const listTargets = <Id extends StudyNodeId>(
       sourceNodeId: Id,
     ): Effect.Effect<
       ReadonlyArray<StudyNodeTargetsOfId<Id>>,
       ReadStudyNodeError
     > => repository.listTargets(sourceNodeId)
 
-    const listSources = <Id extends StudyEdge["to"]>(
+    const listSources = <Id extends StudyNodeId>(
       targetNodeId: Id,
     ): Effect.Effect<
       ReadonlyArray<StudyNodeSourcesOfId<Id>>,

@@ -1,6 +1,6 @@
 import type {
-  AnyStudyNodeId,
   StudyEdge,
+  StudyNodeId,
   StudyEdgeAlreadyExists,
   StudyEdgeEndpointKindMismatch,
   StudyEdgeId,
@@ -27,7 +27,7 @@ export class StudyCatalogRepositoryError extends Schema.TaggedErrorClass<StudyCa
 export class StudyCatalogRepository extends Context.Service<
   StudyCatalogRepository,
   {
-    readonly findNodeById: <Id extends AnyStudyNodeId>(
+    readonly findNodeById: <Id extends StudyNodeId>(
       nodeId: Id,
     ) => Effect.Effect<
       Option.Option<StudyNodeOfId<Id>>,
@@ -62,7 +62,7 @@ export class StudyCatalogRepository extends Context.Service<
       StudyEdgeNotFound | StudyCatalogRepositoryError
     >
 
-    readonly renameNode: <Id extends AnyStudyNodeId>(
+    readonly renameNode: <Id extends StudyNodeId>(
       nodeId: Id,
       name: string,
       updatedAt: StudyNode["updatedAt"],
@@ -71,7 +71,7 @@ export class StudyCatalogRepository extends Context.Service<
       StudyNodeNotFound | StudyCatalogRepositoryError
     >
 
-    readonly archiveNode: <Id extends AnyStudyNodeId>(
+    readonly archiveNode: <Id extends StudyNodeId>(
       nodeId: Id,
       updatedAt: StudyNode["updatedAt"],
     ) => Effect.Effect<
@@ -79,28 +79,28 @@ export class StudyCatalogRepository extends Context.Service<
       StudyNodeNotFound | StudyCatalogRepositoryError
     >
 
-    readonly listOutgoingEdges: <Id extends StudyEdge["from"]>(
+    readonly listOutgoingEdges: <Id extends StudyNodeId>(
       sourceNodeId: Id,
     ) => Effect.Effect<
       ReadonlyArray<StudyEdgesFromId<Id>>,
       StudyNodeNotFound | StudyCatalogRepositoryError
     >
 
-    readonly listIncomingEdges: <Id extends StudyEdge["to"]>(
+    readonly listIncomingEdges: <Id extends StudyNodeId>(
       targetNodeId: Id,
     ) => Effect.Effect<
       ReadonlyArray<StudyEdgesToId<Id>>,
       StudyNodeNotFound | StudyCatalogRepositoryError
     >
 
-    readonly listTargets: <Id extends StudyEdge["from"]>(
+    readonly listTargets: <Id extends StudyNodeId>(
       sourceNodeId: Id,
     ) => Effect.Effect<
       ReadonlyArray<StudyNodeTargetsOfId<Id>>,
       StudyNodeNotFound | StudyCatalogRepositoryError
     >
 
-    readonly listSources: <Id extends StudyEdge["to"]>(
+    readonly listSources: <Id extends StudyNodeId>(
       targetNodeId: Id,
     ) => Effect.Effect<
       ReadonlyArray<StudyNodeSourcesOfId<Id>>,

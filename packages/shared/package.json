@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./api": "./src/api.ts",
     "./study-catalog": "./src/modules/study-catalog/index.ts"
   },
   "scripts": {

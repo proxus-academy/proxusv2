@@ -1,5 +1,4 @@
 import type {
-  AnyStudyNodeId,
   CreatedStudyEdge,
   CreatedStudyNode,
   CreateStudyEdgeInput,
@@ -11,6 +10,7 @@ import type {
   StudyEdgeNotFound,
   StudyEdgesFromId,
   StudyEdgesToId,
+  StudyNodeId,
   StudyNodeNotFound,
   StudyNodeOfId,
   StudyNodeSourcesOfId,
@@ -51,16 +51,16 @@ export class StudyCatalog extends Context.Service<
       input: Input,
     ) => Effect.Effect<CreatedStudyNode<Input>, CreateStudyNodeError>
 
-    readonly getNode: <Id extends AnyStudyNodeId>(
+    readonly getNode: <Id extends StudyNodeId>(
       nodeId: Id,
     ) => Effect.Effect<StudyNodeOfId<Id>, ReadStudyNodeError>
 
-    readonly renameNode: <Id extends AnyStudyNodeId>(
+    readonly renameNode: <Id extends StudyNodeId>(
       nodeId: Id,
       name: string,
     ) => Effect.Effect<StudyNodeOfId<Id>, UpdateStudyNodeError>
 
-    readonly archiveNode: <Id extends AnyStudyNodeId>(
+    readonly archiveNode: <Id extends StudyNodeId>(
       nodeId: Id,
     ) => Effect.Effect<StudyNodeOfId<Id>, UpdateStudyNodeError>
 
@@ -76,28 +76,28 @@ export class StudyCatalog extends Context.Service<
       edgeId: StudyEdgeId,
     ) => Effect.Effect<StudyEdge, ReadStudyEdgeError>
 
-    readonly listOutgoingEdges: <Id extends StudyEdge["from"]>(
+    readonly listOutgoingEdges: <Id extends StudyNodeId>(
       sourceNodeId: Id,
     ) => Effect.Effect<
       ReadonlyArray<StudyEdgesFromId<Id>>,
       ReadStudyNodeError
     >
 
-    readonly listIncomingEdges: <Id extends StudyEdge["to"]>(
+    readonly listIncomingEdges: <Id extends StudyNodeId>(
       targetNodeId: Id,
     ) => Effect.Effect<
       ReadonlyArray<StudyEdgesToId<Id>>,
       ReadStudyNodeError
     >
 
-    readonly listTargets: <Id extends StudyEdge["from"]>(
+    readonly listTargets: <Id extends StudyNodeId>(
       sourceNodeId: Id,
     ) => Effect.Effect<
       ReadonlyArray<StudyNodeTargetsOfId<Id>>,
       ReadStudyNodeError
     >
 
-    readonly listSources: <Id extends StudyEdge["to"]>(
+    readonly listSources: <Id extends StudyNodeId>(
       targetNodeId: Id,
     ) => Effect.Effect<
       ReadonlyArray<StudyNodeSourcesOfId<Id>>,

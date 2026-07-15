@@ -6,12 +6,12 @@ import {
   StudyNode,
   StudyNodeNotFound,
   findStudyEdgeEndpointKindMismatch,
-  type AnyStudyNodeId,
   type StudyEdge as StudyEdgeType,
   type StudyEdgeId,
   type StudyEdgesFromId,
   type StudyEdgesToId,
   type StudyNode as StudyNodeType,
+  type StudyNodeId,
   type StudyNodeOfId,
   type StudyNodeSourcesOfId,
   type StudyNodeTargetsOfId,
@@ -84,7 +84,7 @@ export const makeStudyCatalogRepositoryDrizzle = (db: StudyDatabase) => {
     const failRepository = (operation: string) =>
       Effect.mapError((cause: unknown) => repositoryError(operation, cause))
 
-    const findNodeById = <Id extends AnyStudyNodeId>(nodeId: Id) =>
+    const findNodeById = <Id extends StudyNodeId>(nodeId: Id) =>
       db
         .select()
         .from(studyNodes)
@@ -192,7 +192,7 @@ export const makeStudyCatalogRepositoryDrizzle = (db: StudyDatabase) => {
         ),
       )
 
-    const renameNode = <Id extends AnyStudyNodeId>(
+    const renameNode = <Id extends StudyNodeId>(
       nodeId: Id,
       name: string,
       updatedAt: StudyNodeType["updatedAt"],
@@ -211,7 +211,7 @@ export const makeStudyCatalogRepositoryDrizzle = (db: StudyDatabase) => {
           ),
         )
 
-    const archiveNode = <Id extends AnyStudyNodeId>(
+    const archiveNode = <Id extends StudyNodeId>(
       nodeId: Id,
       updatedAt: StudyNodeType["updatedAt"],
     ) =>
@@ -229,7 +229,7 @@ export const makeStudyCatalogRepositoryDrizzle = (db: StudyDatabase) => {
           ),
         )
 
-    const ensureNode = (nodeId: AnyStudyNodeId) =>
+    const ensureNode = (nodeId: StudyNodeId) =>
       findNodeById(nodeId).pipe(
         Effect.flatMap(
           Option.match({
@@ -239,7 +239,7 @@ export const makeStudyCatalogRepositoryDrizzle = (db: StudyDatabase) => {
         ),
       )
 
-    const listOutgoingEdges = <Id extends StudyEdgeType["from"]>(
+    const listOutgoingEdges = <Id extends StudyNodeId>(
       sourceNodeId: Id,
     ) =>
       ensureNode(sourceNodeId).pipe(
@@ -254,7 +254,7 @@ export const makeStudyCatalogRepositoryDrizzle = (db: StudyDatabase) => {
         Effect.map((rows) => rows.map(decodeEdge) as unknown as ReadonlyArray<StudyEdgesFromId<Id>>),
       )
 
-    const listIncomingEdges = <Id extends StudyEdgeType["to"]>(
+    const listIncomingEdges = <Id extends StudyNodeId>(
       targetNodeId: Id,
     ) =>
       ensureNode(targetNodeId).pipe(
@@ -269,7 +269,7 @@ export const makeStudyCatalogRepositoryDrizzle = (db: StudyDatabase) => {
         Effect.map((rows) => rows.map(decodeEdge) as unknown as ReadonlyArray<StudyEdgesToId<Id>>),
       )
 
-    const listTargets = <Id extends StudyEdgeType["from"]>(sourceNodeId: Id) =>
+    const listTargets = <Id extends StudyNodeId>(sourceNodeId: Id) =>
       ensureNode(sourceNodeId).pipe(
         Effect.andThen(
           db
@@ -288,7 +288,7 @@ export const makeStudyCatalogRepositoryDrizzle = (db: StudyDatabase) => {
         ),
       )
 
-    const listSources = <Id extends StudyEdgeType["to"]>(targetNodeId: Id) =>
+    const listSources = <Id extends StudyNodeId>(targetNodeId: Id) =>
       ensureNode(targetNodeId).pipe(
         Effect.andThen(
           db
