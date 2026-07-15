@@ -1,11 +1,5 @@
-import { Effect, Layer } from "effect"
-import { StudyCatalogDevLive } from "./layers/study-catalog.dev.js"
+import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
+import { Layer } from "effect"
+import { HttpDevLive } from "./layers/http.js"
 
-const program = Effect.scoped(
-  Effect.gen(function*() {
-    yield* Layer.build(StudyCatalogDevLive)
-    yield* Effect.log("[server] development services initialized with PGlite")
-  }),
-)
-
-await Effect.runPromise(program)
+Layer.launch(HttpDevLive).pipe(NodeRuntime.runMain)

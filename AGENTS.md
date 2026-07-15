@@ -2,8 +2,8 @@
 
 ## Estado del repo
 
-- `study-catalog` ya tiene schemas compartidos, service, port de repository y adapter Drizzle PostgreSQL.
-- Desarrollo usa PGlite; producción dispone de composición PostgreSQL.
+- `study-catalog` ya tiene schemas compartidos, service, port de repository, adapter Drizzle y API HTTP tipada con handlers reales.
+- Desarrollo usa PGlite y servidor HTTP Node; producción usa PostgreSQL con comprobación previa de migraciones.
 - `apps/web` y `apps/mobile-web` siguen siendo shells; `apps/admin` todavía no existe.
 - Documentación Effect normativa: `docs/effect/*` (referencia upstream en `.repos/effect-smol` vía submodules).
 - Límites DDD y módulos: `docs/architecture/domain-driven-architecture.md` (mismo layout que `docs/effect`, no un árbol paralelo).

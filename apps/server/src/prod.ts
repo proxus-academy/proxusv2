@@ -1,11 +1,5 @@
-import { Effect, Layer } from "effect"
-import { StudyCatalogProdLive } from "./layers/study-catalog.prod.js"
+import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
+import { Layer } from "effect"
+import { HttpProdLive } from "./layers/http.js"
 
-const program = Effect.scoped(
-  Effect.gen(function*() {
-    yield* Layer.build(StudyCatalogProdLive)
-    yield* Effect.log("[server] production services initialized with PostgreSQL")
-  }),
-)
-
-await Effect.runPromise(program)
+Layer.launch(HttpProdLive).pipe(NodeRuntime.runMain)
