@@ -1,7 +1,7 @@
 import { PgliteClient } from "@effect/sql-pglite"
 import * as PgDrizzle from "drizzle-orm/effect-pglite"
 import { migrate } from "drizzle-orm/effect-pglite/migrator"
-import { Config, Effect } from "effect"
+import { Config, Effect, Layer } from "effect"
 
 export const PgliteDevelopmentLive = PgliteClient.layerConfig({
   dataDir: Config.string("PGLITE_DATA_DIR").pipe(
@@ -17,3 +17,10 @@ export const migratePglite = (migrationsFolder: string) =>
     const db = yield* PgDrizzle.makeWithDefaults()
     yield* migrate(db, { migrationsFolder })
   })
+
+export const PgliteMigrationLive = Layer.effectDiscard(
+  Config.string("DATABASE_MIGRATIONS_DIR").pipe(
+    Config.withDefault("./drizzle"),
+    Effect.flatMap(migratePglite),
+  ),
+)
