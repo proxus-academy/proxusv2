@@ -1,0 +1,29 @@
+{
+  "name": "@proxus/storybook",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "storybook": "sh ./scripts/dev.sh",
+    "build-storybook": "storybook build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@effect/atom-react": "4.0.0-beta.98",
+    "@proxus/shared": "workspace:*",
+    "@proxus/ui": "workspace:*",
+    "effect": "4.0.0-beta.98",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
+  },
+  "devDependencies": {
+    "@storybook/addon-a11y": "^10.5.0",
+    "@storybook/addon-docs": "^10.5.0",
+    "@storybook/react-vite": "^10.5.0",
+    "@tailwindcss/vite": "^4.3.2",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "storybook": "^10.5.0",
+    "tailwindcss": "^4.3.2",
+    "typescript": "^5.8.3"
+  }
+}
