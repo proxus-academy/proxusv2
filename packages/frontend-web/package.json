@@ -1,0 +1,24 @@
+{
+  "name": "@proxus/frontend-web",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./registration": "./src/registration/index.ts",
+    "./study-catalog": "./src/study-catalog/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@proxus/frontend-core": "workspace:*",
+    "effect": "4.0.0-beta.98"
+  },
+  "devDependencies": {
+    "@proxus/shared": "workspace:*",
+    "happy-dom": "^18.0.1",
+    "typescript": "^5.8.3",
+    "vitest": "3.2.7"
+  }
+}
