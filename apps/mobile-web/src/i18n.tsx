@@ -7,9 +7,9 @@ export const useProductLocale = () => useLocale(localeStore)
 
 export function LanguageSelector({ locale }: { readonly locale: Locale }) {
   return (
-    <label className="flex items-center gap-2 text-sm text-muted-foreground">
-      <span>{m.language_label({}, { locale })}</span>
+    <div className="flex items-center gap-2 text-sm text-muted-foreground">
       <select
+        aria-label={m.language_label({}, { locale })}
         className="rounded-lg border border-border bg-card px-2 py-1 text-foreground"
         value={locale}
         onChange={(event) => localeStore.select(event.target.value as Locale)}
@@ -17,6 +17,9 @@ export function LanguageSelector({ locale }: { readonly locale: Locale }) {
         <option value="es">{m.language_spanish({}, { locale })}</option>
         <option value="en">{m.language_english({}, { locale })}</option>
       </select>
-    </label>
+      <button type="button" className="underline" onClick={localeStore.useDevice}>
+        {m.language_device({}, { locale })}
+      </button>
+    </div>
   )
 }

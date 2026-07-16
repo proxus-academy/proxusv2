@@ -27,8 +27,9 @@ function browserLocale(languages: readonly string[]): Locale {
   for (const language of languages) {
     const exact = toLocale(language)
     if (exact !== undefined) return exact
-    const base = toLocale(language.split("-")[0])
-    if (base !== undefined) return base
+    const normalized = language.toLowerCase()
+    if (normalized.startsWith("es-")) return "es"
+    if (normalized.startsWith("en-")) return "en"
   }
   return "es"
 }
@@ -64,6 +65,8 @@ export function makeBrowserLocaleStore(): LocaleStore {
     else next.searchParams.set("lang", locale)
     window.history.replaceState(window.history.state, "", next)
   }
+  if (url.searchParams.has("lang") && urlLocale === undefined) replaceUrlLocale(undefined)
+
   const update = (locale: Locale) => {
     if (locale === current) return
     current = locale
