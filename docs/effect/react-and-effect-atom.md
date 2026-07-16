@@ -2,11 +2,16 @@
 
 ## Status
 
-Required frontend architecture for `apps/web` and the future `apps/admin`.
+Required frontend architecture for `apps/web`, `apps/mobile-web`, the future `apps/admin`, and future React Native clients.
 
 React owns rendering. Effect Atom owns application state, remote state, mutations,
 resource lifecycles, forms, and Effect runtime integration. Components must not
 call transport clients or execute Effects directly.
+
+For React-specific rules about derived state, event handlers, synchronization,
+and legitimate `useEffect` usage, see
+[`../webapp-architecture.md`](../webapp-architecture.md). In that document,
+React “Effects” means `useEffect`, not the Effect library.
 
 ## Required flow
 
@@ -14,15 +19,19 @@ call transport clients or execute Effects directly.
 React route/component
   → atom hook
     → feature atom
-      → feature API service
-        → typed HTTP client
+      → feature API service → typed HTTP client
+      → platform port ← web/native/test adapter
 ```
 
 The frontend equivalent of the backend dependency rule is:
 
 ```text
-view → atom → application client → transport
+view → atom → application client or platform port → adapter
 ```
+
+Platform capabilities follow
+[`../architecture/client-platform-ports-and-adapters.md`](../architecture/client-platform-ports-and-adapters.md).
+Atoms depend on capability ports, never browser globals, React Native modules, or vendor SDKs.
 
 ## Runtime and Layers
 
@@ -45,7 +54,8 @@ export const studyCatalogRuntime = Atom.runtime(
 
 Atoms yield services from the runtime. React modules must not call
 `Effect.runPromise`, build Layers, read environment variables, or know the API
-base URL.
+base URL. Reactive platform state is composed through atom factories at the
+application boundary; Effect capabilities are provided as platform Layers.
 
 ## Module layout
 
@@ -102,6 +112,7 @@ Test atoms through `AtomRegistry`:
 
 - replace runtime Layers with test Layers;
 - mock the feature API service, not `fetch`;
+- replace platform ports with memory atoms or test Layers instead of mocking browser/native globals or SDKs;
 - mount the production atom;
 - assert `AsyncResult` transitions;
 - verify family isolation;
