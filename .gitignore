@@ -4,6 +4,8 @@ dist
 apps/**/dist
 apps/server/.data
 apps/server/.data.stale-*/
+apps/admin-server/.data/
+packages/backend-infra/.data/
 coverage
 .env
 .env.*
