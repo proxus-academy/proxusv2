@@ -6,17 +6,29 @@
     "dev": "vite --host 0.0.0.0 --port 5173",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
-    "test": "node -e \"process.exit(0)\""
+    "test": "vitest run"
   },
   "dependencies": {
+    "@effect/atom-react": "4.0.0-beta.98",
+    "@proxus/frontend-core": "workspace:*",
+    "@proxus/frontend-web": "workspace:*",
+    "@proxus/shared": "workspace:*",
+    "@proxus/ui": "workspace:*",
+    "effect": "4.0.0-beta.98",
+    "lucide-react": "^1.24.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3"
   },
   "devDependencies": {
+    "@storybook/react-vite": "^10.5.0",
+    "@tailwindcss/vite": "^4.3.2",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
+    "react-grab": "^0.1.48",
+    "tailwindcss": "^4.3.2",
     "typescript": "^5.8.3",
-    "vite": "^7.2.7"
+    "vite": "^7.2.7",
+    "vitest": "3.2.7"
   }
 }

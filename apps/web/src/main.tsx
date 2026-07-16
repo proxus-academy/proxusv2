@@ -1,5 +1,8 @@
+import { RegistryProvider } from "@effect/atom-react"
 import { StrictMode } from "react"
 import { createRoot } from "react-dom/client"
+import { App } from "./App.js"
+import "./app.css"
 
 const root = document.getElementById("root")
 if (root === null) {
@@ -8,9 +11,8 @@ if (root === null) {
 
 createRoot(root).render(
   <StrictMode>
-    <main style={{ fontFamily: "system-ui", padding: "2rem" }}>
-      <h1>Proxus v2 — Web</h1>
-      <p>Shell sin lógica ni API todavía.</p>
-    </main>
+    <RegistryProvider>
+      <App />
+    </RegistryProvider>
   </StrictMode>
 )
