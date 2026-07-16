@@ -1,0 +1,42 @@
+{
+  "name": "@proxus/backend-infra",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./database/pglite": "./src/database/pglite.ts",
+    "./database/postgres": "./src/database/postgres.ts",
+    "./study-catalog/pglite": "./src/modules/study-catalog/repository.pglite.layer.ts",
+    "./study-catalog/postgres": "./src/modules/study-catalog/repository.postgres.layer.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate --config drizzle.config.ts",
+    "db:check": "drizzle-kit check --config drizzle.config.ts",
+    "db:check:postgres": "tsx src/database/check.postgres.ts",
+    "db:migrate": "tsx src/database/migrate.ts",
+    "db:migrate:pglite": "tsx src/database/migrate.ts",
+    "db:migrate:postgres": "tsx src/database/migrate.postgres.ts",
+    "db:seed:pglite": "tsx src/database/seed.pglite.ts",
+    "db:reset:pglite": "tsx src/database/reset.pglite.ts"
+  },
+  "dependencies": {
+    "@effect/sql-pg": "4.0.0-beta.98",
+    "@effect/sql-pglite": "4.0.0-beta.98",
+    "@electric-sql/pglite": "0.5.4",
+    "@proxus/backend-domain": "workspace:*",
+    "@proxus/shared": "workspace:*",
+    "drizzle-orm": "1.0.0-rc.4",
+    "effect": "4.0.0-beta.98",
+    "pg": "8.16.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.0",
+    "@types/pg": "8.15.5",
+    "drizzle-kit": "1.0.0-rc.4",
+    "tsx": "^4.21.0",
+    "typescript": "^5.8.3",
+    "vitest": "3.2.7"
+  }
+}

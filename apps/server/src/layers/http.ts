@@ -4,7 +4,7 @@ import { createServer } from "node:http"
 import * as NodeHttpServer from "@effect/platform-node/NodeHttpServer"
 import { Config, Layer } from "effect"
 import { HttpRouter } from "effect/unstable/http"
-import { ProxusApiRoutes } from "../http.js"
+import { PublicApiRoutes } from "../http.js"
 import { StudyCatalogDevLive } from "./study-catalog.dev.js"
 import { StudyCatalogProdLive } from "./study-catalog.prod.js"
 
@@ -14,7 +14,7 @@ const NodeServerLive = NodeHttpServer.layerConfig(createServer, {
 })
 
 const makeHttpLive = <A, E, R>(catalog: Layer.Layer<A, E, R>) =>
-  HttpRouter.serve(ProxusApiRoutes.pipe(Layer.provide(catalog))).pipe(
+  HttpRouter.serve(PublicApiRoutes.pipe(Layer.provide(catalog))).pipe(
     Layer.provide(NodeServerLive),
   )
 

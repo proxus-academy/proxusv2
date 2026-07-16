@@ -9,6 +9,7 @@ import {
   CreateStudyEdgePayload,
   CreateStudyNodePayload,
   RenameStudyNodePayload,
+  UpdateStudyEdgePayload,
 } from "./contract.js"
 import {
   StudyEdgeAlreadyExists,
@@ -17,10 +18,13 @@ import {
   StudyNodeNotFound,
 } from "./errors.js"
 import {
+  CountryNode,
   StudyEdge,
   StudyEdgeId,
   StudyNode,
   StudyNodeId,
+  StudyNodeKind,
+  StudyNodeStatus,
 } from "./schema.js"
 
 const nodeReadErrors = [
@@ -37,6 +41,19 @@ export class PublicStudyCatalogApi extends HttpApiGroup.make(
   "publicStudyCatalog",
 )
   .add(
+    HttpApiEndpoint.get("listCountries", "/countries", {
+      success: Schema.Array(CountryNode),
+      error: HttpApiError.InternalServerErrorNoContent,
+    }),
+    HttpApiEndpoint.get("listRoots", "/nodes/children", {
+      success: Schema.Array(CountryNode),
+      error: HttpApiError.InternalServerErrorNoContent,
+    }),
+    HttpApiEndpoint.get("listChildren", "/nodes/children/:nodeId", {
+      params: { nodeId: StudyNodeId },
+      success: Schema.Array(StudyNode),
+      error: nodeReadErrors,
+    }),
     HttpApiEndpoint.get("getNode", "/nodes/:nodeId", {
       params: { nodeId: StudyNodeId },
       success: StudyNode,
@@ -74,6 +91,39 @@ export class AdminStudyCatalogApi extends HttpApiGroup.make(
   "adminStudyCatalog",
 )
   .add(
+    HttpApiEndpoint.get("listNodes", "/nodes", {
+      query: {
+        kind: StudyNodeKind,
+        status: StudyNodeStatus,
+      },
+      success: Schema.Array(StudyNode),
+      error: HttpApiError.InternalServerErrorNoContent,
+    }),
+    HttpApiEndpoint.get("getNode", "/nodes/:nodeId", {
+      params: { nodeId: StudyNodeId },
+      success: StudyNode,
+      error: nodeReadErrors,
+    }),
+    HttpApiEndpoint.get("listOutgoingEdges", "/nodes/:nodeId/outgoing-edges", {
+      params: { nodeId: StudyNodeId },
+      success: Schema.Array(StudyEdge),
+      error: nodeReadErrors,
+    }),
+    HttpApiEndpoint.get("listIncomingEdges", "/nodes/:nodeId/incoming-edges", {
+      params: { nodeId: StudyNodeId },
+      success: Schema.Array(StudyEdge),
+      error: nodeReadErrors,
+    }),
+    HttpApiEndpoint.get("listTargets", "/nodes/:nodeId/targets", {
+      params: { nodeId: StudyNodeId },
+      success: Schema.Array(StudyNode),
+      error: nodeReadErrors,
+    }),
+    HttpApiEndpoint.get("listSources", "/nodes/:nodeId/sources", {
+      params: { nodeId: StudyNodeId },
+      success: Schema.Array(StudyNode),
+      error: nodeReadErrors,
+    }),
     HttpApiEndpoint.post("createNode", "/nodes", {
       payload: CreateStudyNodePayload,
       success: StudyNode.pipe(HttpApiSchema.status("Created")),
@@ -85,8 +135,9 @@ export class AdminStudyCatalogApi extends HttpApiGroup.make(
       success: StudyNode,
       error: nodeReadErrors,
     }),
-    HttpApiEndpoint.post("archiveNode", "/nodes/:nodeId/archive", {
+    HttpApiEndpoint.patch("updateNodeStatus", "/nodes/:nodeId/status", {
       params: { nodeId: StudyNodeId },
+      payload: StudyNodeStatus,
       success: StudyNode,
       error: nodeReadErrors,
     }),
@@ -94,6 +145,18 @@ export class AdminStudyCatalogApi extends HttpApiGroup.make(
       payload: CreateStudyEdgePayload,
       success: StudyEdge.pipe(HttpApiSchema.status("Created")),
       error: [
+        StudyNodeNotFound,
+        StudyEdgeEndpointKindMismatch,
+        StudyEdgeAlreadyExists,
+        HttpApiError.InternalServerErrorNoContent,
+      ],
+    }),
+    HttpApiEndpoint.patch("updateEdge", "/edges/:edgeId", {
+      params: { edgeId: StudyEdgeId },
+      payload: UpdateStudyEdgePayload,
+      success: StudyEdge,
+      error: [
+        StudyEdgeNotFound,
         StudyNodeNotFound,
         StudyEdgeEndpointKindMismatch,
         StudyEdgeAlreadyExists,

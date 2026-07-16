@@ -1,0 +1,269 @@
+import {
+  CountryNode,
+  CountryTypeEdge,
+  DegreeNode,
+  DegreeSubjectEdge,
+  StudyTypeNode,
+  SubjectNode,
+  TypeUniversityEdge,
+  UniversityDegreeEdge,
+  UniversityNode,
+  makeCountryNodeId,
+  makeDegreeNodeId,
+  makeStudyAssetId,
+  makeStudyEdgeId,
+  makeStudyTypeNodeId,
+  makeSubjectNodeId,
+  makeUniversityNodeId,
+  type StudyEdge,
+  type StudyNode,
+} from "@proxus/shared/study-catalog"
+import type {
+  EffectPgQueryEffectHKT,
+  EffectPgQueryResultHKT,
+} from "drizzle-orm/effect-pglite"
+import { inArray, sql } from "drizzle-orm"
+import type { PgEffectDatabase } from "drizzle-orm/pg-core/effect"
+import { DateTime, Effect } from "effect"
+import { StudyAsset } from "@proxus/backend-domain/study-catalog"
+import { studyAssets, studyEdges, studyNodes } from "./schema.js"
+
+const createdAt = DateTime.makeUnsafe("2026-07-15T00:00:00.000Z")
+const nodeUuid = (sequence: number) =>
+  `20000000-0000-4000-8000-${sequence.toString().padStart(12, "0")}`
+const edgeUuid = (sequence: number) =>
+  `30000000-0000-4000-8000-${sequence.toString().padStart(12, "0")}`
+
+const countries = [
+  ["España", "spain"],
+  ["Argentina", "argentina"],
+  ["Colombia", "colombia"],
+  ["México", "mexico"],
+].map(([name], index) =>
+  new CountryNode({
+    id: makeCountryNodeId(nodeUuid(index + 1)),
+    kind: "country",
+    name: name!,
+    imageAssetId:
+      index === 0
+        ? makeStudyAssetId("10000000-0000-4000-8000-000000000001")
+        : null,
+    status: "published",
+    createdAt,
+    updatedAt: createdAt,
+  }),
+)
+
+const studyTypes = countries.flatMap((_, countryIndex) =>
+  ["Bachillerato", "Universidad"].map((name, typeIndex) =>
+    new StudyTypeNode({
+      id: makeStudyTypeNodeId(nodeUuid(5 + countryIndex * 2 + typeIndex)),
+      kind: "type",
+      name,
+      imageAssetId: null,
+      status: "published",
+      createdAt,
+      updatedAt: createdAt,
+    }),
+  ),
+)
+
+const universities = [
+  "Universidad Complutense de Madrid",
+  "Universidad de Buenos Aires",
+  "Universidad Nacional de Colombia",
+  "Universidad Nacional Autónoma de México",
+].map((name, index) =>
+  new UniversityNode({
+    id: makeUniversityNodeId(nodeUuid(index + 13)),
+    kind: "university",
+    name,
+    imageAssetId:
+      index === 0
+        ? makeStudyAssetId("10000000-0000-4000-8000-000000000002")
+        : null,
+    status: "published",
+    createdAt,
+    updatedAt: createdAt,
+  }),
+)
+
+const degrees = [
+  "Ingeniería Informática",
+  "Medicina",
+  "Derecho",
+  "Psicología",
+].map((name, index) =>
+  new DegreeNode({
+    id: makeDegreeNodeId(nodeUuid(index + 17)),
+    kind: "degree",
+    name,
+    imageAssetId: null,
+    status: "published",
+    createdAt,
+    updatedAt: createdAt,
+  }),
+)
+
+const subjects = [
+  "Programación",
+  "Anatomía",
+  "Derecho constitucional colombiano",
+  "Psicología social",
+].map((name, index) =>
+  new SubjectNode({
+    id: makeSubjectNodeId(nodeUuid(index + 21)),
+    kind: "subject",
+    name,
+    imageAssetId: null,
+    status: "published",
+    createdAt,
+    updatedAt: createdAt,
+  }),
+)
+
+let edgeSequence = 1
+const nextEdgeId = () => makeStudyEdgeId(edgeUuid(edgeSequence++))
+const obsoleteFixtureEdgeIds = Array.from({ length: 44 }, (_, index) =>
+  makeStudyEdgeId(edgeUuid(index + 21)),
+)
+
+const edges: Array<StudyEdge> = [
+  ...countries.flatMap((country, countryIndex) =>
+    studyTypes.slice(countryIndex * 2, countryIndex * 2 + 2).map(
+      (studyType, position) =>
+        new CountryTypeEdge({
+          id: nextEdgeId(),
+          from: country.id,
+          to: studyType.id,
+          position,
+        }),
+    ),
+  ),
+  ...universities.map((university, index) =>
+    new TypeUniversityEdge({
+      id: nextEdgeId(),
+      from: studyTypes[index * 2 + 1]!.id,
+      to: university.id,
+      position: 0,
+    }),
+  ),
+  ...universities.map((university, index) =>
+    new UniversityDegreeEdge({
+      id: nextEdgeId(),
+      from: university.id,
+      to: degrees[index]!.id,
+      position: 0,
+    }),
+  ),
+  ...degrees.map((degree, index) =>
+    new DegreeSubjectEdge({
+      id: nextEdgeId(),
+      from: degree.id,
+      to: subjects[index]!.id,
+      position: 0,
+    }),
+  ),
+]
+
+export const studyCatalogSeed: {
+  readonly assets: ReadonlyArray<StudyAsset>
+  readonly nodes: ReadonlyArray<StudyNode>
+  readonly edges: ReadonlyArray<StudyEdge>
+} = {
+  assets: [
+    new StudyAsset({
+      id: makeStudyAssetId("10000000-0000-4000-8000-000000000001"),
+      storageKey: "study-catalog/countries/spain.webp",
+      contentType: "image/webp",
+      createdAt,
+    }),
+    new StudyAsset({
+      id: makeStudyAssetId("10000000-0000-4000-8000-000000000002"),
+      storageKey: "study-catalog/universities/complutense.webp",
+      contentType: "image/webp",
+      createdAt,
+    }),
+  ],
+  nodes: [...countries, ...studyTypes, ...universities, ...degrees, ...subjects],
+  edges,
+}
+
+type SeedDatabase = PgEffectDatabase<
+  EffectPgQueryEffectHKT,
+  EffectPgQueryResultHKT
+>
+
+export const seedStudyCatalog = (db: SeedDatabase) =>
+  db.transaction((tx) =>
+    Effect.gen(function*() {
+      yield* tx
+        .insert(studyAssets)
+        .values(
+          studyCatalogSeed.assets.map((asset) => ({
+            id: asset.id,
+            storageKey: asset.storageKey,
+            contentType: asset.contentType,
+            createdAt: DateTime.toDateUtc(asset.createdAt),
+          })),
+        )
+        .onConflictDoUpdate({
+          target: studyAssets.id,
+          set: {
+            storageKey: sql`excluded.storage_key`,
+            contentType: sql`excluded.content_type`,
+            createdAt: sql`excluded.created_at`,
+          },
+        })
+
+      yield* tx
+        .insert(studyNodes)
+        .values(
+          studyCatalogSeed.nodes.map((node) => ({
+            id: node.id,
+            kind: node.kind,
+            name: node.name,
+            imageAssetId: node.imageAssetId,
+            status: node.status,
+            createdAt: DateTime.toDateUtc(node.createdAt),
+            updatedAt: DateTime.toDateUtc(node.updatedAt),
+          })),
+        )
+        .onConflictDoUpdate({
+          target: studyNodes.id,
+          set: {
+            kind: sql`excluded.kind`,
+            name: sql`excluded.name`,
+            imageAssetId: sql`excluded.image_asset_id`,
+            status: sql`excluded.status`,
+            createdAt: sql`excluded.created_at`,
+            updatedAt: sql`excluded.updated_at`,
+          },
+        })
+
+      yield* tx
+        .delete(studyEdges)
+        .where(inArray(studyEdges.id, obsoleteFixtureEdgeIds))
+
+      yield* tx
+        .insert(studyEdges)
+        .values(
+          studyCatalogSeed.edges.map((edge) => ({
+            id: edge.id,
+            kind: edge._tag,
+            fromNodeId: edge.from,
+            toNodeId: edge.to,
+            position: edge.position,
+          })),
+        )
+        .onConflictDoUpdate({
+          target: studyEdges.id,
+          set: {
+            kind: sql`excluded.kind`,
+            fromNodeId: sql`excluded.from_node_id`,
+            toNodeId: sql`excluded.to_node_id`,
+            position: sql`excluded.position`,
+          },
+        })
+    }),
+  )

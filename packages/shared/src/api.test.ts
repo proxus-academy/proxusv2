@@ -1,17 +1,45 @@
 import { describe, expect, it } from "vitest"
 import { OpenApi } from "effect/unstable/httpapi"
+import { AdminApi } from "./admin-api.js"
 import { ProxusApi } from "./api.js"
+import { PublicApi } from "./public-api.js"
 
-describe("ProxusApi", () => {
-  it("generates separate public and admin study catalog contracts", () => {
+describe("API roots", () => {
+  it("keeps public and admin routes in separate contracts", () => {
+    const publicDocument = OpenApi.fromApi(PublicApi)
+    const adminDocument = OpenApi.fromApi(AdminApi)
+
+    expect(publicDocument.paths["/study-catalog/countries"]?.get).toBeDefined()
+    expect(publicDocument.paths["/admin/study-catalog/nodes"]).toBeUndefined()
+    const listNodes = adminDocument.paths["/admin/study-catalog/nodes"]?.get
+    expect(listNodes).toBeDefined()
+    expect(listNodes?.parameters).toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: "kind", in: "query", required: true }),
+      expect.objectContaining({ name: "status", in: "query", required: true }),
+    ]))
+    expect(adminDocument.paths["/admin/study-catalog/nodes/{nodeId}/status"]?.patch).toBeDefined()
+    expect(adminDocument.paths["/admin/study-catalog/nodes/{nodeId}/archive"]).toBeUndefined()
+    expect(adminDocument.paths["/study-catalog/countries"]).toBeUndefined()
+  })
+
+  it("composes both contracts for tooling and tests", () => {
     const document = OpenApi.fromApi(ProxusApi)
 
     expect(document.info.title).toBe("Proxus API")
+    expect(document.paths["/study-catalog/countries"]?.get).toBeDefined()
     expect(document.paths["/study-catalog/nodes/{nodeId}"]?.get).toBeDefined()
+    expect(document.paths["/study-catalog/nodes/children"]?.get).toBeDefined()
+    expect(
+      document.paths["/study-catalog/nodes/children/{nodeId}"]?.get,
+    ).toBeDefined()
     expect(
       document.paths["/study-catalog/nodes/{nodeId}/targets"]?.get,
     ).toBeDefined()
+    expect(document.paths["/admin/study-catalog/nodes"]?.get).toBeDefined()
     expect(document.paths["/admin/study-catalog/nodes"]?.post).toBeDefined()
+    expect(
+      document.paths["/admin/study-catalog/edges/{edgeId}"]?.patch,
+    ).toBeDefined()
     expect(
       document.paths["/admin/study-catalog/edges/{edgeId}"]?.delete,
     ).toBeDefined()

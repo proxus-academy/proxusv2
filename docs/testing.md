@@ -44,7 +44,7 @@ not depend on server, React, SQL, or Drizzle.
 Location:
 
 ```text
-apps/server/src/modules/<module>/*.live.test.ts
+packages/backend-domain/src/modules/<module>/*.live.test.ts
 ```
 
 Run the real service against a fresh in-memory implementation of its repository
@@ -60,8 +60,8 @@ locking and rollback belong to persistent adapter tests.
 Location:
 
 ```text
-apps/server/src/modules/<module>/test/repository-contract.ts
-apps/server/src/modules/<module>/adapters/*.test.ts
+packages/backend-infra/src/modules/<module>/test/repository-contract.ts
+packages/backend-infra/src/modules/<module>/*.test.ts
 ```
 
 One reusable contract must eventually run against:
@@ -69,8 +69,9 @@ One reusable contract must eventually run against:
 1. fresh PGlite on every pull request;
 2. a pinned production-compatible PostgreSQL in CI.
 
-Contract cases are independent tests for create/read/update/archive, missing
-records, uniqueness, endpoint invariants, ordering and error preservation.
+Contract cases are independent tests for create/read/update (including every
+node status), missing records, uniqueness, endpoint invariants, ordering and
+error preservation.
 Adapter-specific corruption and constraint tests remain beside the adapter.
 
 PGlite is the fast PostgreSQL-compatible integration engine, not proof of
@@ -81,7 +82,7 @@ production concurrency or driver parity.
 Location:
 
 ```text
-apps/server/src/infrastructure/database/*.test.ts
+packages/backend-infra/src/database/*.test.ts
 ```
 
 Cover migration from an empty database, pending-migration detection, deterministic
@@ -91,9 +92,11 @@ pending.
 
 ### HTTP
 
-Handler tests build the real `HttpApi` group with `StudyCatalog` replaced at its
-service interface. They verify only transport adaptation: decoding, service
-arguments, status codes, safe error mapping and authentication context.
+Handler tests in `backend-transport` and `backend-admin-transport` build the
+narrow `HttpApi` root with `StudyCatalog` replaced at its service interface.
+They verify only transport adaptation: decoding, service arguments, status
+codes, safe error mapping and authentication context. Composition-root tests
+also assert that crossed routes return 404 and are absent from OpenAPI.
 
 A small in-process e2e suite uses the generated typed client against the real
 web handler without opening TCP:
@@ -110,7 +113,10 @@ bodyless 500 and never expose causes.
 
 Atoms are tested through a fresh `AtomRegistry` and test API Layer per test.
 Cover loading/success/error transitions, family isolation, cancellation,
-mutation invalidation and retries with virtual time. Components test accessible
+mutation invalidation and retries with virtual time. Platform-dependent atoms
+receive memory atoms or test Layers at the port boundary; tests do not mock
+browser globals, React Native modules or vendor SDKs. Live adapters have focused
+contract, serialization and lifecycle tests. Components test accessible
 rendering and dispatch; they do not duplicate atom or service behavior.
 
 Browser tests are reserved for navigation, focus, drag-and-drop, uploads and a
@@ -144,9 +150,16 @@ Nightly jobs may add repeated race tests and additional PostgreSQL versions.
 ```bash
 pnpm effect:diagnostics
 pnpm --filter @proxus/shared test
+pnpm --filter @proxus/backend-domain test
+pnpm --filter @proxus/backend-infra test
+pnpm --filter @proxus/backend-transport test
+pnpm --filter @proxus/backend-admin-transport test
 pnpm --filter @proxus/server test
-pnpm --filter @proxus/server db:check
-pnpm check
+pnpm --filter @proxus/admin-server test
+pnpm --filter @proxus/backend-infra db:check
+pnpm typecheck
+pnpm test
+pnpm build
 ```
 
 The workspace currently uses normal Vitest. Adopt `@effect/vitest` when the

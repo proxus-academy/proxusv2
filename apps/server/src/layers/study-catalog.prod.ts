@@ -1,10 +1,12 @@
 import { Layer } from "effect"
 import {
   PostgresMigrationCheckLive,
-  PostgresProductionLive,
-} from "../infrastructure/database/postgres.js"
-import { StudyCatalogRepositoryPostgresLive } from "../modules/study-catalog/adapters/repository.postgres.layer.js"
-import { StudyCatalogLive } from "../modules/study-catalog/service.live.js"
+  makePostgresProductionLive,
+} from "@proxus/backend-infra/database/postgres"
+import { StudyCatalogRepositoryPostgresLive } from "@proxus/backend-infra/study-catalog/postgres"
+import { StudyCatalogLive } from "@proxus/backend-domain/study-catalog"
+
+const PostgresProductionLive = makePostgresProductionLive("proxus-server")
 
 const PersistenceLive = Layer.merge(
   PostgresMigrationCheckLive,

@@ -1,0 +1,23 @@
+{
+  "name": "@proxus/backend-transport",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/http.ts",
+    "./study-catalog": "./src/modules/study-catalog/http.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@proxus/backend-domain": "workspace:*",
+    "@proxus/shared": "workspace:*",
+    "effect": "4.0.0-beta.98"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3",
+    "vitest": "3.2.7"
+  }
+}

@@ -4,6 +4,9 @@ import {
   PublicStudyCatalogApi,
 } from "./modules/study-catalog/api.js"
 
+export { AdminApi } from "./admin-api.js"
+export { PublicApi } from "./public-api.js"
+
 export class ProxusApi extends HttpApi.make("proxusApi")
   .add(PublicStudyCatalogApi)
   .add(AdminStudyCatalogApi)

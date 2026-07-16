@@ -1,18 +1,19 @@
 # Proxus HTTP API
 
-The executable schema-first contract in `packages/shared/src/api.ts` is the
-source of truth. This document records route policy and compatibility decisions.
+The executable schema-first contracts in `packages/shared/src/public-api.ts`
+and `packages/shared/src/admin-api.ts` are the production sources of truth.
+`packages/shared/src/api.ts` composes them only for tooling and contract tests. This document records route policy and compatibility decisions.
 Contracts use `effect/unstable/httpapi` from the exact Effect version pinned by
 the workspace.
 
 ## Architecture
 
 ```text
-packages/shared: HttpApi + Schema
+packages/shared: PublicApi + AdminApi + Schema
         ↓
-apps/server: handler → service → repository port → adapter
+backend-transport / backend-admin-transport: handlers → backend-domain: service → repository port
         ↓
-apps/web and apps/admin: generated typed client → Effect Atom
+apps/server / apps/admin-server: transport + backend-infra adapter
 ```
 
 Shared contracts contain paths, methods, transport schemas, public models,
@@ -25,6 +26,9 @@ Prefix: `/study-catalog`
 
 | Method | Path | Operation |
 | --- | --- | --- |
+| GET | `/countries` | List published country roots (compatibility endpoint) |
+| GET | `/nodes/children` | List published navigation roots |
+| GET | `/nodes/children/:nodeId` | List the published children selected by the parent kind |
 | GET | `/nodes/:nodeId` | Read a catalog node |
 | GET | `/edges/:edgeId` | Read a graph edge |
 | GET | `/nodes/:nodeId/outgoing-edges` | List outgoing edges |
@@ -32,9 +36,12 @@ Prefix: `/study-catalog`
 | GET | `/nodes/:nodeId/targets` | List related target nodes |
 | GET | `/nodes/:nodeId/sources` | List related source nodes |
 
-Public handlers will eventually restrict results to published catalog data. That
-publication policy belongs to the application service and is not implemented by
-the current repository reads.
+`/countries` and `/nodes/children` expose published country roots and order them
+deterministically. `/nodes/children/:nodeId` first resolves the parent, selects
+its allowed relationship kinds exhaustively from the parent node kind, and
+returns only published children ordered by relationship position and ID. Other
+public graph reads will eventually restrict results to published catalog data;
+that broader publication policy is not implemented yet.
 
 ## Administrative study catalog
 
@@ -42,15 +49,39 @@ Prefix: `/admin/study-catalog`
 
 | Method | Path | Operation |
 | --- | --- | --- |
+| GET | `/nodes?kind=&status=` | List nodes filtered by required kind and status |
+| GET | `/nodes/:nodeId` | Read a node from the administrative catalog |
+| GET | `/nodes/:nodeId/outgoing-edges` | List outgoing edges from the administrative catalog |
+| GET | `/nodes/:nodeId/incoming-edges` | List incoming edges from the administrative catalog |
+| GET | `/nodes/:nodeId/targets` | List related target nodes from the administrative catalog |
+| GET | `/nodes/:nodeId/sources` | List related source nodes from the administrative catalog |
 | POST | `/nodes` | Create a draft node |
 | PATCH | `/nodes/:nodeId/name` | Rename a node |
-| POST | `/nodes/:nodeId/archive` | Archive a node |
-| POST | `/edges` | Connect two nodes |
-| DELETE | `/edges/:edgeId` | Disconnect two nodes |
+| PATCH | `/nodes/:nodeId/status` | Set a node status to `draft`, `published` or `archived` |
+| POST | `/edges` | Connect two nodes and insert in their ordered source/type group |
+| PATCH | `/edges/:edgeId` | Edit edge endpoints and position while preserving `id` and `_tag` |
+| DELETE | `/edges/:edgeId` | Disconnect two nodes and compact their ordered group |
 
-Authentication and authorization middleware will be added before these handlers
-are exposed. Keeping the group separate prevents public routes from accidentally
-inheriting admin policy or vice versa.
+During the current development phase these handlers are intentionally exposed
+without authentication or authorization. This is an explicit temporary product
+decision and does not block admin development. They run in the separate
+`apps/admin-server` process (development port `3001`), which must not be exposed
+publicly until administrative identity is added at the transport boundary.
+
+The admin UI performs both reads and mutations through this administrative
+surface so they use the same persistence adapter. This is required in local
+PGlite development, where the public and admin server processes have separate
+data directories. Both `kind` and `status` are required on node list requests;
+unfiltered and partially filtered queries are rejected as malformed input. The
+filters combine with `AND`, and results are ordered deterministically by name
+and ID.
+
+Edge order is scoped by `(from, _tag)` and positions are contiguous from zero.
+Connecting without `position` appends to that group; an explicit position inserts
+there (clamped to the group end). Updating an edge preserves its `id` and `_tag`,
+validates the new endpoint kinds and duplicate triple, and compacts both the old
+and new groups in one transaction. Disconnecting compacts the former group in
+the same transaction.
 
 ## Status policy
 
@@ -69,5 +100,5 @@ must never cross the HTTP boundary.
 
 Changing a path, method, field representation, status semantics, authentication
 requirement or public error body is normally breaking. Prefer additive endpoints
-and explicit deprecation windows. OpenAPI is generated from `ProxusApi` and its
-semantic paths/statuses are tested in `packages/shared/src/api.test.ts`.
+and explicit deprecation windows. Each executable generates OpenAPI from its narrow root (`PublicApi` or
+`AdminApi`). `ProxusApi` remains available only for tooling and contract tests.

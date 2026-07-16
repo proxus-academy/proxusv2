@@ -2,9 +2,9 @@ import { Layer } from "effect"
 import {
   PgliteDevelopmentLive,
   PgliteMigrationLive,
-} from "../infrastructure/database/pglite.js"
-import { StudyCatalogRepositoryPgliteLive } from "../modules/study-catalog/adapters/repository.pglite.layer.js"
-import { StudyCatalogLive } from "../modules/study-catalog/service.live.js"
+} from "@proxus/backend-infra/database/pglite"
+import { StudyCatalogRepositoryPgliteLive } from "@proxus/backend-infra/study-catalog/pglite"
+import { StudyCatalogLive } from "@proxus/backend-domain/study-catalog"
 
 const PersistenceLive = Layer.merge(
   PgliteMigrationLive,
