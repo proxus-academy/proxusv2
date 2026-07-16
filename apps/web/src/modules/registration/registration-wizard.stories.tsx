@@ -72,6 +72,7 @@ const meta = {
   component: RegistrationWizardView,
   parameters: { layout: "fullscreen" },
   args: {
+    locale: "es",
     path: [],
     options: { _tag: "Success", value: [spain, france] },
     onSelect: noop,
@@ -130,6 +131,7 @@ function InteractiveWizard() {
 
   return (
     <RegistrationWizardView
+      locale="es"
       path={path}
       options={options}
       onSelect={(node) => setPath((current) => [...current, node])}
