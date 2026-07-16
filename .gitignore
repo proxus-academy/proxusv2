@@ -1,10 +1,14 @@
 node_modules
+.direnv/
 dist
 apps/**/dist
 apps/server/.data
+apps/server/.data.stale-*/
 coverage
 .env
 .env.*
 !.env.example
 .DS_Store
 *.tsbuildinfo
+*storybook.log
+storybook-static
