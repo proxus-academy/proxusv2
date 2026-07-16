@@ -3,20 +3,27 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./i18n": "./src/i18n/index.ts",
     "./registration": "./src/registration/index.ts",
     "./study-catalog": "./src/study-catalog/index.ts"
   },
   "scripts": {
+    "prebuild": "pnpm --filter @proxus/product-i18n generate",
     "build": "tsc --noEmit",
+    "pretypecheck": "pnpm --filter @proxus/product-i18n generate",
     "typecheck": "tsc --noEmit",
+    "pretest": "pnpm --filter @proxus/product-i18n generate",
     "test": "vitest run"
   },
   "dependencies": {
     "@proxus/frontend-core": "workspace:*",
-    "effect": "4.0.0-beta.98"
+    "@proxus/product-i18n": "workspace:*",
+    "effect": "4.0.0-beta.98",
+    "react": "^19.2.3"
   },
   "devDependencies": {
     "@proxus/shared": "workspace:*",
+    "@types/react": "^19.2.7",
     "happy-dom": "^18.0.1",
     "typescript": "^5.8.3",
     "vitest": "3.2.7"
