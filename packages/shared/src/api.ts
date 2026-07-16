@@ -1,4 +1,5 @@
 import { HttpApi, OpenApi } from "effect/unstable/httpapi"
+import { PublicProductAnalyticsApi } from "./modules/product-analytics/api.js"
 import {
   AdminStudyCatalogApi,
   PublicStudyCatalogApi,
@@ -9,6 +10,7 @@ export { PublicApi } from "./public-api.js"
 
 export class ProxusApi extends HttpApi.make("proxusApi")
   .add(PublicStudyCatalogApi)
+  .add(PublicProductAnalyticsApi)
   .add(AdminStudyCatalogApi)
   .annotateMerge(
     OpenApi.annotations({

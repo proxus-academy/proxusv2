@@ -83,6 +83,49 @@ validates the new endpoint kinds and duplicate triple, and compacts both the old
 and new groups in one transaction. Disconnecting compacts the former group in
 the same transaction.
 
+## Public feature flags
+
+| Method | Path | Operation |
+| --- | --- | --- |
+| GET | `/feature-flags/snapshot` | Read the complete active public configuration snapshot |
+
+Snapshots are immutable revisions and activation is atomic: clients never merge
+individual flags from different revisions. If persistence contains no active row,
+the service returns revision `0` with an empty `flags` array. Responses include a
+revision-derived strong `ETag`, support the RFC weak comparison semantics of
+`If-None-Match` (including lists, weak tags and `*`) with `304`, and use
+`Cache-Control: public, max-age=60, stale-while-revalidate=300`. These flags are
+frontend-only product presentation and are never authorization evidence.
+
+## Public product analytics
+
+| Method | Path | Operation |
+| --- | --- | --- |
+| POST | `/product-analytics/events` | Best-effort batch ingestion (1–50 browser events) |
+
+The public contract accepts only `feature_flag_exposed` and
+`registration_cta_clicked`. Both carry `configurationRevision` so analysis can
+identify the exact distributed snapshot; the backend does not recalculate or
+verify frontend-only flag variants. `registration_completed` is server-only and is
+rejected by HTTP decoding. Consent and identity come from trusted transport
+context, never from the payload. Production currently fails closed until that
+middleware exists. Development opt-in additionally requires matching `Origin`
+and `Host`, `Sec-Fetch-Site: same-origin`, and the explicit development consent
+header.
+
+Admission is atomic for the whole request batch: one invalid event or insufficient
+queue capacity rejects all events. Acceptance means admitted to a bounded in-process queue, not durably persisted.
+The response reports accepted/rejected counts and a safe reason (`no-consent`,
+`invalid`, `full`, or `closed`). Events outside the configured timestamp-skew
+window and flag exposures that the server cannot recalculate are excluded.
+The schema bounds a batch to 50 events, but the HTTP server does not yet enforce a
+raw byte body limit. Adding that limit belongs in the shared HTTP server policy so
+all endpoints get consistent `413` handling; analytics must remain fail-closed at
+the edge until that transversal work is completed.
+
+Analytics is intentionally best-effort: it must not affect product behavior and
+is not suitable for audit, authorization, billing, or exactly-once workflows.
+
 ## Status policy
 
 - malformed params or payloads: built-in `400` decoding failure;

@@ -16,6 +16,12 @@ packages/backend-transport/src/modules/study-catalog/      HTTP público
 packages/backend-admin-transport/src/modules/study-catalog/ HTTP administrativo
 ```
 
+Feature Flags usa el mismo flujo completo para distribuir snapshots públicos:
+`shared` define el wire snapshot, Domain lee el snapshot activo mediante un
+repository port, Infra persiste revisiones completas en PostgreSQL/PGlite y el
+transport público aplica caché HTTP. La identidad de instalación y la evaluación
+son frontend-only y no cruzan al backend.
+
 No todos los contexts necesitan todas las capas. No se crean packages, directorios ni wrappers vacíos para anticipar necesidades.
 
 ## Packages y ejecutables

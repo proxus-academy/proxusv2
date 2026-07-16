@@ -4,7 +4,9 @@
   "type": "module",
   "exports": {
     ".": "./src/http.ts",
-    "./study-catalog": "./src/modules/study-catalog/http.ts"
+    "./study-catalog": "./src/modules/study-catalog/http.ts",
+    "./feature-flags": "./src/modules/feature-flags/http.ts",
+    "./product-analytics": "./src/modules/product-analytics/http.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",

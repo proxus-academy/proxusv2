@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./feature-flags": "./src/feature-flags/index.ts",
     "./registration": "./src/registration/index.ts",
     "./study-catalog": "./src/study-catalog/index.ts"
   },
@@ -12,6 +13,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@proxus/shared": "workspace:*",
     "@proxus/frontend-core": "workspace:*",
     "effect": "4.0.0-beta.98"
   },
