@@ -3,13 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "predev": "pnpm --filter @proxus/product-i18n generate",
     "dev": "vite --host 0.0.0.0 --port 5174",
-    "prebuild": "pnpm --filter @proxus/product-i18n generate",
     "build": "vite build",
-    "pretypecheck": "pnpm --filter @proxus/product-i18n generate",
     "typecheck": "tsc --noEmit",
-    "pretest": "pnpm --filter @proxus/product-i18n generate",
     "test": "vitest run"
   },
   "dependencies": {

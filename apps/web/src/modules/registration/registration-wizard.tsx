@@ -2,7 +2,6 @@ import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { StudyNode } from "@proxus/shared/study-catalog"
 import { Effect, Layer } from "effect"
 import * as Atom from "effect/unstable/reactivity/Atom"
-import { useProductLocale } from "../../i18n.js"
 import { childrenFamily, rootsAtom } from "../study-catalog/atoms.js"
 import {
   goBackRegistrationAtom,
@@ -17,7 +16,6 @@ const completedOptionsAtom = Atom.runtime(Layer.empty).atom(
 )
 
 export function RegistrationWizard() {
-  const locale = useProductLocale()
   const path = useAtomValue(registrationPathAtom)
   const selectNode = useAtomSet(selectRegistrationNodeAtom)
   const goBack = useAtomSet(goBackRegistrationAtom)
@@ -33,7 +31,6 @@ export function RegistrationWizard() {
 
   return (
     <RegistrationWizardView
-      locale={locale}
       path={path}
       options={options}
       onSelect={selectNode}

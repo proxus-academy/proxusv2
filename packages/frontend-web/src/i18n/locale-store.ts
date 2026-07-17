@@ -1,7 +1,9 @@
-import { getTextDirection, toLocale, type Locale } from "@proxus/product-i18n/runtime"
-import { useSyncExternalStore } from "react"
+import type { LocaleAtom } from "@proxus/frontend-core/i18n"
+import { isLocale, type Locale } from "@proxus/product-i18n"
+import * as Atom from "effect/unstable/reactivity/Atom"
 
 const STORAGE_KEY = "proxus.product-locale.v1"
+const parseLocale = (value: unknown): Locale | undefined => isLocale(value) ? value : undefined
 
 export interface LocaleStore {
   readonly getSnapshot: () => Locale
@@ -11,11 +13,19 @@ export interface LocaleStore {
   readonly dispose: () => void
 }
 
-function storedLocale(storage: Storage): Locale | undefined {
+function storage(): Storage | undefined {
   try {
-    const value: unknown = JSON.parse(storage.getItem(STORAGE_KEY) ?? "null")
+    return window.localStorage
+  } catch {
+    return undefined
+  }
+}
+
+function storedLocale(): Locale | undefined {
+  try {
+    const value: unknown = JSON.parse(storage()?.getItem(STORAGE_KEY) ?? "null")
     if (typeof value === "object" && value !== null && "locale" in value) {
-      return toLocale(value.locale)
+      return isLocale(value.locale) ? value.locale : undefined
     }
   } catch {
     // Storage is optional and may be unavailable or contain stale data.
@@ -25,8 +35,7 @@ function storedLocale(storage: Storage): Locale | undefined {
 
 function browserLocale(languages: readonly string[]): Locale {
   for (const language of languages) {
-    const exact = toLocale(language)
-    if (exact !== undefined) return exact
+    if (isLocale(language)) return language
     const normalized = language.toLowerCase()
     if (normalized.startsWith("es-")) return "es"
     if (normalized.startsWith("en-")) return "en"
@@ -50,13 +59,13 @@ export function makeBrowserLocaleStore(): LocaleStore {
   }
   const url = new URL(window.location.href)
   const urlLocale = url.searchParams.getAll("lang").length === 1
-    ? toLocale(url.searchParams.get("lang"))
+    ? parseLocale(url.searchParams.get("lang"))
     : undefined
-  let current = urlLocale ?? storedLocale(window.localStorage) ?? browserLocale(navigator.languages)
+  let current = urlLocale ?? storedLocale() ?? browserLocale(navigator.languages)
 
   const applyDocumentLocale = () => {
     document.documentElement.lang = current
-    document.documentElement.dir = getTextDirection(current)
+    document.documentElement.dir = "ltr"
   }
   const notify = () => listeners.forEach((listener) => listener())
   const replaceUrlLocale = (locale: Locale | undefined) => {
@@ -76,14 +85,14 @@ export function makeBrowserLocaleStore(): LocaleStore {
   const onPopState = () => {
     const nextUrl = new URL(window.location.href)
     const values = nextUrl.searchParams.getAll("lang")
-    const fromUrl = values.length === 1 ? toLocale(values[0]) : undefined
-    update(fromUrl ?? storedLocale(window.localStorage) ?? browserLocale(navigator.languages))
+    const fromUrl = values.length === 1 ? parseLocale(values[0]) : undefined
+    update(fromUrl ?? storedLocale() ?? browserLocale(navigator.languages))
   }
   const onStorage = (event: StorageEvent) => {
     if (event.key !== STORAGE_KEY) return
     const activeUrl = new URL(window.location.href)
-    if (activeUrl.searchParams.getAll("lang").length === 1 && toLocale(activeUrl.searchParams.get("lang")) !== undefined) return
-    update(storedLocale(window.localStorage) ?? browserLocale(navigator.languages))
+    if (activeUrl.searchParams.getAll("lang").length === 1 && parseLocale(activeUrl.searchParams.get("lang")) !== undefined) return
+    update(storedLocale() ?? browserLocale(navigator.languages))
   }
 
   applyDocumentLocale()
@@ -98,7 +107,7 @@ export function makeBrowserLocaleStore(): LocaleStore {
     },
     select: (locale) => {
       try {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, locale }))
+        storage()?.setItem(STORAGE_KEY, JSON.stringify({ version: 1, locale }))
       } catch {
         // The URL remains the durable source for this tab.
       }
@@ -107,7 +116,7 @@ export function makeBrowserLocaleStore(): LocaleStore {
     },
     useDevice: () => {
       try {
-        window.localStorage.removeItem(STORAGE_KEY)
+        storage()?.removeItem(STORAGE_KEY)
       } catch {
         // Storage is best-effort.
       }
@@ -122,6 +131,15 @@ export function makeBrowserLocaleStore(): LocaleStore {
   }
 }
 
-export function useLocale(store: LocaleStore): Locale {
-  return useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot)
-}
+export const makeWebLocaleAtom = (store: LocaleStore): LocaleAtom =>
+  Atom.writable<Locale, Locale>(
+    (get) => {
+      const unsubscribe = store.subscribe(() => get.setSelf(store.getSnapshot()))
+      get.addFinalizer(unsubscribe)
+      return store.getSnapshot()
+    },
+    (get, locale) => {
+      store.select(locale)
+      get.setSelf(locale)
+    },
+  )

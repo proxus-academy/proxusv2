@@ -28,7 +28,7 @@ const country = new CountryNode({
 describe("mobile registration view", () => {
   it("renders the mobile progress and available choices", () => {
     const html = renderToStaticMarkup(
-      <RegistrationWizardView locale="es" path={[]} options={{ _tag: "Success", value: [country] }} {...handlers} />,
+      <RegistrationWizardView path={[]} options={{ _tag: "Success", value: [country] }} {...handlers} />,
     )
 
     expect(html).toContain("Paso 1 de 5")
@@ -37,11 +37,11 @@ describe("mobile registration view", () => {
 
   it.each([
     [{ _tag: "Initial" as const }, "Cargando opciones"],
-    [{ _tag: "Failure" as const }, "No hemos podido cargar"],
+    [{ _tag: "Failure" as const }, "El servicio no está disponible"],
     [{ _tag: "Success" as const, value: [] }, "No hay opciones disponibles"],
   ])("renders remote state %#", (options, text) => {
     const html = renderToStaticMarkup(
-      <RegistrationWizardView locale="es" path={[]} options={options} {...handlers} />,
+      <RegistrationWizardView path={[]} options={options} {...handlers} />,
     )
 
     expect(html).toContain(text)
@@ -58,7 +58,7 @@ describe("mobile registration view", () => {
       updatedAt: DateTime.makeUnsafe(0),
     })
     const html = renderToStaticMarkup(
-      <RegistrationWizardView locale="es" path={[subject]} options={{ _tag: "Success", value: [] }} {...handlers} />,
+      <RegistrationWizardView path={[subject]} options={{ _tag: "Success", value: [] }} {...handlers} />,
     )
 
     expect(html).toContain("¡Todo listo!")

@@ -1,24 +1,36 @@
-import { makeBrowserLocaleStore, useLocale } from "@proxus/frontend-web/i18n"
-import * as m from "@proxus/product-i18n/messages"
-import type { Locale } from "@proxus/product-i18n/runtime"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
+import { makeI18nAtoms } from "@proxus/frontend-core/i18n"
+import { makeBrowserLocaleStore, makeWebLocaleAtom } from "@proxus/frontend-web/i18n"
+import { catalogFor, isLocale, type MessagesCatalog } from "@proxus/product-i18n"
 
-export const localeStore = makeBrowserLocaleStore()
-export const useProductLocale = () => useLocale(localeStore)
+const localeStore = makeBrowserLocaleStore()
+export const { localeAtom } = makeI18nAtoms(makeWebLocaleAtom(localeStore))
 
-export function LanguageSelector({ locale }: { readonly locale: Locale }) {
+export function useMessagesCatalog(): MessagesCatalog {
+  const locale = useAtomValue(localeAtom)
+  return catalogFor(locale)
+}
+
+export function LanguageSelector() {
+  const locale = useAtomValue(localeAtom)
+  const selectLocale = useAtomSet(localeAtom)
+  const m = useMessagesCatalog()
+
   return (
     <div className="flex items-center gap-2 text-sm text-muted-foreground">
       <select
-        aria-label={m.language_label({}, { locale })}
+        aria-label={m.language.label}
         className="rounded-lg border border-border bg-card px-2 py-1 text-foreground"
         value={locale}
-        onChange={(event) => localeStore.select(event.target.value as Locale)}
+        onChange={(event) => {
+          if (isLocale(event.target.value)) selectLocale(event.target.value)
+        }}
       >
-        <option value="es">{m.language_spanish({}, { locale })}</option>
-        <option value="en">{m.language_english({}, { locale })}</option>
+        <option value="es">{m.language.spanish}</option>
+        <option value="en">{m.language.english}</option>
       </select>
       <button type="button" className="underline" onClick={localeStore.useDevice}>
-        {m.language_device({}, { locale })}
+        {m.language.device}
       </button>
     </div>
   )

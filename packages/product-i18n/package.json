@@ -3,17 +3,19 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./messages": "./src/paraglide/messages.js",
-    "./runtime": "./src/paraglide/runtime.js"
+    ".": "./src/index.ts",
+    "./catalog": "./src/catalog.ts",
+    "./study-catalog-error-message": "./src/study-catalog-error-message.ts"
   },
   "scripts": {
-    "generate": "paraglide-js compile --project ./project.inlang --outdir ./src/paraglide --emit-ts-declarations --strategy baseLocale",
-    "build": "pnpm generate",
-    "typecheck": "pnpm generate && tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@proxus/shared": "workspace:*"
   },
   "devDependencies": {
-    "@inlang/paraglide-js": "2.22.0",
     "typescript": "^5.8.3",
     "vitest": "3.2.7"
   }
