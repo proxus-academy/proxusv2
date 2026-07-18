@@ -1,6 +1,8 @@
+import { makeFeatureFlagRealtimeAtoms } from "@proxus/frontend-core/feature-flags"
 import { makeProductLocaleAtoms, type LocaleAtom } from "@proxus/frontend-core/product-locale"
 import { makeRegistrationAtoms } from "@proxus/frontend-core/registration"
 import { compile, index, makeRouterService, param, root, type DestinationOf } from "@proxus/frontend-core/routing"
+import { featureFlagRealtimeWebLayer } from "@proxus/frontend-web/feature-flags"
 import { clearBrowserLocalePreference, persistBrowserLocale, preferredBrowserLocale } from "@proxus/frontend-web/product-locale"
 import { makeWebRegistrationPathAtom } from "@proxus/frontend-web/registration"
 import { browserRouterLayer } from "@proxus/frontend-web/routing"
@@ -54,7 +56,8 @@ export const makeAppComposition = Effect.gen(function*() {
     get.set(locale.selectLocaleAtom, preferredBrowserLocale())
   })
   const registration = makeRegistrationAtoms(makeWebRegistrationPathAtom(router))
-  return { router, locale: { ...locale, useDeviceLocaleAtom }, registration, dispose: () => runtime.dispose() }
+  const featureFlags = makeFeatureFlagRealtimeAtoms(featureFlagRealtimeWebLayer())
+  return { router, locale: { ...locale, useDeviceLocaleAtom }, registration, featureFlags, dispose: () => runtime.dispose() }
 })
 
 export const composition = await Effect.runPromise(makeAppComposition)

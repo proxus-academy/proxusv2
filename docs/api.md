@@ -106,7 +106,7 @@ frontend-only product presentation and are never authorization evidence.
 | GET | `/realtime/events` | Receive best-effort server-sent invalidation hints |
 
 The schema-first success contract uses `HttpApiSchema.StreamSse`. A
-`FeatureFlagSnapshotChanged` message contains only `revision`; clients refetch
+`FeatureFlagSnapshotChanged` message contains an opaque `eventId` and `revision`; clients deduplicate the pair and refetch
 `GET /feature-flags/snapshot` and retain its ETag/cache behavior instead of
 merging state from the stream. `RealtimeHeartbeat` messages keep idle
 connections and intermediaries alive but carry no state.
@@ -116,6 +116,8 @@ cursor, cross-instance fan-out, or guarantee that every revision is observed.
 After initial connection, reconnection, a revision gap, or any stream error,
 clients fetch the snapshot. The connection and its PubSub subscription are
 scoped to the HTTP stream and released on disconnect/interruption.
+
+There is no real user/session authentication infrastructure in the repository yet. Consequently this endpoint is intentionally anonymous and can publish only public feature-flag hints; the snapshot TTL/refetch path remains fully functional without SSE. A server-side connection-scope port models verified `principalId`, `userId`, `sessionId`, roles and permissions for future authenticated channels. Private scopes fail closed when identity or permission is absent. Identity must never be accepted from query parameters, request bodies, or frontend filtering.
 
 ## Public product analytics
 

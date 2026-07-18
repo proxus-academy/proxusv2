@@ -32,6 +32,7 @@ describe("backend realtime reaction", () => {
       const event = yield* Fiber.join(next).pipe(Effect.timeout("1 second"))
       expect(Option.getOrThrow(event)).toEqual({
         _tag: "FeatureFlagSnapshotChanged",
+        eventId: "feature-flags:42",
         revision: 42,
       })
     }).pipe(
@@ -53,6 +54,7 @@ describe("backend realtime reaction", () => {
       })
       expect(Option.getOrThrow(yield* Fiber.join(next))).toEqual({
         _tag: "FeatureFlagSnapshotChanged",
+        eventId: "feature-flags:73",
         revision: 73,
       })
       const disconnected = yield* Effect.forkScoped(Stream.runDrain(realtime.subscribe))

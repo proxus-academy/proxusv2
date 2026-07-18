@@ -5,7 +5,10 @@ import { MaximumConfigurationRevision } from "../feature-flags/api.js"
 /** A hint to refetch GET /feature-flags/snapshot; never a snapshot or delivery guarantee. */
 export class FeatureFlagSnapshotChanged extends Schema.TaggedClass<FeatureFlagSnapshotChanged>()(
   "FeatureFlagSnapshotChanged",
-  { revision: Schema.Int.pipe(Schema.check(Schema.isBetween({ minimum: 0, maximum: MaximumConfigurationRevision }))) },
+  {
+    eventId: Schema.String.pipe(Schema.check(Schema.isMinLength(1)), Schema.check(Schema.isMaxLength(128))),
+    revision: Schema.Int.pipe(Schema.check(Schema.isBetween({ minimum: 0, maximum: MaximumConfigurationRevision }))),
+  },
 ) {}
 
 /** Keeps intermediaries and idle connections alive; carries no application state. */

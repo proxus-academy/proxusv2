@@ -106,6 +106,10 @@ messages and dispatches field or submit events.
 Local React state is reserved for genuinely view-local behavior that has no
 application meaning, persistence, asynchronous work, or cross-component use.
 
+## Realtime público
+
+Cada aplicación monta un único atom de lifecycle realtime en su registry raíz. El port neutral vive en `frontend-core` y el adapter fetch/SSE con credenciales en `frontend-web`. El supervisor hace conexión inicial, reconnect con backoff exponencial acotado y cleanup por interrupción/logout/unmount. Cada conexión o reconexión invalida el snapshot; los hints se deduplican por `eventId`/revisión y nunca se aplican como estado. `GET /feature-flags/snapshot` es siempre la autoridad y su TTL/refetch mantiene el producto operativo cuando SSE no está disponible.
+
 ## Testing
 
 Test atoms through `AtomRegistry`:

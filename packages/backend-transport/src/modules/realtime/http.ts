@@ -7,6 +7,7 @@ import { PublicApi } from "@proxus/shared/public-api"
 import { FeatureFlagSnapshotChanged, RealtimeHeartbeat, type PublicRealtimeEvent } from "@proxus/shared/realtime"
 import { Context, Effect, Layer, PubSub, Schedule, Stream } from "effect"
 import { HttpApiBuilder } from "effect/unstable/httpapi"
+export * from "./connection-scope.js"
 
 /** Replaceable realtime broker port. The memory adapter is process-local and freshness-first. */
 export class RealtimeBroker extends Context.Service<RealtimeBroker, {
@@ -52,6 +53,7 @@ export const BackendRealtimeReactionContributionsLive = Layer.effect(
       event: "FeatureFlagSnapshotPublished",
       handle: Effect.fn("Realtime.FeatureFlagSnapshotPublished")(function* (event: FeatureFlagSnapshotPublished) {
         const accepted = yield* realtime.publish(new FeatureFlagSnapshotChanged({
+          eventId: `feature-flags:${event.snapshot.configurationRevision}`,
           revision: event.snapshot.configurationRevision,
         }))
         if (!accepted) yield* Effect.logWarning("Realtime feature flag signal dropped")

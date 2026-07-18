@@ -56,7 +56,7 @@ FeatureFlagSnapshotPublisher.publishSnapshot → repository.publish → AppEvent
 `RealtimeBroker` es el port intercambiable de publicación/suscripción realtime;
 su adapter memory actual usa un PubSub scoped, acotado y freshness-first. La
 misma instancia de Layer se comparte entre reactions y handlers SSE, y libera
-suscripciones al desconectar. No es el catálogo global, el bus ni una outbox. Si una reaction futura requiere
+suscripciones al desconectar. El port permanece independiente del adapter memory para permitir un adapter Redis futuro sin cambiar reactions ni handlers. No es el catálogo global, el bus ni una outbox. Si una reaction futura requiere
 entrega durable, transacciones entre publicación y persistencia, replay o cruce
 de procesos, debe usar una outbox/broker explícito en vez de endurecer estas
 abstracciones in-memory.
@@ -103,7 +103,7 @@ Restricciones:
 
 `packages/shared` contiene únicamente lo que cruza el límite proceso/cliente: IDs y modelos públicos, requests, responses, errores estables y contratos HttpApi. No contiene filas SQL, configuración del servidor ni implementación de repositories.
 
-Los handlers adaptan transporte, invocan servicios y convierten errores internos a respuestas públicas seguras. La autorización de producto pertenece al servicio; el transporte obtendrá una identidad verificada cuando se implemente el control de acceso.
+Los handlers adaptan transporte, invocan servicios y convierten errores internos a respuestas públicas seguras. La autorización de producto pertenece al servicio; el transporte obtendrá una identidad verificada cuando se implemente el control de acceso. Realtime ya define el seam de scope verificado completo (principal/user, sesión, roles y permisos): mientras no exista auth real, solo se admite el stream público de hints anónimos y cualquier stream privado debe fallar cerrado.
 
 ## Infraestructura y persistencia
 
