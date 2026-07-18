@@ -1,4 +1,4 @@
-import type { LocaleAtom } from "@proxus/frontend-core/i18n"
+import type { LocaleAtom } from "@proxus/frontend-core/product-locale"
 import { isLocale, type Locale } from "@proxus/product-messages"
 import * as Atom from "effect/unstable/reactivity/Atom"
 
@@ -131,8 +131,8 @@ export function makeBrowserLocaleStore(): LocaleStore {
   }
 }
 
-export const makeWebLocaleAtom = (store: LocaleStore): LocaleAtom =>
-  Atom.writable<Locale, Locale>(
+export const makeWebLocaleAtoms = (store: LocaleStore) => {
+  const localeAtom: LocaleAtom = Atom.writable<Locale, Locale>(
     (get) => {
       const unsubscribe = store.subscribe(() => get.setSelf(store.getSnapshot()))
       get.addFinalizer(unsubscribe)
@@ -143,3 +143,10 @@ export const makeWebLocaleAtom = (store: LocaleStore): LocaleAtom =>
       get.setSelf(locale)
     },
   )
+  const useDeviceLocaleAtom = Atom.fnSync((_input: void, get) => {
+    store.useDevice()
+    get.set(localeAtom, store.getSnapshot())
+  })
+
+  return { localeAtom, useDeviceLocaleAtom } as const
+}

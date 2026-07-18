@@ -98,7 +98,7 @@ El locale efectivo expuesto mediante Effect Atom es la única fuente de verdad r
 
 Los mensajes parametrizados se evalúan durante render; nunca se almacenan strings traducidos como estado de larga vida.
 
-Añadir una capacidad de locale en `packages/frontend-core/src/i18n`:
+Añadir una capacidad de locale en `packages/frontend-core/src/product-locale`:
 
 ```text
 locale.ts
@@ -117,7 +117,7 @@ El locale es estado de aplicación y debe modelarse atom-first. Los componentes 
 
 ### Adapter de navegador
 
-Añadir en `packages/frontend-web/src/i18n`:
+Añadir en `packages/frontend-web/src/product-locale`:
 
 ```text
 locale-preference.ts

@@ -1,19 +1,20 @@
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
-import { makeI18nAtoms } from "@proxus/frontend-core/i18n"
-import { makeBrowserLocaleStore, makeWebLocaleAtom } from "@proxus/frontend-web/i18n"
-import { catalogFor, isLocale, type MessagesCatalog } from "@proxus/product-messages"
+import { makeProductLocaleAtoms } from "@proxus/frontend-core/product-locale"
+import { makeBrowserLocaleStore, makeWebLocaleAtoms } from "@proxus/frontend-web/product-locale"
+import { isLocale, type MessagesCatalog } from "@proxus/product-messages"
 
 const localeStore = makeBrowserLocaleStore()
-export const { localeAtom } = makeI18nAtoms(makeWebLocaleAtom(localeStore))
+const webLocaleAtoms = makeWebLocaleAtoms(localeStore)
+export const { localeAtom, messagesCatalogAtom } = makeProductLocaleAtoms(webLocaleAtoms.localeAtom)
 
 export function useMessagesCatalog(): MessagesCatalog {
-  const locale = useAtomValue(localeAtom)
-  return catalogFor(locale)
+  return useAtomValue(messagesCatalogAtom)
 }
 
 export function LanguageSelector() {
   const locale = useAtomValue(localeAtom)
   const selectLocale = useAtomSet(localeAtom)
+  const useDeviceLocale = useAtomSet(webLocaleAtoms.useDeviceLocaleAtom)
   const m = useMessagesCatalog()
 
   return (
@@ -29,7 +30,7 @@ export function LanguageSelector() {
         <option value="es">{m.language.spanish}</option>
         <option value="en">{m.language.english}</option>
       </select>
-      <button type="button" className="underline" onClick={localeStore.useDevice}>
+      <button type="button" className="underline" onClick={() => useDeviceLocale()}>
         {m.language.device}
       </button>
     </div>

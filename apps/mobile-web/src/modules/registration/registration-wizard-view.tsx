@@ -6,7 +6,7 @@ import {
 } from "@proxus/frontend-core/registration"
 import type { StudyNode } from "@proxus/shared/study-catalog"
 import { Button, ChoiceCard, Heading, Skeleton, Text } from "@proxus/ui"
-import { LanguageSelector, useMessagesCatalog } from "../../i18n.js"
+import { LanguageSelector, useMessagesCatalog } from "../../product-locale.js"
 
 export type RegistrationOptionsState =
   | { readonly _tag: "Success"; readonly value: ReadonlyArray<StudyNode> }

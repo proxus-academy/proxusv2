@@ -1,6 +1,6 @@
 import type { StudyNode } from "@proxus/shared/study-catalog"
 import { Button, ChoiceCard, Heading, Skeleton, Text } from "@proxus/ui"
-import { LanguageSelector, useMessagesCatalog } from "../../i18n.js"
+import { LanguageSelector, useMessagesCatalog } from "../../product-locale.js"
 import { expectedTargetKinds, stepFromPath, type RegistrationPath } from "./model.js"
 
 export type RegistrationOptionsState =
