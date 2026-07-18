@@ -122,6 +122,34 @@ mutation atom; an effect must not infer submission from changed form state.
 Navigation and URL state use router APIs rather than duplicated synchronization
 state.
 
+## Routing
+
+Routing is modeled in `@proxus/frontend-core/routing` as a platform-independent,
+Effect-first capability. A single nested route definition is the source of truth
+for destination types, accumulated path parameters, URL encoding, URL decoding,
+and the chain of matched layouts. Route parameters use Effect Schema codecs whose
+encoded representation is a URL segment string.
+
+Only terminal `path`, `param`, and `index` nodes are navigation destinations.
+`root`, `layout`, and parent nodes participate in the match chain but cannot be
+navigated to directly. Application code navigates with opaque destinations made
+by the compiled definition; it must not construct path strings or destination
+objects manually.
+
+The `Router` Effect service owns navigation commands and exposes the current
+opaque destination as an Effect Atom. Platform adapters own history:
+
+```text
+frontend-core routing definition + Router service
+  → frontend-web browser History API adapter
+  → future native in-memory/native-navigation adapter
+```
+
+The browser adapter is the sole owner of `pushState`, `replaceState`, and
+`popstate`. It preserves unrelated search parameters, hashes, and history state.
+Components consume route atoms and command adapters; they do not read `window`,
+parse URLs, create Layers, or run Effects during render.
+
 ## Legitimate effects
 
 Use `useEffect` when a mounted component owns synchronization with an external
