@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 import {
   CountryNode,
   SubjectNode,
@@ -31,14 +32,14 @@ describe("mobile registration view", () => {
       <RegistrationWizardView path={[]} options={{ _tag: "Success", value: [country] }} {...handlers} />,
     )
 
-    expect(html).toContain("Paso 1 de 5")
+    expect(html).toContain("Step 1 of 5")
     expect(html).toContain("España")
   })
 
   it.each([
-    [{ _tag: "Initial" as const }, "Cargando opciones"],
-    [{ _tag: "Failure" as const }, "El servicio no está disponible"],
-    [{ _tag: "Success" as const, value: [] }, "No hay opciones disponibles"],
+    [{ _tag: "Initial" as const }, "Loading options"],
+    [{ _tag: "Failure" as const }, "The service is unavailable"],
+    [{ _tag: "Success" as const, value: [] }, "There are no options available"],
   ])("renders remote state %#", (options, text) => {
     const html = renderToStaticMarkup(
       <RegistrationWizardView path={[]} options={options} {...handlers} />,
@@ -61,8 +62,8 @@ describe("mobile registration view", () => {
       <RegistrationWizardView path={[subject]} options={{ _tag: "Success", value: [] }} {...handlers} />,
     )
 
-    expect(html).toContain("¡Todo listo!")
+    expect(html).toContain("All done!")
     expect(html).toContain("Álgebra")
-    expect(html).toContain("Empezar de nuevo")
+    expect(html).toContain("Start again")
   })
 })

@@ -1,9 +1,8 @@
-import { makeRegistrationAtoms } from "@proxus/frontend-core/registration"
-import { makeWebRegistrationPathAtom } from "@proxus/frontend-web/registration"
+import { composition } from "../../composition.js"
 
 export const {
   goBackRegistrationAtom,
   registrationPathAtom,
   resetRegistrationAtom,
   selectRegistrationNodeAtom,
-} = makeRegistrationAtoms(makeWebRegistrationPathAtom())
+} = composition.registration

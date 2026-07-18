@@ -148,8 +148,13 @@ frontend-core routing definition + Router service
 
 The browser adapter is the sole owner of `pushState`, `replaceState`, and
 `popstate`. It preserves unrelated search parameters, hashes, and history state.
-Components consume route atoms and command adapters; they do not read `window`,
-parse URLs, create Layers, or run Effects during render.
+Its platform-neutral `RouterLocation` carries the encoded query so feature atoms
+can project query state and submit it back through router commands without a
+second History owner. Every product path starts with the validated locale
+segment (`/:locale/...`); composition roots safely replace missing, legacy, or
+invalid forms with a canonical locale-prefixed destination. Components consume
+route atoms and command adapters; they do not read `window`, parse URLs, create
+Layers, or run Effects during render.
 
 ## Legitimate effects
 

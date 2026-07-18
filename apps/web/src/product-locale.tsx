@@ -1,11 +1,8 @@
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
-import { makeProductLocaleAtoms } from "@proxus/frontend-core/product-locale"
-import { makeBrowserLocaleStore, makeWebLocaleAtoms } from "@proxus/frontend-web/product-locale"
+import { composition } from "./composition.js"
 import { isLocale, type MessagesCatalog } from "@proxus/product-messages"
 
-const localeStore = makeBrowserLocaleStore()
-const webLocaleAtoms = makeWebLocaleAtoms(localeStore)
-export const { localeAtom, messagesCatalogAtom } = makeProductLocaleAtoms(webLocaleAtoms.localeAtom)
+export const { localeAtom, messagesCatalogAtom, selectLocaleAtom, useDeviceLocaleAtom } = composition.locale
 
 export function useMessagesCatalog(): MessagesCatalog {
   return useAtomValue(messagesCatalogAtom)
@@ -13,8 +10,8 @@ export function useMessagesCatalog(): MessagesCatalog {
 
 export function LanguageSelector() {
   const locale = useAtomValue(localeAtom)
-  const selectLocale = useAtomSet(localeAtom)
-  const useDeviceLocale = useAtomSet(webLocaleAtoms.useDeviceLocaleAtom)
+  const selectLocale = useAtomSet(selectLocaleAtom)
+  const useDeviceLocale = useAtomSet(useDeviceLocaleAtom)
   const m = useMessagesCatalog()
 
   return (
