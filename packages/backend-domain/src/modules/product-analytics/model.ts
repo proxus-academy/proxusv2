@@ -14,8 +14,9 @@ export interface ProductAnalyticsEnvelope {
   readonly sessionId?: string
   readonly event: ProductAnalyticsEvent
 }
-export interface ProductAnalyticsRecordResult {
-  readonly accepted: number
-  readonly rejected: number
-  readonly reason?: "no-consent" | "invalid" | "full" | "closed"
-}
+export type ProductAnalyticsRejectionReason = "no-consent" | "invalid" | "full" | "closed"
+
+/** Admission is atomic: a batch is either wholly accepted or wholly rejected with a reason. */
+export type ProductAnalyticsRecordResult =
+  | { readonly accepted: number; readonly rejected: 0; readonly reason?: never }
+  | { readonly accepted: 0; readonly rejected: number; readonly reason: ProductAnalyticsRejectionReason }

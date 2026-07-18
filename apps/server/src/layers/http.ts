@@ -3,8 +3,8 @@
 import { createServer } from "node:http"
 import * as NodeHttpServer from "@effect/platform-node/NodeHttpServer"
 import { AppEventBusLive } from "@proxus/backend-domain/app-events"
-import { BackendRealtimeReactionsLive, RealtimeEventsLive } from "@proxus/backend-transport/realtime"
-import { Config, Layer } from "effect"
+import { BackendRealtimeReactionsLive, makeRealtimeEventsLive } from "@proxus/backend-transport/realtime"
+import { Config, Effect, Layer } from "effect"
 import { HttpRouter } from "effect/unstable/http"
 import { PublicApiRoutes } from "../http.js"
 import { FeatureFlagsDevLive } from "./feature-flags.dev.js"
@@ -19,10 +19,15 @@ const NodeServerLive = NodeHttpServer.layerConfig(createServer, {
   port: Config.int("PORT").pipe(Config.withDefault(3000)),
 })
 
-const ReactionsLive = BackendRealtimeReactionsLive.pipe(Layer.provideMerge(RealtimeEventsLive))
-const EventSystemLive = AppEventBusLive.pipe(Layer.provideMerge(ReactionsLive))
-const FeatureFlagsDevSliceLive = FeatureFlagsDevLive.pipe(Layer.provideMerge(EventSystemLive))
-const FeatureFlagsProdSliceLive = FeatureFlagsProdLive.pipe(Layer.provideMerge(EventSystemLive))
+const RealtimeEventsConfiguredLive = Layer.unwrap(Effect.gen(function*() {
+  const capacity = yield* Config.int("REALTIME_CAPACITY").pipe(Config.withDefault(32))
+  const heartbeatIntervalMs = yield* Config.int("REALTIME_HEARTBEAT_INTERVAL_MS").pipe(Config.withDefault(15_000))
+  return makeRealtimeEventsLive({ capacity, heartbeatIntervalMs })
+}))
+// Reuse these exact Layer values so the handler, reactions, and bus share one scoped broker.
+const ReactionsLive = BackendRealtimeReactionsLive.pipe(Layer.provide(RealtimeEventsConfiguredLive))
+const EventBusLive = AppEventBusLive.pipe(Layer.provide(ReactionsLive))
+const EventSystemLive = Layer.mergeAll(RealtimeEventsConfiguredLive, ReactionsLive, EventBusLive)
 
 const makeHttpLive = <A, E, R>(application: Layer.Layer<A, E, R>) =>
   HttpRouter.serve(PublicApiRoutes.pipe(Layer.provide(application))).pipe(Layer.provide(NodeServerLive))
@@ -30,10 +35,12 @@ const makeHttpLive = <A, E, R>(application: Layer.Layer<A, E, R>) =>
 export const HttpDevLive = makeHttpLive(Layer.mergeAll(
   StudyCatalogDevLive,
   ProductAnalyticsDevLive,
-  FeatureFlagsDevSliceLive,
+  FeatureFlagsDevLive,
+  EventSystemLive,
 ))
 export const HttpProdLive = makeHttpLive(Layer.mergeAll(
   StudyCatalogProdLive,
   ProductAnalyticsProdLive,
-  FeatureFlagsProdSliceLive,
+  FeatureFlagsProdLive,
+  EventSystemLive,
 ))

@@ -47,6 +47,21 @@ describe("ProductAnalyticsLive", () => {
     expect(yield* analytics.recordBatch([exposure], { consent: "granted" })).toEqual({ accepted: 1, rejected: 0 })
   })))
 
+  test("drains queued batches on shutdown before the flush interval", () => Effect.runPromise(Effect.scoped(Effect.gen(function*() {
+    const memory = yield* Layer.build(ProductAnalyticsRepositoryMemory)
+    const slowService = makeProductAnalyticsLive({
+      queueCapacity: 2, batchSize: 10, flushIntervalMs: 60_000,
+      shutdownTimeoutMs: 100, maxRetries: 1, retryBaseDelayMs: 1,
+      maximumPastSkewMs: 1_000, maximumFutureSkewMs: 1_000,
+    }).pipe(Layer.provide(Layer.succeed(ProductAnalyticsRepository, Context.get(memory, ProductAnalyticsRepository))))
+    yield* Effect.scoped(Effect.gen(function*() {
+      const service = yield* Layer.build(slowService)
+      const analytics = Context.get(service, ProductAnalytics)
+      expect(yield* analytics.recordBatch([event], { consent: "granted" })).toEqual({ accepted: 1, rejected: 0 })
+    }))
+    expect(yield* Context.get(memory, ProductAnalyticsMemoryStore).rows).toHaveLength(1)
+  }))))
+
   test("admits then persists a consented batch through the repository", () => run(Effect.gen(function*() {
     const analytics = yield* ProductAnalytics
     expect(yield* analytics.recordBatch([event], { consent: "granted" })).toEqual({ accepted: 1, rejected: 0 })

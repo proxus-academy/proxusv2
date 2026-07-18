@@ -1,4 +1,4 @@
-import { Clock, DateTime, Effect, Fiber, Layer, Queue, Random, Ref, Scope, Semaphore } from "effect"
+import { Clock, DateTime, Effect, Fiber, Layer, Match, Queue, Random, Ref, Scope, Semaphore } from "effect"
 import type { ProductAnalyticsEvent } from "@proxus/shared/product-analytics"
 import type { ProductAnalyticsEnvelope } from "./model.js"
 import { ProductAnalyticsRepository, type ProductAnalyticsRepositoryError } from "./repository.js"
@@ -44,27 +44,30 @@ export const makeProductAnalyticsLive = (options: ProductAnalyticsOptions = defa
 
     const persist = (batch: ReadonlyArray<ProductAnalyticsEnvelope>, attempt = 0): Effect.Effect<void> =>
       repository.writeBatch(batch).pipe(
-        Effect.catch((error: ProductAnalyticsRepositoryError) => {
-          const failed = error.failedIndexes === undefined
-            ? batch
-            : error.failedIndexes.flatMap((index) => batch[index] === undefined ? [] : [batch[index]!])
-          const retryable = error.retryableIndexes === undefined
-            ? (error.retryable ? failed : [])
-            : error.retryableIndexes.flatMap((index) => batch[index] === undefined ? [] : [batch[index]!])
-          const permanentCount = failed.length - retryable.length
-          const reportPermanent = permanentCount > 0
-            ? Effect.logWarning("Product analytics rows rejected permanently", { rows: permanentCount })
-            : Effect.void
-          if (retryable.length === 0 || attempt >= options.maxRetries) {
-            return reportPermanent.pipe(Effect.andThen(retryable.length > 0
-              ? Effect.logWarning("Product analytics retry budget exhausted", { rows: retryable.length })
-              : Effect.void))
-          }
-          return reportPermanent.pipe(Effect.andThen(Random.next.pipe(Effect.flatMap((jitter) =>
-            Effect.sleep(options.retryBaseDelayMs * 2 ** attempt * (0.5 + jitter)).pipe(
-              Effect.andThen(persist(retryable, attempt + 1)),
-            )))))
-        }),
+        Effect.catch((error: ProductAnalyticsRepositoryError) => Match.value(error).pipe(
+          Match.tag("ProductAnalyticsRepositoryError", (repositoryError) => {
+            const failed = repositoryError.failedIndexes === undefined
+              ? batch
+              : repositoryError.failedIndexes.flatMap((index) => batch[index] === undefined ? [] : [batch[index]!])
+            const retryable = repositoryError.retryableIndexes === undefined
+              ? (repositoryError.retryable ? failed : [])
+              : repositoryError.retryableIndexes.flatMap((index) => batch[index] === undefined ? [] : [batch[index]!])
+            const permanentCount = failed.length - retryable.length
+            const reportPermanent = permanentCount > 0
+              ? Effect.logWarning("Product analytics rows rejected permanently", { rows: permanentCount })
+              : Effect.void
+            if (retryable.length === 0 || attempt >= options.maxRetries) {
+              return reportPermanent.pipe(Effect.andThen(retryable.length > 0
+                ? Effect.logWarning("Product analytics retry budget exhausted", { rows: retryable.length })
+                : Effect.void))
+            }
+            return reportPermanent.pipe(Effect.andThen(Random.next.pipe(Effect.flatMap((jitter) =>
+              Effect.sleep(options.retryBaseDelayMs * 2 ** attempt * (0.5 + jitter)).pipe(
+                Effect.andThen(persist(retryable, attempt + 1)),
+              )))))
+          }),
+          Match.exhaustive,
+        )),
         // An interrupt requested during shutdown is observed only after the repository call.
         // Therefore a batch already removed from the queue cannot disappear in-flight.
         Effect.uninterruptible,
@@ -76,12 +79,8 @@ export const makeProductAnalyticsLive = (options: ProductAnalyticsOptions = defa
       }
     })
     const flush = Queue.clear(queue).pipe(Effect.flatMap((queued) => persistAll(queued.flat())))
-    const worker = Effect.forever(Effect.gen(function*() {
-      const first = yield* Queue.take(queue)
-      yield* Effect.sleep(options.flushIntervalMs)
-      const rest = yield* Queue.clear(queue)
-      yield* persistAll([first, ...rest].flat())
-    }))
+    // Never remove work before the interruptible wait: shutdown can then drain every queued batch.
+    const worker = Effect.forever(Effect.sleep(options.flushIntervalMs).pipe(Effect.andThen(flush)))
     const workerFiber = yield* Effect.forkScoped(worker)
     yield* Scope.addFinalizer(scope, Semaphore.withPermit(lifecycle, Ref.set(accepting, false)).pipe(
       // interrupt waits for uninterruptible in-flight persistence before returning

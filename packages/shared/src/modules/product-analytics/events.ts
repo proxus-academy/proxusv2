@@ -1,4 +1,5 @@
 import { Schema } from "effect"
+import { MaximumConfigurationRevision } from "../feature-flags/api.js"
 
 const EventBase = {
   occurredAt: Schema.optional(Schema.DateTimeUtcFromString),
@@ -8,7 +9,7 @@ export class FeatureFlagExposed extends Schema.Class<FeatureFlagExposed>("Featur
   _tag: Schema.Literal("feature_flag_exposed"),
   ...EventBase,
   flagKey: Schema.String.pipe(Schema.check(Schema.isMinLength(1), Schema.isMaxLength(100))),
-  configurationRevision: Schema.Int.pipe(Schema.check(Schema.isBetween({ minimum: 0, maximum: 2_147_483_647 }))),
+  configurationRevision: Schema.Int.pipe(Schema.check(Schema.isBetween({ minimum: 0, maximum: MaximumConfigurationRevision }))),
   allocationVersion: Schema.Int.pipe(Schema.check(Schema.isBetween({ minimum: 1, maximum: 2_147_483_647 }))),
   reportedVariant: Schema.String.pipe(Schema.check(Schema.isMinLength(1), Schema.isMaxLength(64))),
 }) {}
@@ -17,7 +18,7 @@ export class RegistrationCtaClicked extends Schema.Class<RegistrationCtaClicked>
   _tag: Schema.Literal("registration_cta_clicked"),
   ...EventBase,
   flagKey: Schema.Literal("registration.cta"),
-  configurationRevision: Schema.Int.pipe(Schema.check(Schema.isBetween({ minimum: 0, maximum: 2_147_483_647 }))),
+  configurationRevision: Schema.Int.pipe(Schema.check(Schema.isBetween({ minimum: 0, maximum: MaximumConfigurationRevision }))),
   allocationVersion: Schema.Int.pipe(Schema.check(Schema.isBetween({ minimum: 1, maximum: 2_147_483_647 }))),
   reportedVariant: Schema.String.pipe(Schema.check(Schema.isMinLength(1), Schema.isMaxLength(64))),
 }) {}
