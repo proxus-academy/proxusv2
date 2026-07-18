@@ -441,12 +441,23 @@ export class NavigationError extends Schema.TaggedErrorClass<NavigationError>()(
 
 export type RouterObservableError = NavigationError | RouteNotFound | RouteEncodingError | Schema.SchemaError
 
+export interface RouterLocation<Destination extends RouteDestination> {
+  readonly destination: Destination
+  /** Encoded query without the leading question mark. Platform-neutral by design. */
+  readonly search: string
+}
+
+export interface NavigationOptions {
+  readonly search?: string
+}
+
 export interface RouterService<Destination extends RouteDestination> {
   readonly current: Atom.Atom<Destination>
+  readonly location: Atom.Atom<RouterLocation<Destination>>
   /** The latest routing failure. Successful navigation clears it. */
   readonly error: Atom.Atom<RouterObservableError | undefined>
-  readonly push: (destination: Destination) => Effect.Effect<void, NavigationError>
-  readonly replace: (destination: Destination) => Effect.Effect<void, NavigationError>
+  readonly push: (destination: Destination, options?: NavigationOptions) => Effect.Effect<void, NavigationError>
+  readonly replace: (destination: Destination, options?: NavigationOptions) => Effect.Effect<void, NavigationError>
   readonly back: Effect.Effect<void, NavigationError>
   readonly forward: Effect.Effect<void, NavigationError>
 }
@@ -492,6 +503,7 @@ export const memoryRouterLayer = <Destination extends RouteDestination>(
 ): Layer.Layer<RouterIdentifier<Destination>> =>
   Layer.sync(routerTag, () => {
     const current = makeObservableValue(initial)
+    const location = makeObservableValue<RouterLocation<Destination>>({ destination: initial, search: "" })
     const error = makeObservableValue<RouterObservableError | undefined>(undefined)
     let history = [initial]
     let cursor = 0
@@ -499,18 +511,22 @@ export const memoryRouterLayer = <Destination extends RouteDestination>(
       if (next < 0 || next >= history.length || next === cursor) return
       cursor = next
       current.set(history[cursor]!)
+      location.set({ destination: history[cursor]!, search: location.get().search })
     })
     return routerTag.of({
       current: current.atom,
+      location: location.atom,
       error: error.atom,
-      push: (next) => Effect.sync(() => {
+      push: (next, options) => Effect.sync(() => {
         history = [...history.slice(0, cursor + 1), next]
         cursor++
         current.set(next)
+        location.set({ destination: next, search: options?.search ?? location.get().search })
       }),
-      replace: (next) => Effect.sync(() => {
+      replace: (next, options) => Effect.sync(() => {
         history = history.map((item, indexValue) => indexValue === cursor ? next : item)
         current.set(next)
+        location.set({ destination: next, search: options?.search ?? location.get().search })
       }),
       back: Effect.suspend(() => select(cursor - 1)),
       forward: Effect.suspend(() => select(cursor + 1)),

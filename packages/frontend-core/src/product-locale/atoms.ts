@@ -5,8 +5,9 @@ export type LocaleAtom = Atom.Writable<Locale, Locale>
 
 export const makeProductLocaleAtoms = (localeAtom: LocaleAtom) => {
   const messagesCatalogAtom = Atom.make((get) => catalogFor(get(localeAtom)))
+  const selectLocaleAtom = Atom.fnSync<Locale>()((locale, get) => get.set(localeAtom, locale))
 
-  return { localeAtom, messagesCatalogAtom } as const
+  return { localeAtom, messagesCatalogAtom, selectLocaleAtom } as const
 }
 
 export type ProductLocaleAtoms = ReturnType<typeof makeProductLocaleAtoms>

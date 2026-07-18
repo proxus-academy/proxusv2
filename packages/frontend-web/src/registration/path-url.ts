@@ -3,24 +3,29 @@ import {
   type RegistrationPath,
   type RegistrationPathAtom,
 } from "@proxus/frontend-core/registration"
-import { Option } from "effect"
+import type { RouteDestination, RouterService } from "@proxus/frontend-core/routing"
+import { Effect, Option, Schema } from "effect"
 import * as Atom from "effect/unstable/reactivity/Atom"
 
-export const makeWebRegistrationPathAtom = (
+/** Projects registration query state through the router, the sole History owner. */
+export const makeWebRegistrationPathAtom = <Destination extends RouteDestination>(
+  router: RouterService<Destination>,
   parameterName = "path",
-): RegistrationPathAtom => {
-  const parameterAtom = Atom.searchParam(parameterName, {
-    schema: RegistrationPathParam,
-  })
-
-  return Atom.writable<RegistrationPath, RegistrationPath>(
-    (get) => Option.getOrElse(get(parameterAtom), () => []),
-    (get, path) => {
-      get.set(
-        parameterAtom,
-        path.length === 0 ? Option.none() : Option.some(path),
-      )
-    },
-    (refresh) => refresh(parameterAtom),
-  )
-}
+): RegistrationPathAtom => Atom.writable<RegistrationPath, RegistrationPath>(
+  (get) => {
+    const value = new URLSearchParams(get(router.location).search).get(parameterName)
+    if (value === null) return []
+    return Option.getOrElse(
+      Effect.runSync(Effect.option(Schema.decodeUnknownEffect(RegistrationPathParam)(value))),
+      () => [],
+    )
+  },
+  (get, path) => {
+    const location = get.get(router.location)
+    const search = new URLSearchParams(location.search)
+    if (path.length === 0) search.delete(parameterName)
+    else search.set(parameterName, Effect.runSync(Schema.encodeEffect(RegistrationPathParam)(path)))
+    Effect.runFork(router.replace(location.destination, { search: search.toString() }))
+  },
+  (refresh) => refresh(router.location),
+)

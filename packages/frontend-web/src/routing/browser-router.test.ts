@@ -63,7 +63,7 @@ describe("browser router", () => {
         const router = yield* Router
         const registry = AtomRegistry.make()
         expect(registry.get(router.current).id).toBe("home")
-        yield* router.push(routes.destination("studies"))
+        yield* router.push(routes.destination("studies"), { search: "campaign=winter" })
       }).pipe(Effect.provide(context))
     }))
 
@@ -71,13 +71,13 @@ describe("browser router", () => {
 
     expect(browser.calls).toEqual([{
       operation: "push",
-      url: "https://proxus.test/studies?lang=en#summary",
+      url: "https://proxus.test/studies?campaign=winter#summary",
       state: { preserved: true },
     }])
     expect(browser.listeners.size).toBe(0)
   })
 
-  it("applies only the latest overlapping popstate decode", async () => {
+  it("applies only the latest overlapping popstate decode", () => {
     const browser = makeNavigation("https://proxus.test/")
     const delayedRoutes = {
       encodeDestination: routes.encodeDestination,
@@ -99,8 +99,9 @@ describe("browser router", () => {
         expect(registry.get(router.current).id).toBe("home")
       }).pipe(Effect.provide(context))
     }))
-    await Effect.runPromise(program)
-    expect(browser.listeners.size).toBe(0)
+    return Effect.runPromise(program).then(() => {
+      expect(browser.listeners.size).toBe(0)
+    })
   })
 
   it("reacts to browser history and represents unknown paths explicitly", () => {

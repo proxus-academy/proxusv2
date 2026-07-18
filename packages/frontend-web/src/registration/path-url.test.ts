@@ -1,50 +1,43 @@
-// @vitest-environment happy-dom
+import { makeObservableValue, type RouteDestination, type RouterService } from "@proxus/frontend-core/routing"
 import { CountryNode, makeCountryNodeId } from "@proxus/shared/study-catalog"
-import { DateTime } from "effect"
+import { DateTime, Effect } from "effect"
 import * as AtomRegistry from "effect/unstable/reactivity/AtomRegistry"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { describe, expect, it } from "vitest"
 import { makeWebRegistrationPathAtom } from "./path-url.js"
 
-const country = new CountryNode({
-  id: makeCountryNodeId("20000000-0000-4000-8000-000000000001"),
-  kind: "country",
-  name: "España",
-  imageAssetId: null,
-  status: "published",
-  createdAt: DateTime.makeUnsafe(0),
-  updatedAt: DateTime.makeUnsafe(0),
-})
+const country = new CountryNode({ id: makeCountryNodeId("20000000-0000-4000-8000-000000000001"), kind: "country", name: "España", imageAssetId: null, status: "published", createdAt: DateTime.makeUnsafe(0), updatedAt: DateTime.makeUnsafe(0) })
+const destination = { id: "registration", params: {} } as RouteDestination
 
-describe("web registration path adapter", () => {
-  beforeEach(() => {
-    window.history.replaceState({}, "", "/")
-    vi.useFakeTimers()
-  })
+const fixture = (search = "") => {
+  const current = makeObservableValue(destination)
+  const location = makeObservableValue({ destination, search })
+  const router: RouterService<RouteDestination> = {
+    current: current.atom,
+    location: location.atom,
+    error: makeObservableValue(undefined).atom,
+    push: (next, options) => Effect.sync(() => location.set({ destination: next, search: options?.search ?? location.get().search })),
+    replace: (next, options) => Effect.sync(() => location.set({ destination: next, search: options?.search ?? location.get().search })),
+    back: Effect.void,
+    forward: Effect.void,
+  }
+  return { atom: makeWebRegistrationPathAtom(router), location }
+}
 
-  it("reads a path from the URL and reacts to browser navigation", () => {
-    const encoded = encodeURIComponent(JSON.stringify([country]))
-    window.history.replaceState({}, "", `/?path=${encoded}`)
-    const atom = makeWebRegistrationPathAtom()
-    const registry = AtomRegistry.make()
-
-    expect(registry.get(atom)).toEqual([country])
-
-    window.history.replaceState({}, "", "/")
-    window.dispatchEvent(new Event("popstate"))
-    expect(registry.get(atom)).toEqual([])
-  })
-
-  it("writes and clears the URL parameter", () => {
-    const atom = makeWebRegistrationPathAtom()
+describe("router registration query projection", () => {
+  it("reads, writes, and clears through router location", () => {
+    const { atom, location } = fixture()
     const registry = AtomRegistry.make()
     registry.mount(atom)
-
     registry.set(atom, [country])
-    vi.advanceTimersByTime(500)
-    expect(new URL(window.location.href).searchParams.has("path")).toBe(true)
-
+    expect(new URLSearchParams(location.get().search).has("path")).toBe(true)
+    expect(registry.get(atom)).toEqual([country])
     registry.set(atom, [])
-    vi.advanceTimersByTime(500)
-    expect(new URL(window.location.href).searchParams.has("path")).toBe(false)
+    expect(location.get().search).toBe("")
+  })
+
+  it("keeps unrelated query values", () => {
+    const { atom, location } = fixture("campaign=summer")
+    AtomRegistry.make().set(atom, [country])
+    expect(new URLSearchParams(location.get().search).get("campaign")).toBe("summer")
   })
 })

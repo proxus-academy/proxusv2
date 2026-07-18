@@ -5,7 +5,9 @@ import {
   type RouteEncodingError,
   type RouteNotFound,
   makeObservableValue,
+  type NavigationOptions,
   type RouterIdentifier,
+  type RouterLocation,
   type RouterObservableError,
   type RouterService,
   type RouterTag,
@@ -72,10 +74,18 @@ export const browserRouterLayer = <Destination extends RouteDestination>(
 
     const initial = yield* resolve(navigation.currentUrl().pathname)
     const current = makeObservableValue(initial.destination)
+    const location = makeObservableValue<RouterLocation<Destination>>({
+      destination: initial.destination,
+      search: navigation.currentUrl().search.slice(1),
+    })
     const error = makeObservableValue<RouterObservableError | undefined>(initial.error)
     const refresh = Effect.suspend(() => resolve(navigation.currentUrl().pathname)).pipe(
       Effect.tap((result) => Effect.sync(() => {
         current.set(result.destination)
+        location.set({
+          destination: result.destination,
+          search: navigation.currentUrl().search.slice(1),
+        })
         error.set(result.error)
       })),
     )
@@ -96,6 +106,7 @@ export const browserRouterLayer = <Destination extends RouteDestination>(
     const change = (
       operation: "push" | "replace",
       destination: Destination,
+      options?: NavigationOptions,
     ): Effect.Effect<void, NavigationError> =>
       routes.encodeDestination(destination).pipe(
         Effect.mapError((cause) =>
@@ -104,9 +115,11 @@ export const browserRouterLayer = <Destination extends RouteDestination>(
           try: () => {
             const url = navigation.currentUrl()
             url.pathname = pathname
+            if (options?.search !== undefined) url.search = options.search.length === 0 ? "" : `?${options.search}`
             if (operation === "push") navigation.pushState(navigation.state(), url)
             else navigation.replaceState(navigation.state(), url)
             current.set(destination)
+            location.set({ destination, search: url.search.slice(1) })
             error.set(undefined)
           },
           catch: (error) => navigationFailure(
@@ -134,9 +147,10 @@ export const browserRouterLayer = <Destination extends RouteDestination>(
 
     const service: RouterService<Destination> = {
       current: current.atom,
+      location: location.atom,
       error: error.atom,
-      push: (destination) => change("push", destination),
-      replace: (destination) => change("replace", destination),
+      push: (destination, options) => change("push", destination, options),
+      replace: (destination, options) => change("replace", destination, options),
       back: historyOperation("back", navigation.back),
       forward: historyOperation("forward", navigation.forward),
     }
