@@ -127,8 +127,9 @@ state.
 Routing is modeled in `@proxus/frontend-core/routing` as a platform-independent,
 Effect-first capability. A single nested route definition is the source of truth
 for destination types, accumulated path parameters, URL encoding, URL decoding,
-and the chain of matched layouts. Route parameters use Effect Schema codecs whose
-encoded representation is a URL segment string.
+and the chain of matched layouts. Both destinations and matches are discriminated
+unions, so narrowing a route ID also narrows its parameter types. Route parameters
+use Effect Schema codecs whose encoded representation is a URL segment string.
 
 Only terminal `path`, `param`, and `index` nodes are navigation destinations.
 `root`, `layout`, and parent nodes participate in the match chain but cannot be

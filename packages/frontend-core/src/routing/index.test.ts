@@ -27,6 +27,17 @@ describe("routing compiler", () => {
     ])
   })
 
+  it("keeps match parameters discriminated by route id", () => {
+    const decoded = Effect.runSync(router.decode("/users/42/edit"))
+    const match = decoded.matches.find((candidate) => candidate.id === "edit-user")
+    if (match?.id === "edit-user") {
+      const userId: number = match.params.userId
+      // @ts-expect-error schema decoding produces a number, not a string
+      const invalid: string = match.params.userId
+      expect([userId, invalid]).toEqual([42, 42])
+    }
+  })
+
   it("gives static routes priority over parameters", () => {
     expect(Effect.runSync(router.decode("/users/new")).destination.id).toBe("new-user")
   })

@@ -97,26 +97,49 @@ type IsTerminal<Node extends AnyRouteNode> = Node["terminal"] extends true ? tru
 type ChildEntries<
   Child,
   ParentParams extends RouteParams,
-  Depth extends readonly unknown[],
+  Depth extends readonly 1[],
 > = Child extends AnyRouteNode ? Entries<Child, ParentParams, Depth> : never
 
 type Entries<
   Node extends AnyRouteNode,
   ParentParams extends RouteParams = {},
-  Depth extends readonly unknown[] = [],
+  Depth extends readonly 1[] = [],
 > = Depth["length"] extends 16 ? never
   : IsTerminal<Node> extends true
     ? { readonly id: Node["id"]; readonly params: Merge<ParentParams, ParamsOf<Node>> }
     : ChildEntries<
         Node["children"][number],
         Merge<ParentParams, ParamsOf<Node>>,
-        [...Depth, unknown]
+        [...Depth, 1]
       >
 
-type RouteEntry<Node extends AnyRouteNode> = Entries<Node> extends infer Entry extends {
+type ChildMatches<
+  Child,
+  ParentParams extends RouteParams,
+  Depth extends readonly 1[],
+> = Child extends AnyRouteNode ? MatchEntries<Child, ParentParams, Depth> : never
+
+type MatchEntries<
+  Node extends AnyRouteNode,
+  ParentParams extends RouteParams = {},
+  Depth extends readonly 1[] = [],
+> = Depth["length"] extends 16 ? never
+  : | {
+      readonly id: Node["id"]
+      readonly params: Merge<ParentParams, ParamsOf<Node>>
+    }
+    | ChildMatches<
+        Node["children"][number],
+        Merge<ParentParams, ParamsOf<Node>>,
+        [...Depth, 1]
+      >
+
+type ValidEntry<Entry> = Entry extends {
   readonly id: string
   readonly params: RouteParams
 } ? Entry : never
+
+type RouteEntry<Node extends AnyRouteNode> = ValidEntry<Entries<Node>>
 type RouteId<Node extends AnyRouteNode> = RouteEntry<Node>["id"]
 type EntryFor<Node extends AnyRouteNode, Id extends RouteId<Node>> = Extract<RouteEntry<Node>, { id: Id }>
 type InputFor<Entry extends { readonly params: RouteParams }> = keyof Entry["params"] extends never
@@ -132,19 +155,34 @@ export interface RouteDestination<
   readonly params: Params
 }
 
-export type DestinationOf<Node extends AnyRouteNode> = RouteEntry<Node> extends infer Entry extends {
+type DestinationFor<Entry> = Entry extends {
   readonly id: string
   readonly params: RouteParams
 } ? RouteDestination<Entry["id"], Entry["params"]> : never
 
-export interface RouteMatch {
-  readonly id: string
-  readonly params: RouteParams
+export type DestinationOf<Node extends AnyRouteNode> = DestinationFor<RouteEntry<Node>>
+
+export interface RouteMatch<
+  Id extends string = string,
+  Params extends RouteParams = RouteParams,
+> {
+  readonly id: Id
+  readonly params: Params
 }
 
-export interface DecodedRoute<Destination extends RouteDestination = RouteDestination> {
+type RouteMatchFor<Match> = Match extends {
+  readonly id: string
+  readonly params: RouteParams
+} ? RouteMatch<Match["id"], Match["params"]> : never
+
+export type MatchOf<Node extends AnyRouteNode> = RouteMatchFor<MatchEntries<Node>>
+
+export interface DecodedRoute<
+  Destination extends RouteDestination = RouteDestination,
+  Match extends RouteMatch = RouteMatch,
+> {
   readonly destination: Destination
-  readonly matches: readonly RouteMatch[]
+  readonly matches: readonly Match[]
 }
 
 export class RouteConfigurationError extends Schema.TaggedErrorClass<RouteConfigurationError>()(
@@ -175,11 +213,51 @@ export interface CompiledRoutes<Node extends AnyRouteNode> {
   ) => Effect.Effect<string, Schema.SchemaError | RouteEncodingError>
   readonly decode: (
     pathname: string,
-  ) => Effect.Effect<DecodedRoute<DestinationOf<Node>>, RouteNotFound>
+  ) => Effect.Effect<DecodedRoute<DestinationOf<Node>, MatchOf<Node>>, RouteNotFound>
 }
 
 interface CompiledRecord {
   readonly chain: readonly RuntimeRouteNode[]
+}
+
+function compiledDestination<
+  Node extends AnyRouteNode,
+  Id extends RouteId<Node>,
+>(
+  id: Id,
+  ...input: InputFor<EntryFor<Node, Id>>
+): RouteDestination<Id, EntryFor<Node, Id>["params"]>
+function compiledDestination(
+  id: string,
+  params?: RouteParams,
+): RouteDestination {
+  return {
+    [DestinationTypeId]: true,
+    id,
+    params: params ?? {},
+  }
+}
+
+// This overload is the single typed boundary after the decoder has matched an ID
+// from the compiled tree and transformed every dynamic segment through its codec.
+function decodedRoute<Node extends AnyRouteNode>(
+  id: string,
+  params: RouteParams,
+  matches: readonly RouteMatch[],
+): DecodedRoute<DestinationOf<Node>, MatchOf<Node>>
+function decodedRoute(
+  id: string,
+  params: RouteParams,
+  matches: readonly RouteMatch[],
+): DecodedRoute {
+  return {
+    destination: {
+      [DestinationTypeId]: true,
+      id,
+      params,
+    },
+    matches,
+  }
 }
 
 export const compile = <Node extends AnyRouteNode>(tree: Node): CompiledRoutes<Node> => {
@@ -259,11 +337,8 @@ export const compile = <Node extends AnyRouteNode>(tree: Node): CompiledRoutes<N
   const destination = <Id extends RouteId<Node>>(
     id: Id,
     ...input: InputFor<EntryFor<Node, Id>>
-  ): RouteDestination<Id, EntryFor<Node, Id>["params"]> => ({
-    [DestinationTypeId]: true,
-    id,
-    params: input[0] ?? {},
-  })
+  ): RouteDestination<Id, EntryFor<Node, Id>["params"]> =>
+    compiledDestination<Node, Id>(id, ...input)
 
   const encodeDestination = (route: RouteDestination) => Effect.gen(function*() {
     const record = terminalRoutes.get(route.id)
@@ -297,7 +372,7 @@ export const compile = <Node extends AnyRouteNode>(tree: Node): CompiledRoutes<N
       offset: number,
       params: RouteParams,
       matches: readonly RouteMatch[],
-    ): Effect.Effect<DecodedRoute<DestinationOf<Node>> | undefined> => Effect.gen(function*() {
+    ): Effect.Effect<DecodedRoute<DestinationOf<Node>, MatchOf<Node>> | undefined> => Effect.gen(function*() {
       const nextMatches = [...matches, { id: node.id, params }]
 
       if (offset === parts.length) {
@@ -306,14 +381,7 @@ export const compile = <Node extends AnyRouteNode>(tree: Node): CompiledRoutes<N
         const layoutNode = node.children.find((child) => child.kind === "layout")
         if (layoutNode !== undefined) return yield* walk(layoutNode, offset, params, nextMatches)
         if (terminalRoutes.has(node.id)) {
-          return {
-            destination: {
-              [DestinationTypeId]: true,
-              id: node.id,
-              params,
-            } as DestinationOf<Node>,
-            matches: nextMatches,
-          }
+          return decodedRoute<Node>(node.id, params, nextMatches)
         }
         return undefined
       }
