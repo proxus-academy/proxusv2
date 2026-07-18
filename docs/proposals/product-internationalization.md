@@ -78,7 +78,7 @@ Añadir un locale requerirá su catálogo completo y deberá fallar en CI si fal
 Estructura implementada:
 
 ```text
-packages/product-i18n/
+packages/product-messages/
 ├── src/
 │   ├── catalog.ts
 │   ├── catalog.test.ts
@@ -417,7 +417,7 @@ Criterios observables de accesibilidad:
 
 ### Fase 1: infraestructura y wizard
 
-1. Crear `packages/product-i18n`.
+1. Crear `packages/product-messages`.
 2. Añadir `Locale`, fallback y atoms.
 3. Implementar adapters web y persistencia.
 4. Sincronizar URL y `<html lang>`.
@@ -468,7 +468,7 @@ La localización del catálogo convertiría contrato, persistencia, repositories
 Durante la implementación se ejecutará, como mínimo:
 
 ```bash
-pnpm --filter @proxus/product-i18n typecheck
+pnpm --filter @proxus/product-messages typecheck
 pnpm --filter @proxus/frontend-core typecheck
 pnpm --filter @proxus/frontend-core test
 pnpm --filter @proxus/frontend-web typecheck

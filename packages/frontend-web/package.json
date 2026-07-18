@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@proxus/frontend-core": "workspace:*",
-    "@proxus/product-i18n": "workspace:*",
+    "@proxus/product-messages": "workspace:*",
     "effect": "4.0.0-beta.98"
   },
   "devDependencies": {

@@ -12,7 +12,7 @@
     "@effect/atom-react": "4.0.0-beta.98",
     "@proxus/frontend-core": "workspace:*",
     "@proxus/frontend-web": "workspace:*",
-    "@proxus/product-i18n": "workspace:*",
+    "@proxus/product-messages": "workspace:*",
     "@proxus/shared": "workspace:*",
     "@proxus/ui": "workspace:*",
     "effect": "4.0.0-beta.98",

@@ -1,7 +1,7 @@
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { makeI18nAtoms } from "@proxus/frontend-core/i18n"
 import { makeBrowserLocaleStore, makeWebLocaleAtom } from "@proxus/frontend-web/i18n"
-import { catalogFor, isLocale, type MessagesCatalog } from "@proxus/product-i18n"
+import { catalogFor, isLocale, type MessagesCatalog } from "@proxus/product-messages"
 
 const localeStore = makeBrowserLocaleStore()
 export const { localeAtom } = makeI18nAtoms(makeWebLocaleAtom(localeStore))

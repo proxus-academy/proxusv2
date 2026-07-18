@@ -1,4 +1,4 @@
-import type { Locale } from "@proxus/product-i18n"
+import type { Locale } from "@proxus/product-messages"
 import * as Atom from "effect/unstable/reactivity/Atom"
 
 export type LocaleAtom = Atom.Writable<Locale, Locale>

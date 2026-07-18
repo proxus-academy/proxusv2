@@ -1,5 +1,5 @@
 {
-  "name": "@proxus/product-i18n",
+  "name": "@proxus/product-messages",
   "private": true,
   "type": "module",
   "exports": {

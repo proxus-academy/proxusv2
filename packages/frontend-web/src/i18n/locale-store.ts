@@ -1,5 +1,5 @@
 import type { LocaleAtom } from "@proxus/frontend-core/i18n"
-import { isLocale, type Locale } from "@proxus/product-i18n"
+import { isLocale, type Locale } from "@proxus/product-messages"
 import * as Atom from "effect/unstable/reactivity/Atom"
 
 const STORAGE_KEY = "proxus.product-locale.v1"
