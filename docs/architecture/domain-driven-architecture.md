@@ -24,6 +24,36 @@ son frontend-only y no cruzan al backend.
 
 No todos los contexts necesitan todas las capas. No se crean packages, directorios ni wrappers vacíos para anticipar necesidades.
 
+## Eventos backend y reactions
+
+`BackendAppEvent` es el catálogo global tipado, compuesto desde uniones de
+eventos propiedad de cada módulo; no representa una cola física ni promete
+persistencia, orden o replay. Inicialmente contiene
+`FeatureFlagSnapshotPublished`, emitido por `FeatureFlags.publishSnapshot`
+después de persistir y activar la revisión.
+
+`AppEventBus` es un dispatcher backend in-process y best-effort. Un registry
+estático y tipado selecciona reactions por tag; las ejecuta con concurrencia
+acotada y aislamiento de fallos para que una integración secundaria no rompa
+las demás ni el caso de uso ya persistido. El dispatcher espera a las reactions
+coincidentes, como el runner de la aplicación anterior, pero no promete
+persistencia ni entrega entre procesos. El primer reaction proyecta el
+evento de Feature Flags al contrato realtime público; analytics no es una
+reaction mientras no exista un evento backend analítico real.
+
+```text
+FeatureFlags.publishSnapshot → repository.publish → AppEventBus
+                                                    → realtime reaction
+                                                      → scoped PubSub
+                                                        → SSE clients
+```
+
+El PubSub realtime es una infraestructura separada, acotada y freshness-first.
+No es el catálogo global, el bus ni una outbox. Si una reaction futura requiere
+entrega durable, transacciones entre publicación y persistencia, replay o cruce
+de procesos, debe usar una outbox/broker explícito en vez de endurecer estas
+abstracciones in-memory.
+
 ## Packages y ejecutables
 
 | Ubicación | Responsabilidad | Dependencias permitidas |

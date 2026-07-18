@@ -97,6 +97,24 @@ revision-derived strong `ETag`, support the RFC weak comparison semantics of
 `Cache-Control: public, max-age=60, stale-while-revalidate=300`. These flags are
 frontend-only product presentation and are never authorization evidence.
 
+## Public realtime
+
+| Method | Path | Operation |
+| --- | --- | --- |
+| GET | `/realtime/events` | Receive best-effort server-sent invalidation hints |
+
+The schema-first success contract uses `HttpApiSchema.StreamSse`. A
+`FeatureFlagSnapshotChanged` message contains only `revision`; clients refetch
+`GET /feature-flags/snapshot` and retain its ETag/cache behavior instead of
+merging state from the stream. `RealtimeHeartbeat` messages keep idle
+connections and intermediaries alive but carry no state.
+
+Delivery is process-local and best-effort: there is no durable replay, resume
+cursor, cross-instance fan-out, or guarantee that every revision is observed.
+After initial connection, reconnection, a revision gap, or any stream error,
+clients fetch the snapshot. The connection and its PubSub subscription are
+scoped to the HTTP stream and released on disconnect/interruption.
+
 ## Public product analytics
 
 | Method | Path | Operation |

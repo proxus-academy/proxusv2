@@ -1,3 +1,4 @@
+import { AppEventBusLive } from "@proxus/backend-domain/app-events"
 import { FeatureFlagsLive } from "@proxus/backend-domain/feature-flags"
 import { ProductAnalyticsLive } from "@proxus/backend-domain/product-analytics"
 import { StudyCatalogLive } from "@proxus/backend-domain/study-catalog"
@@ -6,6 +7,7 @@ import { FeatureFlagSnapshotRepositoryPgliteLive } from "@proxus/backend-infra/f
 import { ProductAnalyticsRepositoryMemory } from "@proxus/backend-infra/product-analytics/memory"
 import { StudyCatalogRepositoryPgliteLive } from "@proxus/backend-infra/study-catalog/pglite"
 import { ProductAnalyticsHttpContextFailClosed } from "@proxus/backend-transport/product-analytics"
+import { BackendRealtimeReactionsLive, RealtimeEventsLive } from "@proxus/backend-transport/realtime"
 import { PublicApi } from "@proxus/shared/public-api"
 import { Effect, Layer } from "effect"
 import { FetchHttpClient, HttpRouter, HttpServer } from "effect/unstable/http"
@@ -18,10 +20,17 @@ const EmbeddedPersistenceLive = Layer.mergeAll(
   FeatureFlagSnapshotRepositoryPgliteLive,
 ).pipe(Layer.provide(PgliteLive()))
 
+const EmbeddedReactionsLive = BackendRealtimeReactionsLive.pipe(Layer.provideMerge(RealtimeEventsLive))
+const EmbeddedEventBusLive = AppEventBusLive.pipe(Layer.provideMerge(EmbeddedReactionsLive))
+const EmbeddedFeatureFlagsSliceLive = FeatureFlagsLive.pipe(
+  Layer.provide(EmbeddedPersistenceLive),
+  Layer.provideMerge(EmbeddedEventBusLive),
+)
+
 const EmbeddedRoutesLive = PublicApiRoutes.pipe(
   Layer.provide(Layer.mergeAll(
     StudyCatalogLive.pipe(Layer.provide(EmbeddedPersistenceLive)),
-    FeatureFlagsLive.pipe(Layer.provide(EmbeddedPersistenceLive)),
+    EmbeddedFeatureFlagsSliceLive,
     ProductAnalyticsLive.pipe(Layer.provide(ProductAnalyticsRepositoryMemory)),
     ProductAnalyticsHttpContextFailClosed,
   )),

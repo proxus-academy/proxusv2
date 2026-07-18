@@ -14,6 +14,7 @@ describe("public server surface", () => {
       const document = (yield* Effect.promise(() => response.json())) as { paths: Record<string, unknown> }
       expect(document.paths["/study-catalog/countries"]).toBeDefined()
       expect(document.paths["/feature-flags/snapshot"]).toBeDefined()
+      expect(document.paths["/realtime/events"]).toBeDefined()
       expect(Object.keys(document.paths).some((path) => path.startsWith("/admin/"))).toBe(false)
 
       const snapshot = yield* Effect.promise(() => web.handler(new Request("http://proxus.test/feature-flags/snapshot")))

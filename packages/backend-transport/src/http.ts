@@ -4,6 +4,7 @@ import { HttpApiBuilder } from "effect/unstable/httpapi"
 import { PublicFeatureFlagHandlers } from "./modules/feature-flags/http.js"
 import { PublicProductAnalyticsHandlers } from "./modules/product-analytics/http.js"
 import { PublicStudyCatalogHandlers } from "./modules/study-catalog/http.js"
+import { PublicRealtimeHandlers } from "./modules/realtime/http.js"
 
 export const PublicApiRoutes = HttpApiBuilder.layer(PublicApi, {
   openapiPath: "/openapi.json",
@@ -11,4 +12,5 @@ export const PublicApiRoutes = HttpApiBuilder.layer(PublicApi, {
   Layer.provide(PublicStudyCatalogHandlers),
   Layer.provide(PublicFeatureFlagHandlers),
   Layer.provide(PublicProductAnalyticsHandlers),
+  Layer.provide(PublicRealtimeHandlers),
 )

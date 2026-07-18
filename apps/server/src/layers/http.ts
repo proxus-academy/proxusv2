@@ -2,6 +2,8 @@
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import { createServer } from "node:http"
 import * as NodeHttpServer from "@effect/platform-node/NodeHttpServer"
+import { AppEventBusLive } from "@proxus/backend-domain/app-events"
+import { BackendRealtimeReactionsLive, RealtimeEventsLive } from "@proxus/backend-transport/realtime"
 import { Config, Layer } from "effect"
 import { HttpRouter } from "effect/unstable/http"
 import { PublicApiRoutes } from "../http.js"
@@ -17,10 +19,21 @@ const NodeServerLive = NodeHttpServer.layerConfig(createServer, {
   port: Config.int("PORT").pipe(Config.withDefault(3000)),
 })
 
-const makeHttpLive = <A, E, R>(application: Layer.Layer<A, E, R>) =>
-  HttpRouter.serve(PublicApiRoutes.pipe(Layer.provide(application))).pipe(
-    Layer.provide(NodeServerLive),
-  )
+const ReactionsLive = BackendRealtimeReactionsLive.pipe(Layer.provideMerge(RealtimeEventsLive))
+const EventSystemLive = AppEventBusLive.pipe(Layer.provideMerge(ReactionsLive))
+const FeatureFlagsDevSliceLive = FeatureFlagsDevLive.pipe(Layer.provideMerge(EventSystemLive))
+const FeatureFlagsProdSliceLive = FeatureFlagsProdLive.pipe(Layer.provideMerge(EventSystemLive))
 
-export const HttpDevLive = makeHttpLive(Layer.mergeAll(StudyCatalogDevLive, ProductAnalyticsDevLive, FeatureFlagsDevLive))
-export const HttpProdLive = makeHttpLive(Layer.mergeAll(StudyCatalogProdLive, ProductAnalyticsProdLive, FeatureFlagsProdLive))
+const makeHttpLive = <A, E, R>(application: Layer.Layer<A, E, R>) =>
+  HttpRouter.serve(PublicApiRoutes.pipe(Layer.provide(application))).pipe(Layer.provide(NodeServerLive))
+
+export const HttpDevLive = makeHttpLive(Layer.mergeAll(
+  StudyCatalogDevLive,
+  ProductAnalyticsDevLive,
+  FeatureFlagsDevSliceLive,
+))
+export const HttpProdLive = makeHttpLive(Layer.mergeAll(
+  StudyCatalogProdLive,
+  ProductAnalyticsProdLive,
+  FeatureFlagsProdSliceLive,
+))

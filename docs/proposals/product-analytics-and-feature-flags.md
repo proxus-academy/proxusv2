@@ -385,3 +385,23 @@ presenta como garantía de entrega. Los fallos parciales de BigQuery se correlac
 evicta filas silenciosamente. El SDK Node de
 BigQuery no expone una operación de cierre; el cliente se construye una vez por Layer,
 pero no se finge un finalizer inexistente.
+
+## Decisión implementada: invalidación realtime SSE (2026-07-18)
+
+La publicación de un snapshot persiste primero y luego emite
+`FeatureFlagSnapshotPublished` al catálogo modular `BackendAppEvent`. El
+`AppEventBus` ejecuta un registry estático de reactions tipadas con aislamiento
+de errores. Catálogo y dispatcher son conceptos distintos: el primero es una
+unión de tipos; el segundo ejecuta las reactions locales coincidentes con
+concurrencia acotada y no promete transacción, replay, durabilidad ni entrega
+entre procesos.
+
+La única reaction inicial transforma el evento interno en
+`FeatureFlagSnapshotChanged { revision }` y lo publica en un PubSub realtime
+scoped, acotado y sliding. SSE no expone el snapshot ni el evento backend.
+`GET /realtime/events` se declara schema-first con
+`HttpApiSchema.StreamSse`, añade heartbeat y mantiene semántica de invalidación:
+el cliente obtiene el snapshot al arrancar/reconectar y vuelve a obtenerlo al
+recibir una revisión o detectar un hueco. No se implementan outbox ni replay
+durable. Product analytics permanece fuera del registry porque no existe aún un
+evento backend analítico real que justifique esa reaction.
