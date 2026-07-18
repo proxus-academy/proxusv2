@@ -37,7 +37,7 @@ describe("mobile registration view", () => {
 
   it.each([
     [{ _tag: "Initial" as const }, "Cargando opciones"],
-    [{ _tag: "Failure" as const }, "No hemos podido cargar"],
+    [{ _tag: "Failure" as const }, "El servicio no está disponible"],
     [{ _tag: "Success" as const, value: [] }, "No hay opciones disponibles"],
   ])("renders remote state %#", (options, text) => {
     const html = renderToStaticMarkup(

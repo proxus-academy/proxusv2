@@ -3,8 +3,10 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./product-locale": "./src/product-locale/index.ts",
     "./registration": "./src/registration/index.ts",
     "./registration/testing": "./src/registration/testing.ts",
+    "./routing": "./src/routing/index.ts",
     "./study-catalog": "./src/study-catalog/index.ts"
   },
   "scripts": {
@@ -13,6 +15,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@proxus/product-messages": "workspace:*",
     "@proxus/shared": "workspace:*",
     "effect": "4.0.0-beta.98"
   },
