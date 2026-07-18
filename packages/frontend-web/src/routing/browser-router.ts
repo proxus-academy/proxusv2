@@ -4,12 +4,13 @@ import {
   type RouteDestination,
   type RouteEncodingError,
   type RouteNotFound,
+  makeObservableValue,
   type RouterIdentifier,
+  type RouterObservableError,
   type RouterService,
   type RouterTag,
 } from "@proxus/frontend-core/routing"
-import { Effect, Layer, type Schema } from "effect"
-import * as Atom from "effect/unstable/reactivity/Atom"
+import { Effect, Fiber, Layer, type Schema } from "effect"
 
 export interface BrowserNavigation {
   readonly currentUrl: () => URL
@@ -48,24 +49,6 @@ export interface BrowserRouterOptions<Destination extends RouteDestination> {
   readonly navigation?: BrowserNavigation
 }
 
-const makeCurrentRoute = <Destination extends RouteDestination>(initial: Destination) => {
-  let current = initial
-  const listeners = new Set<() => void>()
-  const atom = Atom.readable((get) => {
-    const listener = () => get.setSelf(current)
-    listeners.add(listener)
-    get.addFinalizer(() => listeners.delete(listener))
-    return current
-  })
-  return {
-    atom,
-    set: (destination: Destination) => {
-      current = destination
-      listeners.forEach((listener) => listener())
-    },
-  }
-}
-
 const navigationFailure = (
   operation: NavigationError["operation"],
   error: globalThis.Error,
@@ -80,24 +63,34 @@ export const browserRouterLayer = <Destination extends RouteDestination>(
     const navigation = options.navigation ?? browserNavigation()
     const resolve = (pathname: string) =>
       routes.decode(pathname).pipe(
-        Effect.map((decoded) => decoded.destination),
-        Effect.catchTag("RouteNotFound", () =>
-          Effect.succeed(options.notFound(pathname))),
+        Effect.map((decoded) => ({ destination: decoded.destination, error: undefined } as const)),
+        Effect.catchTag("RouteNotFound", (routeError) => Effect.succeed({
+          destination: options.notFound(pathname),
+          error: routeError as RouterObservableError,
+        } as const)),
       )
 
     const initial = yield* resolve(navigation.currentUrl().pathname)
-    const current = makeCurrentRoute(initial)
-    const refresh = Effect.suspend(() =>
-      resolve(navigation.currentUrl().pathname).pipe(
-        Effect.tap((destination) => Effect.sync(() => current.set(destination))),
-      ))
+    const current = makeObservableValue(initial.destination)
+    const error = makeObservableValue<RouterObservableError | undefined>(initial.error)
+    const refresh = Effect.suspend(() => resolve(navigation.currentUrl().pathname)).pipe(
+      Effect.tap((result) => Effect.sync(() => {
+        current.set(result.destination)
+        error.set(result.error)
+      })),
+    )
 
     const context = yield* Effect.context<never>()
+    let active: ReturnType<typeof Effect.runFork> | undefined
     yield* Effect.acquireRelease(
       Effect.sync(() => navigation.onPopState(() => {
-        Effect.runSyncWith(context)(refresh)
+        if (active !== undefined) Effect.runForkWith(context)(Fiber.interrupt(active))
+        active = Effect.runForkWith(context)(refresh)
       })),
-      (unsubscribe) => Effect.sync(unsubscribe),
+      (unsubscribe) => Effect.sync(() => {
+        unsubscribe()
+        if (active !== undefined) Effect.runForkWith(context)(Fiber.interrupt(active))
+      }),
     )
 
     const change = (
@@ -105,8 +98,8 @@ export const browserRouterLayer = <Destination extends RouteDestination>(
       destination: Destination,
     ): Effect.Effect<void, NavigationError> =>
       routes.encodeDestination(destination).pipe(
-        Effect.mapError((error) =>
-          navigationFailure(operation, new globalThis.Error(String(error)))),
+        Effect.mapError((cause) =>
+          navigationFailure(operation, new globalThis.Error(String(cause)))),
         Effect.flatMap((pathname) => Effect.try({
           try: () => {
             const url = navigation.currentUrl()
@@ -114,6 +107,7 @@ export const browserRouterLayer = <Destination extends RouteDestination>(
             if (operation === "push") navigation.pushState(navigation.state(), url)
             else navigation.replaceState(navigation.state(), url)
             current.set(destination)
+            error.set(undefined)
           },
           catch: (error) => navigationFailure(
             operation,
@@ -122,6 +116,7 @@ export const browserRouterLayer = <Destination extends RouteDestination>(
               : new globalThis.Error("Browser history operation failed"),
           ),
         })),
+        Effect.tapError((failure) => Effect.sync(() => error.set(failure))),
       )
 
     const historyOperation = (
@@ -139,6 +134,7 @@ export const browserRouterLayer = <Destination extends RouteDestination>(
 
     const service: RouterService<Destination> = {
       current: current.atom,
+      error: error.atom,
       push: (destination) => change("push", destination),
       replace: (destination) => change("replace", destination),
       back: historyOperation("back", navigation.back),

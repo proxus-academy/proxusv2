@@ -61,6 +61,28 @@ describe("routing compiler", () => {
     expect([invalid, parent]).toBeDefined()
   })
 
+  it("round-trips Unicode and reserved characters through segment codecs", () => {
+    const textDefinition = root({ id: "root", children: [
+      param({ id: "value", name: "value", schema: Schema.String }),
+    ] })
+    const textRoutes = compile(textDefinition)
+    const value = "España/日本語 ?#%"
+    const encoded = Effect.runSync(textRoutes.encode(textRoutes.destination("value", { value })))
+    expect(encoded).toBe(`/${encodeURIComponent(value)}`)
+    expect(Effect.runSync(textRoutes.decode(encoded)).destination.params).toEqual({ value })
+  })
+
+  it("supports a locale as the first typed path segment", () => {
+    const localized = compile(root({ id: "root", children: [
+      param({ id: "locale", name: "locale", schema: Schema.Literals(["es", "en"]), children: [
+        path({ id: "register", path: "register" }),
+      ] }),
+    ] }))
+    expect(Effect.runSync(localized.encode(localized.destination("register", { locale: "en" })))).toBe("/en/register")
+    expect(Effect.runSync(localized.decode("/es/register")).destination.params).toEqual({ locale: "es" })
+    expect(Effect.runSyncExit(localized.decode("/fr/register"))._tag).toBe("Failure")
+  })
+
   it("treats malformed URL segments as not found", () => {
     expect(Effect.runSyncExit(router.decode("/users/%E0%A4%A"))._tag).toBe("Failure")
   })

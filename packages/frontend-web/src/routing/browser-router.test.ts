@@ -17,19 +17,19 @@ const makeNavigation = (initial: string) => {
   let url = new URL(initial)
   let historyState: unknown = { preserved: true }
   const listeners = new Set<() => void>()
-  const calls: Array<{ readonly operation: "push" | "replace"; readonly url: string }> = []
+  const calls: Array<{ readonly operation: "push" | "replace"; readonly url: string; readonly state: unknown }> = []
   const navigation: BrowserNavigation = {
     currentUrl: () => new URL(url),
     state: () => historyState,
     pushState: (state, next) => {
       historyState = state
       url = new URL(next)
-      calls.push({ operation: "push", url: url.href })
+      calls.push({ operation: "push", url: url.href, state })
     },
     replaceState: (state, next) => {
       historyState = state
       url = new URL(next)
-      calls.push({ operation: "replace", url: url.href })
+      calls.push({ operation: "replace", url: url.href, state })
     },
     back: () => undefined,
     forward: () => undefined,
@@ -72,7 +72,34 @@ describe("browser router", () => {
     expect(browser.calls).toEqual([{
       operation: "push",
       url: "https://proxus.test/studies?lang=en#summary",
+      state: { preserved: true },
     }])
+    expect(browser.listeners.size).toBe(0)
+  })
+
+  it("applies only the latest overlapping popstate decode", async () => {
+    const browser = makeNavigation("https://proxus.test/")
+    const delayedRoutes = {
+      encodeDestination: routes.encodeDestination,
+      decode: (pathname: string) => pathname === "/slow"
+        ? routes.decode("/studies").pipe(Effect.delay("50 millis"))
+        : routes.decode(pathname),
+    }
+    const program = Effect.scoped(Effect.gen(function*() {
+      const context = yield* Layer.build(browserRouterLayer(Router, delayedRoutes, {
+        navigation: browser.navigation,
+        notFound,
+      }))
+      return yield* Effect.gen(function*() {
+        const router = yield* Router
+        const registry = AtomRegistry.make()
+        browser.pop("https://proxus.test/slow")
+        browser.pop("https://proxus.test/")
+        yield* Effect.sleep("80 millis")
+        expect(registry.get(router.current).id).toBe("home")
+      }).pipe(Effect.provide(context))
+    }))
+    await Effect.runPromise(program)
     expect(browser.listeners.size).toBe(0)
   })
 
@@ -89,6 +116,7 @@ describe("browser router", () => {
         browser.pop("https://proxus.test/missing")
         yield* Effect.yieldNow
         expect(registry.get(router.current).id).toBe("not-found")
+        expect(registry.get(router.error)?._tag).toBe("RouteNotFound")
       }).pipe(Effect.provide(context))
     }))
 

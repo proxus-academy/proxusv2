@@ -13,7 +13,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@proxus/shared": "workspace:*"
+    "@proxus/shared": "workspace:*",
+    "effect": "4.0.0-beta.98"
   },
   "devDependencies": {
     "typescript": "^5.8.3",

@@ -59,7 +59,7 @@ Cuando hay ambas necesidades, el servicio ejecuta las operaciones y los atoms mo
 
 ## Ejemplo normativo: path de registro
 
-`frontend-core` define las transiciones y recibe un atom escribible:
+El estado navegable del registro forma parte del destino tipado del router. `frontend-core` define las transiciones y recibe un atom escribible:
 
 ```ts
 export type RegistrationPathAtom = Atom.Writable<
@@ -74,7 +74,7 @@ export const makeRegistrationAtoms = (
 })
 ```
 
-Web compone la factory con `makeWebRegistrationPathAtom()`, que sincroniza `?path=`. Un cliente React Native podrá proporcionar un atom respaldado por router, memoria o AsyncStorage sin cambiar las reglas ni las pantallas consumidoras.
+Web compone la factory con un atom proyectado desde el destino actual y escribe mediante comandos del `Router`; no existe un segundo adapter que escriba History. Un cliente React Native puede proporcionar un atom respaldado por navegación nativa o memoria sin cambiar las reglas ni las pantallas consumidoras. El locale es siempre el primer segmento del path (`/:locale/...`), validado por codec, y tampoco mantiene un escritor URL independiente.
 
 ## Composition roots
 

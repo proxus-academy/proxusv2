@@ -1,4 +1,7 @@
-export type Locale = "es" | "en"
+import { Schema } from "effect"
+
+export const Locale = Schema.Literals(["es", "en"])
+export type Locale = typeof Locale.Type
 
 export interface MessagesCatalog {
   readonly language: {

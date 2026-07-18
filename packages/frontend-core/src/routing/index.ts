@@ -439,8 +439,12 @@ export class NavigationError extends Schema.TaggedErrorClass<NavigationError>()(
   },
 ) {}
 
+export type RouterObservableError = NavigationError | RouteNotFound | RouteEncodingError | Schema.SchemaError
+
 export interface RouterService<Destination extends RouteDestination> {
   readonly current: Atom.Atom<Destination>
+  /** The latest routing failure. Successful navigation clears it. */
+  readonly error: Atom.Atom<RouterObservableError | undefined>
   readonly push: (destination: Destination) => Effect.Effect<void, NavigationError>
   readonly replace: (destination: Destination) => Effect.Effect<void, NavigationError>
   readonly back: Effect.Effect<void, NavigationError>
@@ -463,7 +467,7 @@ export const makeRouterService = <Destination extends RouteDestination>(
   RouterService<Destination>
 >(key)
 
-const makeCurrentRoute = <Destination extends RouteDestination>(initial: Destination) => {
+export const makeObservableValue = <Value>(initial: Value) => {
   let current = initial
   const listeners = new Set<() => void>()
   const atom = Atom.readable((get) => {
@@ -475,7 +479,7 @@ const makeCurrentRoute = <Destination extends RouteDestination>(initial: Destina
   return {
     atom,
     get: () => current,
-    set: (destination: Destination) => {
+    set: (destination: Value) => {
       current = destination
       listeners.forEach((listener) => listener())
     },
@@ -487,7 +491,8 @@ export const memoryRouterLayer = <Destination extends RouteDestination>(
   initial: Destination,
 ): Layer.Layer<RouterIdentifier<Destination>> =>
   Layer.sync(routerTag, () => {
-    const current = makeCurrentRoute(initial)
+    const current = makeObservableValue(initial)
+    const error = makeObservableValue<RouterObservableError | undefined>(undefined)
     let history = [initial]
     let cursor = 0
     const select = (next: number) => Effect.sync(() => {
@@ -497,6 +502,7 @@ export const memoryRouterLayer = <Destination extends RouteDestination>(
     })
     return routerTag.of({
       current: current.atom,
+      error: error.atom,
       push: (next) => Effect.sync(() => {
         history = [...history.slice(0, cursor + 1), next]
         cursor++
