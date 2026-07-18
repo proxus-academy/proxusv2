@@ -1,4 +1,4 @@
-import { FeatureFlags } from "@proxus/backend-domain/feature-flags"
+import { FeatureFlagSnapshotReader } from "@proxus/backend-domain/feature-flags"
 import { PublicApi } from "@proxus/shared/public-api"
 import { Effect } from "effect"
 import { HttpServerRequest, HttpServerResponse } from "effect/unstable/http"
@@ -18,9 +18,9 @@ export const ifNoneMatchMatches = (header: string | undefined, current: string) 
 }
 
 export const PublicFeatureFlagHandlers = HttpApiBuilder.group(PublicApi, "featureFlags", Effect.fn(function* (handlers) {
-  const featureFlags = yield* FeatureFlags
+  const featureFlagSnapshots = yield* FeatureFlagSnapshotReader
   return handlers.handleRaw("getActiveSnapshot", () => Effect.gen(function*() {
-    const snapshot = yield* featureFlags.getActiveSnapshot().pipe(Effect.orDie)
+    const snapshot = yield* featureFlagSnapshots.getActiveSnapshot().pipe(Effect.orDie)
     const request = yield* HttpServerRequest.HttpServerRequest
     const etag = featureFlagEtagFor(snapshot.configurationRevision)
     const headers = { "cache-control": cacheControl, etag }

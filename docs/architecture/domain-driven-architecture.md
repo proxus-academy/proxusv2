@@ -29,8 +29,10 @@ No todos los contexts necesitan todas las capas. No se crean packages, directori
 `BackendAppEvent` es el catálogo global tipado, compuesto desde uniones de
 eventos propiedad de cada módulo; no representa una cola física ni promete
 persistencia, orden o replay. Inicialmente contiene
-`FeatureFlagSnapshotPublished`, emitido por `FeatureFlags.publishSnapshot`
-después de persistir y activar la revisión.
+`FeatureFlagSnapshotPublished`, emitido por
+`FeatureFlagSnapshotPublisher.publishSnapshot` después de persistir y activar la
+revisión. La lectura pública usa el servicio separado
+`FeatureFlagSnapshotReader`, que no depende del bus de eventos.
 
 `AppEventBus` es un dispatcher backend in-process y best-effort. Un registry
 estático y tipado selecciona reactions por tag; las ejecuta con concurrencia
@@ -42,7 +44,7 @@ evento de Feature Flags al contrato realtime público; analytics no es una
 reaction mientras no exista un evento backend analítico real.
 
 ```text
-FeatureFlags.publishSnapshot → repository.publish → AppEventBus
+FeatureFlagSnapshotPublisher.publishSnapshot → repository.publish → AppEventBus
                                                     → realtime reaction
                                                       → scoped PubSub
                                                         → SSE clients

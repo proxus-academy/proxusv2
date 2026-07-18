@@ -1,6 +1,5 @@
 import {
   evaluateFeatureFlag,
-  type FeatureFlagBootstrap,
   type FeatureFlagDecision,
   defineFeatureFlag,
   type FeatureFlagDefinition,
@@ -9,14 +8,6 @@ import {
 import * as AsyncResult from "effect/unstable/reactivity/AsyncResult"
 import * as Atom from "effect/unstable/reactivity/Atom"
 
-export interface FeatureFlagAtomOptions<A extends string, E = never> {
-  readonly definition: FeatureFlagDefinition<A>
-  readonly bootstrapAtom: Atom.Atom<AsyncResult.AsyncResult<FeatureFlagBootstrap, E>>
-  readonly devOverrideAtom?: Atom.Atom<A | null>
-  readonly enableDevOverrides?: boolean
-}
-
-/** Derives a decision without collapsing bootstrap loading or failure states. */
 /** Evaluates a distributed configuration only when every variant is known locally. */
 export const evaluateSnapshotFeatureFlag = <A extends string>(
   localDefinition: FeatureFlagDefinition<A>,
@@ -50,31 +41,3 @@ export const makeSnapshotFeatureFlagDecisionAtom = <A extends string, E = never>
   get(options.snapshotAtom),
   (snapshot) => evaluateSnapshotFeatureFlag(options.definition, snapshot, get(options.subjectIdAtom)),
 ))
-
-export const makeFeatureFlagDecisionAtom = <A extends string, E = never>({
-  definition,
-  bootstrapAtom,
-  devOverrideAtom,
-  enableDevOverrides = false,
-}: FeatureFlagAtomOptions<A, E>): Atom.Atom<
-  AsyncResult.AsyncResult<FeatureFlagDecision<A>, E>
-> =>
-  Atom.make((get) =>
-    AsyncResult.map(get(bootstrapAtom), (bootstrap) => {
-      if (enableDevOverrides && devOverrideAtom !== undefined) {
-        const override = get(devOverrideAtom)
-        if (
-          override !== null &&
-          definition.variants.some(([value]) => value === override)
-        ) {
-          return {
-            key: definition.key,
-            value: override,
-            allocationVersion: definition.allocationVersion,
-            source: "dev-override" as const,
-          }
-        }
-      }
-      return evaluateFeatureFlag(definition, bootstrap.subjectId)
-    }),
-  )
