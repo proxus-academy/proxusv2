@@ -90,7 +90,9 @@ the same transaction.
 | GET | `/feature-flags/snapshot` | Read the complete active public configuration snapshot |
 
 Snapshots are immutable revisions and activation is atomic: clients never merge
-individual flags from different revisions. If persistence contains no active row,
+individual flags from different revisions. Configurations explicitly carry `enabled`;
+a disabled flag resolves to the frontend's known safe default. The first flag is
+`registration.landing` with the closed frontend variants `short` and `long`. If persistence contains no active row,
 the service returns revision `0` with an empty `flags` array. Responses include a
 revision-derived strong `ETag`, support the RFC weak comparison semantics of
 `If-None-Match` (including lists, weak tags and `*`) with `304`, and use
@@ -121,11 +123,12 @@ scoped to the HTTP stream and released on disconnect/interruption.
 | --- | --- | --- |
 | POST | `/product-analytics/events` | Best-effort batch ingestion (1–50 browser events) |
 
-The public contract accepts only `feature_flag_exposed` and
-`registration_cta_clicked`. Both carry `configurationRevision` so analysis can
-identify the exact distributed snapshot; the backend does not recalculate or
-verify frontend-only flag variants. `registration_completed` is server-only and is
-rejected by HTTP decoding. Consent and identity come from trusted transport
+The public contract accepts only `feature_flag_exposed`, `registration_started`
+and `registration_completed` for the registration landing vertical. Every event
+carries immutable `flagKey`, `variant` and `revision`; the envelope adds the subject
+resolved by trusted transport context. The backend rejects invalid subjects and
+reconstructs the local initial assignment when viable. Identity and consent are
+never trusted from the JSON body. Consent and identity come from trusted transport
 context, never from the payload. Production currently fails closed until that
 middleware exists. Development opt-in additionally requires matching `Origin`
 and `Host`, `Sec-Fetch-Site: same-origin`, and the explicit development consent

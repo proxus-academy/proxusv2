@@ -1,15 +1,17 @@
 import { defineFeatureFlag } from "./model.js"
 
-export const RegistrationCta = defineFeatureFlag({
-  key: "registration.cta",
+export const RegistrationLanding = defineFeatureFlag({
+  key: "registration.landing",
   allocationVersion: 1,
   assignmentUnit: "installation",
-  default: "control",
+  default: "short",
   variants: [
-    ["control", 5_000],
-    ["benefitCopy", 5_000],
+    ["short", 5_000],
+    ["long", 5_000],
   ],
 } as const)
 
-export type RegistrationCtaVariant =
-  (typeof RegistrationCta.variants)[number][0]
+/** @deprecated use RegistrationLanding. */
+export const RegistrationCta = RegistrationLanding
+export type RegistrationLandingVariant = (typeof RegistrationLanding.variants)[number][0]
+export type RegistrationCtaVariant = RegistrationLandingVariant

@@ -16,6 +16,7 @@ export type RegistrationOptionsState =
 interface Props {
   readonly path: RegistrationPath
   readonly options: RegistrationOptionsState
+  readonly landingVariant?: "short" | "long"
   readonly onSelect: (node: StudyNode) => void
   readonly onBack: () => void
   readonly onReset: () => void
@@ -25,7 +26,7 @@ const icon: Record<StudyNode["kind"], string> = {
   country: "🌍", type: "📚", university: "🎓", degree: "🧭", subject: "✏️",
 }
 
-export function RegistrationWizardView({ path, options, onSelect, onBack, onReset }: Props) {
+export function RegistrationWizardView({ path, options, landingVariant = "short", onSelect, onBack, onReset }: Props) {
   const m = useMessagesCatalog()
   const step = stepFromPath(path)
   const { title, description } = m.registration[step]
@@ -50,6 +51,7 @@ export function RegistrationWizardView({ path, options, onSelect, onBack, onRese
           ) : null}
           <Heading level={1}>{title}</Heading>
           <Text tone="muted" className="mt-2">{description}</Text>
+          {path.length === 0 && landingVariant === "long" ? <Text className="mt-4">Encuentra tu comunidad académica y personaliza tu recorrido en pocos pasos.</Text> : null}
         </header>
 
         <div className="flex-1">

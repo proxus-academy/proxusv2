@@ -24,7 +24,7 @@ describe("feature flag decision atom", () => {
     registry.set(snapshotAtom, AsyncResult.success(emptySnapshot))
     expect(registry.get(decisionAtom)).toMatchObject({
       _tag: "Success",
-      value: { value: "benefitCopy", source: "allocation" },
+      value: { value: "long", source: "allocation" },
     })
   })
 
@@ -32,14 +32,14 @@ describe("feature flag decision atom", () => {
     const registry = AtomRegistry.make()
     const remote = Atom.make(AsyncResult.success<FeatureFlagSnapshot>({
       configurationRevision: 1,
-      flags: [{ key: "registration.cta", allocationVersion: 2, default: "benefitCopy", variants: [{ value: "benefitCopy", weight: 10_000 }] }],
+      flags: [{ key: "registration.landing", enabled: true, allocationVersion: 2, default: "long", variants: [{ value: "long", weight: 10_000 }] }],
     }))
-    expect(AsyncResult.getOrThrow(registry.get(makeDecision(remote, null)))).toMatchObject({ value: "benefitCopy", allocationVersion: 2 })
+    expect(AsyncResult.getOrThrow(registry.get(makeDecision(remote, null)))).toMatchObject({ value: "long", allocationVersion: 2 })
 
     registry.set(remote, AsyncResult.success({
       configurationRevision: 2,
-      flags: [{ key: "registration.cta", allocationVersion: 3, default: "future", variants: [{ value: "future", weight: 10_000 }] }],
+      flags: [{ key: "registration.landing", enabled: true, allocationVersion: 3, default: "future", variants: [{ value: "future", weight: 10_000 }] }],
     }))
-    expect(AsyncResult.getOrThrow(registry.get(makeDecision(remote, validSubject)))).toMatchObject({ value: "control", source: "default" })
+    expect(AsyncResult.getOrThrow(registry.get(makeDecision(remote, validSubject)))).toMatchObject({ value: "short", source: "default" })
   })
 })

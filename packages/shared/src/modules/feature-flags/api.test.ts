@@ -4,7 +4,7 @@ import { FeatureFlagSnapshot, MaximumConfigurationRevision } from "./api.js"
 
 const valid = {
   configurationRevision: MaximumConfigurationRevision,
-  flags: [{ key: "registration.cta", allocationVersion: 1, default: "control", variants: [
+  flags: [{ key: "registration.cta", enabled: true, allocationVersion: 1, default: "control", variants: [
     { value: "control", weight: 5_000 }, { value: "benefitCopy", weight: 5_000 },
   ] }],
 }

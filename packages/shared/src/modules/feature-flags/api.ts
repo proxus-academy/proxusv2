@@ -15,6 +15,8 @@ export class FeatureFlagVariant extends Schema.Class<FeatureFlagVariant>("Featur
 
 export class FeatureFlagConfiguration extends Schema.Class<FeatureFlagConfiguration>("FeatureFlagConfiguration")({
   key: Schema.String.pipe(Schema.check(canonicalKey), Schema.check(Schema.isMaxLength(100))),
+  /** Disabled flags always resolve to their locally known default variant. */
+  enabled: Schema.Boolean,
   allocationVersion: positiveSafeInteger,
   default: nonEmptyBoundedString,
   variants: Schema.Array(FeatureFlagVariant).pipe(

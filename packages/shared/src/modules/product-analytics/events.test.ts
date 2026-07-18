@@ -1,15 +1,14 @@
-import { describe, expect, it } from "vitest"
 import { Schema } from "effect"
-import { MaximumConfigurationRevision } from "../feature-flags/api.js"
+import { describe, expect, it } from "vitest"
 import { RecordProductAnalyticsBatchRequest } from "./api.js"
 
+const decode = Schema.decodeUnknownSync(RecordProductAnalyticsBatchRequest)
 describe("product analytics contract", () => {
-  it("accepts only the closed, bounded event union", () => {
-    const decode = Schema.decodeUnknownSync(RecordProductAnalyticsBatchRequest)
-    expect(decode({ events: [{ _tag: "registration_cta_clicked", flagKey: "registration.cta", configurationRevision: MaximumConfigurationRevision, allocationVersion: 1, reportedVariant: "control" }] }).events).toHaveLength(1)
-    expect(() => decode({ events: [{ _tag: "registration_cta_clicked", flagKey: "registration.cta", configurationRevision: MaximumConfigurationRevision + 1, allocationVersion: 1, reportedVariant: "control" }] })).toThrow()
-    expect(() => decode({ events: [{ _tag: "registration_completed", source: "direct" }] })).toThrow()
-    expect(() => decode({ events: [{ _tag: "arbitrary", freeText: "pii" }] })).toThrow()
-    expect(() => decode({ events: [] })).toThrow()
+  it("accepts only the closed assignment-aware event union", () => {
+    const context = { flagKey: "registration.landing", revision: Number.MAX_SAFE_INTEGER, variant: "short" }
+    expect(decode({ events: [{ _tag: "registration_started", ...context }] }).events).toHaveLength(1)
+    expect(() => decode({ events: [{ _tag: "registration_started", ...context, revision: Number.MAX_SAFE_INTEGER + 1 }] })).toThrow()
+    expect(() => decode({ events: [{ _tag: "registration_cta_clicked", ...context }] })).toThrow()
+    expect(() => decode({ events: [{ _tag: "registration_completed", ...context, variant: "unknown" }] })).toThrow()
   })
 })

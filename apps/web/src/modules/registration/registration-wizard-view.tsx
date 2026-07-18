@@ -11,6 +11,7 @@ export type RegistrationOptionsState =
 export interface RegistrationWizardViewProps {
   readonly path: RegistrationPath
   readonly options: RegistrationOptionsState
+  readonly landingVariant?: "short" | "long"
   readonly onSelect: (node: StudyNode) => void
   readonly onBack: () => void
   readonly onReset: () => void
@@ -27,6 +28,7 @@ const nodeIcon: Record<StudyNode["kind"], string> = {
 export function RegistrationWizardView({
   path,
   options,
+  landingVariant = "short",
   onSelect,
   onBack,
   onReset,
@@ -47,6 +49,7 @@ export function RegistrationWizardView({
           <div className="mb-3 flex items-center justify-between"><Text className="font-bold text-primary">PROXUS</Text><LanguageSelector /></div>
           <Heading level={1}>{title}</Heading>
           <Text tone="muted" className="mt-3">{description}</Text>
+          {path.length === 0 && landingVariant === "long" ? <Text className="mx-auto mt-4 max-w-xl">Encuentra tu comunidad académica y personaliza tu recorrido en pocos pasos.</Text> : null}
         </header>
 
         {step === "complete" ? (

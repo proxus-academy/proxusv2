@@ -19,13 +19,13 @@ describe("feature flag evaluator", () => {
   })
 
   it.each([
-    ["00000000-0000-4000-8000-000000000001", 4_121, "control"],
-    ["00000000-0000-4000-8000-000000000002", 8_560, "benefitCopy"],
+    ["00000000-0000-4000-8000-000000000001", 3_678, "short"],
+    ["00000000-0000-4000-8000-000000000002", 6_059, "long"],
   ] as const)("keeps golden allocation for %s", (subject, bucket, value) => {
     const subjectId = makeFeatureFlagSubjectId(subject)
     expect(featureFlagBucket(RegistrationCta, subjectId)).toBe(bucket)
     expect(evaluateFeatureFlag(RegistrationCta, subject)).toEqual({
-      key: "registration.cta",
+      key: "registration.landing",
       value,
       allocationVersion: 1,
       source: "allocation",
@@ -43,7 +43,7 @@ describe("feature flag evaluator", () => {
       expect(parseFeatureFlagSubjectId(invalid)).toBeNull()
       expect(evaluateFeatureFlag(RegistrationCta, invalid).source).toBe("default")
     }
-    expect(evaluateFeatureFlag(RegistrationCta, null).value).toBe("control")
+    expect(evaluateFeatureFlag(RegistrationCta, null).value).toBe("short")
   })
 
   it("uses half-open variant intervals", () => {

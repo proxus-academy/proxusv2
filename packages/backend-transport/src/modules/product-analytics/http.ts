@@ -26,9 +26,13 @@ const isSameOriginDevelopmentRequest = (request: HttpServerRequest.HttpServerReq
 
 /** Development-only opt-in; requires browser same-origin evidence and is never composed in production. */
 export const ProductAnalyticsHttpContextDevelopment = Layer.succeed(ProductAnalyticsHttpContext, {
-  resolve: (request) => Effect.succeed({
-    consent: request.headers["x-proxus-dev-analytics-consent"] === "granted" && isSameOriginDevelopmentRequest(request) ? "granted" : "unknown",
-  }),
+  resolve: (request) => {
+    const flagSubjectId = request.headers["x-proxus-dev-flag-subject"]
+    return Effect.succeed({
+      consent: request.headers["x-proxus-dev-analytics-consent"] === "granted" && isSameOriginDevelopmentRequest(request) ? "granted" : "unknown",
+      ...(flagSubjectId === undefined ? {} : { flagSubjectId }),
+    })
+  },
 })
 
 export const PublicProductAnalyticsHandlers = HttpApiBuilder.group(PublicApi, "productAnalytics", Effect.fn(function* (handlers) {

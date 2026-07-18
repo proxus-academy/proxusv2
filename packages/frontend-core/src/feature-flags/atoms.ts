@@ -16,6 +16,7 @@ export const evaluateSnapshotFeatureFlag = <A extends string>(
 ): FeatureFlagDecision<A> => {
   const remote = snapshot.flags.find((flag) => flag.key === localDefinition.key)
   if (remote === undefined) return evaluateFeatureFlag(localDefinition, subjectId)
+  if (!remote.enabled) return evaluateFeatureFlag(localDefinition, null)
   const known = new Set(localDefinition.variants.map(([value]) => value))
   if (!known.has(remote.default as A) || remote.variants.some(({ value }) => !known.has(value as A))) {
     return evaluateFeatureFlag(localDefinition, null)

@@ -1,4 +1,5 @@
 import { Clock, DateTime, Effect, Fiber, Layer, Match, Queue, Random, Ref, Scope, Semaphore } from "effect"
+import { evaluateFeatureFlag, parseFeatureFlagSubjectId, RegistrationLanding } from "@proxus/shared/feature-flags"
 import type { ProductAnalyticsEvent } from "@proxus/shared/product-analytics"
 import type { ProductAnalyticsEnvelope } from "./model.js"
 import { ProductAnalyticsRepository, type ProductAnalyticsRepositoryError } from "./repository.js"
@@ -97,7 +98,12 @@ export const makeProductAnalyticsLive = (options: ProductAnalyticsOptions = defa
       recordBatch: Effect.fn("ProductAnalytics.recordBatch")(function* (events: ReadonlyArray<ProductAnalyticsEvent>, context) {
         if (context.consent !== "granted") return { accepted: 0, rejected: events.length, reason: "no-consent" as const }
         const nowMs = yield* Clock.currentTimeMillis
+        const subject = parseFeatureFlagSubjectId(context.flagSubjectId ?? null)
         const validEvents = events.filter((event) => {
+          if (subject === null || event.flagKey !== RegistrationLanding.key) return false
+          // The local definition is reconstructible for the initial revision. A future
+          // snapshot-history verifier can replace this without trusting the payload.
+          if (event.revision === 0 && evaluateFeatureFlag(RegistrationLanding, subject).value !== event.variant) return false
           if (event.occurredAt === undefined) return true
           const occurredAt = DateTime.toEpochMillis(event.occurredAt)
           return occurredAt >= nowMs - options.maximumPastSkewMs && occurredAt <= nowMs + options.maximumFutureSkewMs
@@ -108,7 +114,7 @@ export const makeProductAnalyticsLive = (options: ProductAnalyticsOptions = defa
         const envelopes = yield* Effect.forEach(validEvents, (event) => uuid.pipe(Effect.map((eventId): ProductAnalyticsEnvelope => ({
           eventId, receivedAt: now,
           ...(event.occurredAt === undefined ? {} : { occurredAt: DateTime.formatIso(event.occurredAt) }),
-          ...(context.analyticsSubjectId === undefined ? {} : { subjectId: context.analyticsSubjectId }),
+          subjectId: subject!, flagKey: event.flagKey, variant: event.variant, revision: event.revision,
           ...(context.sessionId === undefined ? {} : { sessionId: context.sessionId }), event,
         }))))
         const offered = yield* Semaphore.withPermit(lifecycle, Effect.gen(function*() {
