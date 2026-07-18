@@ -34,14 +34,17 @@ persistencia, orden o replay. Inicialmente contiene
 revisión. La lectura pública usa el servicio separado
 `FeatureFlagSnapshotReader`, que no depende del bus de eventos.
 
-`AppEventBus` es un dispatcher backend in-process y best-effort. Un registry
-estático y tipado selecciona reactions por tag; las ejecuta con concurrencia
-acotada y aislamiento de fallos para que una integración secundaria no rompa
-las demás ni el caso de uso ya persistido. El dispatcher espera a las reactions
-coincidentes, como el runner de la aplicación anterior, pero no promete
-persistencia ni entrega entre procesos. El primer reaction proyecta el
-evento de Feature Flags al contrato realtime público; analytics no es una
-reaction mientras no exista un evento backend analítico real.
+`AppEventBus` es un dispatcher backend in-process y best-effort. Los módulos
+aportan contributions tipadas que el composition root reúne en un registry
+estático; este selecciona reactions por tag. El bus usa una cola bounded: cuando
+se llena, `publish` aplica backpressure, y no completa hasta que todas las
+reactions coincidentes se han intentado. Las ejecuta con concurrencia acotada y
+aislamiento observable de fallos para que una integración secundaria no rompa
+las demás ni el caso de uso ya persistido. En shutdown deja de admitir eventos,
+intenta drenar la cola durante un timeout y reporta explícitamente cuántos se
+pierden si vence. No promete persistencia ni entrega entre procesos. El primer
+reaction proyecta el evento de Feature Flags al contrato realtime público;
+analytics no es una reaction mientras no exista un evento backend analítico real.
 
 ```text
 FeatureFlagSnapshotPublisher.publishSnapshot → repository.publish → AppEventBus
@@ -50,8 +53,10 @@ FeatureFlagSnapshotPublisher.publishSnapshot → repository.publish → AppEvent
                                                         → SSE clients
 ```
 
-El PubSub realtime es una infraestructura separada, acotada y freshness-first.
-No es el catálogo global, el bus ni una outbox. Si una reaction futura requiere
+`RealtimeBroker` es el port intercambiable de publicación/suscripción realtime;
+su adapter memory actual usa un PubSub scoped, acotado y freshness-first. La
+misma instancia de Layer se comparte entre reactions y handlers SSE, y libera
+suscripciones al desconectar. No es el catálogo global, el bus ni una outbox. Si una reaction futura requiere
 entrega durable, transacciones entre publicación y persistencia, replay o cruce
 de procesos, debe usar una outbox/broker explícito en vez de endurecer estas
 abstracciones in-memory.

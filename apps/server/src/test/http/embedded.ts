@@ -1,4 +1,4 @@
-import { AppEventBusLive } from "@proxus/backend-domain/app-events"
+import { AppEventBusLive, BackendReactionRegistryLive } from "@proxus/backend-domain/app-events"
 import { FeatureFlagSnapshotReaderLive } from "@proxus/backend-domain/feature-flags"
 import { ProductAnalyticsLive } from "@proxus/backend-domain/product-analytics"
 import { StudyCatalogLive } from "@proxus/backend-domain/study-catalog"
@@ -20,9 +20,15 @@ const EmbeddedPersistenceLive = Layer.mergeAll(
   FeatureFlagSnapshotRepositoryPgliteLive,
 ).pipe(Layer.provide(PgliteLive()))
 
-const EmbeddedReactionsLive = BackendRealtimeReactionsLive.pipe(Layer.provide(RealtimeEventsLive))
-const EmbeddedEventBusLive = AppEventBusLive.pipe(Layer.provide(EmbeddedReactionsLive))
-const EmbeddedEventSystemLive = Layer.mergeAll(RealtimeEventsLive, EmbeddedReactionsLive, EmbeddedEventBusLive)
+const EmbeddedContributionsLive = BackendRealtimeReactionsLive.pipe(Layer.provide(RealtimeEventsLive))
+const EmbeddedRegistryLive = BackendReactionRegistryLive.pipe(Layer.provide(EmbeddedContributionsLive))
+const EmbeddedEventBusLive = AppEventBusLive.pipe(Layer.provide(EmbeddedRegistryLive))
+const EmbeddedEventSystemLive = Layer.mergeAll(
+  RealtimeEventsLive,
+  EmbeddedContributionsLive,
+  EmbeddedRegistryLive,
+  EmbeddedEventBusLive,
+)
 const EmbeddedFeatureFlagsLive = FeatureFlagSnapshotReaderLive.pipe(Layer.provide(EmbeddedPersistenceLive))
 
 const EmbeddedRoutesLive = PublicApiRoutes.pipe(

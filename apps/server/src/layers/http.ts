@@ -2,7 +2,7 @@
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import { createServer } from "node:http"
 import * as NodeHttpServer from "@effect/platform-node/NodeHttpServer"
-import { AppEventBusLive } from "@proxus/backend-domain/app-events"
+import { AppEventBusLive, BackendReactionRegistryLive } from "@proxus/backend-domain/app-events"
 import { BackendRealtimeReactionsLive, makeRealtimeEventsLive } from "@proxus/backend-transport/realtime"
 import { Config, Effect, Layer } from "effect"
 import { HttpRouter } from "effect/unstable/http"
@@ -25,9 +25,10 @@ const RealtimeEventsConfiguredLive = Layer.unwrap(Effect.gen(function*() {
   return makeRealtimeEventsLive({ capacity, heartbeatIntervalMs })
 }))
 // Reuse these exact Layer values so the handler, reactions, and bus share one scoped broker.
-const ReactionsLive = BackendRealtimeReactionsLive.pipe(Layer.provide(RealtimeEventsConfiguredLive))
-const EventBusLive = AppEventBusLive.pipe(Layer.provide(ReactionsLive))
-const EventSystemLive = Layer.mergeAll(RealtimeEventsConfiguredLive, ReactionsLive, EventBusLive)
+const ContributionsLive = BackendRealtimeReactionsLive.pipe(Layer.provide(RealtimeEventsConfiguredLive))
+const RegistryLive = BackendReactionRegistryLive.pipe(Layer.provide(ContributionsLive))
+const EventBusLive = AppEventBusLive.pipe(Layer.provide(RegistryLive))
+const EventSystemLive = Layer.mergeAll(RealtimeEventsConfiguredLive, ContributionsLive, RegistryLive, EventBusLive)
 
 const makeHttpLive = <A, E, R>(application: Layer.Layer<A, E, R>) =>
   HttpRouter.serve(PublicApiRoutes.pipe(Layer.provide(application))).pipe(Layer.provide(NodeServerLive))
