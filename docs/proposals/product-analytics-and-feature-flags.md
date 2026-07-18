@@ -2,7 +2,7 @@
 
 ## Estado
 
-Propuesta en revisión. Define un primer vertical slice y sus invariantes; no convierte en requisito infraestructura o metodología que el piloto todavía no necesita.
+Implementada parcialmente y superada para feature flags por la decisión de snapshots frontend-only descrita al final. La sección histórica de cookie/verificación servidor no es normativa.
 
 ## Objetivo y límites
 
@@ -87,6 +87,8 @@ Entrada canónica:
 ```text
 proxus-ff:v1:<flag-key>:<allocation-version>:<subject-id>
 ```
+
+Para que este framing sea inequívoco, `flag-key` se valida como segmentos ASCII lowercase separados por puntos (`registration.cta`) y `subject-id` como UUID v4, normalizado a lowercase. Las definiciones solo se obtienen mediante un constructor que valida y copia de forma inmutable sus variantes; el evaluador no acepta definiciones estructurales sin validar.
 
 El algoritmo concreto se decide antes de implementar y fija UTF-8, bytes de salida, endianness y reducción al bucket `0..9_999`. No se usa `Math.random`, serialización de objetos ni conversión insegura de enteros mayores de 53 bits. Golden vectors compartidos prueban igualdad entre browser y Node, Unicode y límites de intervalos. No se añadirá rejection sampling salvo que la elección del hash muestre un sesgo relevante para el piloto.
 
@@ -329,3 +331,77 @@ Antes de ejecutar se comprobarán los scripts reales. No se presentarán `bounda
 4. Valores medidos de capacidad, batch, flush, timeout y retry.
 5. Evento outcome del piloto y si existe una fuente válida de asignación/elegibilidad.
 6. Requisitos operativos mínimos de BigQuery (tabla, permisos, readiness y borrado).
+
+## Decisión implementada: distribución frontend-only por snapshots (2026-07-16)
+
+La identidad de instalación se genera en el navegador y se conserva mediante el
+port `FeatureFlagInstallationIdentity`; el adapter web es el único módulo que
+conoce `localStorage` y Web Crypto. El backend no emite cookie, no conoce esa
+identidad y no recalcula variantes. Las flags siguen sin ser autoridad.
+
+PostgreSQL/PGlite guarda revisiones inmutables con la configuración pública
+completa. Un índice parcial garantiza una sola revisión activa y el cambio de
+revisión se realiza como una activación atómica, nunca por actualización parcial
+de flags. Ausencia de fila activa produce el snapshot vacío de revisión `0`.
+`GET /feature-flags/snapshot` distribuye el snapshot completo con ETag derivado de
+la revisión y cache pública revalidable. La publicación operativa valida un JSON
+completo y ejecuta `pnpm --filter @proxus/backend-infra db:publish-feature-flags
+<snapshot.json>` con `DATABASE_URL`; inserción y activación ocurren en una única
+transacción serializada. Un trigger impide modificar configuración, revisión o
+fecha de revisiones existentes. El rango persistido queda limitado al rango entero
+sin pérdida del wire (`0..Number.MAX_SAFE_INTEGER`) y el adapter lee `bigint` antes
+de convertirlo.
+
+Frontend-core conserva loading/error/success en el query atom y deriva decisiones
+sin copiar estado a React. Una key ausente usa su definición local. Si el snapshot
+contiene una variante desconocida para el bundle, o una configuración inválida,
+la decisión usa el fallback local seguro en vez de intentar renderizarla. Los
+eventos de exposición/click incluyen `configurationRevision`; analytics acepta el
+reporte como telemetría no autoritativa y ya no intenta verificarlo en backend.
+
+## Nota de implementación product analytics (2026-07-16)
+
+La composición productiva usa BigQuery de forma estricta y falla al arrancar si faltan
+`PRODUCT_ANALYTICS_BIGQUERY_PROJECT`, `PRODUCT_ANALYTICS_BIGQUERY_DATASET` o
+`PRODUCT_ANALYTICS_BIGQUERY_TABLE`; no existe fallback a memoria. La dependencia
+`@google-cloud/bigquery` está fijada y cada fila usa el `eventId` estable como `insertId`,
+sin prometer exactly-once.
+
+La activación productiva permanece **bloqueada**: todavía no existe middleware aprobado
+que resuelva consentimiento e identidad analítica ni están aprobadas retención, ubicación,
+acceso y borrado. Por ello la composition root productiva instala deliberadamente un
+contexto fail-closed (`consent: unknown`) y rechaza toda ingestión como `no-consent`, aunque
+el adapter BigQuery esté configurado. Desarrollo permite opt-in únicamente mediante el
+header explícitamente dev `x-proxus-dev-analytics-consent: granted` y evidencia browser
+same-origin (`Origin`/`Host` coincidentes y `Sec-Fetch-Site: same-origin`). El contrato
+HTTP excluye `registration_completed`: solo un productor server-side puede emitirlo.
+Las exposiciones sin una decisión recalculada desde identidad/configuración confiable se
+rechazan, igual que timestamps fuera del skew configurado.
+
+El cierre serializa el cambio a estado cerrado con la admisión. Una interrupción espera
+la escritura in-flight; el timeout se aplica al backlog restante, por lo que nunca se
+presenta como garantía de entrega. Los fallos parciales de BigQuery se correlacionan por
+`insertId`: solo se reintentan las filas fallidas con motivos transitorios. Memoria no
+evicta filas silenciosamente. El SDK Node de
+BigQuery no expone una operación de cierre; el cliente se construye una vez por Layer,
+pero no se finge un finalizer inexistente.
+
+## Decisión implementada: invalidación realtime SSE (2026-07-18)
+
+La publicación de un snapshot persiste primero y luego emite
+`FeatureFlagSnapshotPublished` al catálogo modular `BackendAppEvent`. El
+`AppEventBus` ejecuta un registry estático de reactions tipadas con aislamiento
+de errores. Catálogo y dispatcher son conceptos distintos: el primero es una
+unión de tipos; el segundo ejecuta las reactions locales coincidentes con
+concurrencia acotada y no promete transacción, replay, durabilidad ni entrega
+entre procesos.
+
+La única reaction inicial transforma el evento interno en
+`FeatureFlagSnapshotChanged { revision }` y lo publica en un PubSub realtime
+scoped, acotado y sliding. SSE no expone el snapshot ni el evento backend.
+`GET /realtime/events` se declara schema-first con
+`HttpApiSchema.StreamSse`, añade heartbeat y mantiene semántica de invalidación:
+el cliente obtiene el snapshot al arrancar/reconectar y vuelve a obtenerlo al
+recibir una revisión o detectar un hueco. No se implementan outbox ni replay
+durable. Product analytics permanece fuera del registry porque no existe aún un
+evento backend analítico real que justifique esa reaction.

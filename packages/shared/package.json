@@ -6,7 +6,10 @@
     "./api": "./src/api.ts",
     "./public-api": "./src/public-api.ts",
     "./admin-api": "./src/admin-api.ts",
-    "./study-catalog": "./src/modules/study-catalog/index.ts"
+    "./study-catalog": "./src/modules/study-catalog/index.ts",
+    "./feature-flags": "./src/modules/feature-flags/index.ts",
+    "./product-analytics": "./src/modules/product-analytics/index.ts",
+    "./realtime": "./src/modules/realtime/index.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",

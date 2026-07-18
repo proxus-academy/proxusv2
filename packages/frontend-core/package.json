@@ -6,6 +6,7 @@
     "./product-locale": "./src/product-locale/index.ts",
     "./registration": "./src/registration/index.ts",
     "./registration/testing": "./src/registration/testing.ts",
+    "./feature-flags": "./src/feature-flags/index.ts",
     "./routing": "./src/routing/index.ts",
     "./study-catalog": "./src/study-catalog/index.ts"
   },
