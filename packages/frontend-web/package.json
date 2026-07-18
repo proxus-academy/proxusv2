@@ -5,6 +5,7 @@
   "exports": {
     "./i18n": "./src/i18n/index.ts",
     "./registration": "./src/registration/index.ts",
+    "./routing": "./src/routing/index.ts",
     "./study-catalog": "./src/study-catalog/index.ts"
   },
   "scripts": {
