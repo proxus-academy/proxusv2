@@ -7,8 +7,7 @@
     "./theme.css": "./src/styles/theme.css"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit",
-    "test": "node -e \"process.exit(0)\""
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@fontsource/montserrat": "^5.2.8",

@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "storybook": "sh ./scripts/dev.sh",
+    "build": "pnpm build-storybook",
     "build-storybook": "storybook build",
     "typecheck": "tsc --noEmit"
   },
