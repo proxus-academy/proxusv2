@@ -48,6 +48,17 @@ describe("mobile registration view", () => {
     expect(html).toContain(text)
   })
 
+  it.each([
+    [{ _tag: "Initial" as const }, "Cargando experiencia de registro"],
+    [{ _tag: "Failure" as const }, "The service is unavailable"],
+    [{ _tag: "Success" as const, value: { variant: "long" as const } }, "Encuentra tu comunidad académica"],
+  ])("keeps landing assignment state visible %#", (landingAssignment, text) => {
+    const html = renderToStaticMarkup(
+      <RegistrationWizardView path={[]} options={{ _tag: "Success", value: [country] }} landingAssignment={landingAssignment} {...handlers} />,
+    )
+    expect(html).toContain(text)
+  })
+
   it("renders completion and the full selected path", () => {
     const subject = new SubjectNode({
       id: makeSubjectNodeId("20000000-0000-4000-8000-000000000002"),

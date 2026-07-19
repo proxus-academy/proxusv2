@@ -13,10 +13,15 @@ export type RegistrationOptionsState =
   | { readonly _tag: "Failure" }
   | { readonly _tag: "Initial" }
 
+export type RegistrationLandingState =
+  | { readonly _tag: "Success"; readonly value: { readonly variant: "short" | "long" } }
+  | { readonly _tag: "Failure" }
+  | { readonly _tag: "Initial" }
+
 interface Props {
   readonly path: RegistrationPath
   readonly options: RegistrationOptionsState
-  readonly landingVariant?: "short" | "long"
+  readonly landingAssignment?: RegistrationLandingState
   readonly onSelect: (node: StudyNode) => void
   readonly onBack: () => void
   readonly onReset: () => void
@@ -26,7 +31,7 @@ const icon: Record<StudyNode["kind"], string> = {
   country: "🌍", type: "📚", university: "🎓", degree: "🧭", subject: "✏️",
 }
 
-export function RegistrationWizardView({ path, options, landingVariant = "short", onSelect, onBack, onReset }: Props) {
+export function RegistrationWizardView({ path, options, landingAssignment = { _tag: "Success", value: { variant: "short" } }, onSelect, onBack, onReset }: Props) {
   const m = useMessagesCatalog()
   const step = stepFromPath(path)
   const { title, description } = m.registration[step]
@@ -51,7 +56,9 @@ export function RegistrationWizardView({ path, options, landingVariant = "short"
           ) : null}
           <Heading level={1}>{title}</Heading>
           <Text tone="muted" className="mt-2">{description}</Text>
-          {path.length === 0 && landingVariant === "long" ? <Text className="mt-4">Encuentra tu comunidad académica y personaliza tu recorrido en pocos pasos.</Text> : null}
+          {path.length === 0 && landingAssignment._tag === "Success" && landingAssignment.value.variant === "long" ? <Text className="mt-4">Encuentra tu comunidad académica y personaliza tu recorrido en pocos pasos.</Text> : null}
+          {path.length === 0 && landingAssignment._tag === "Initial" ? <Skeleton className="mt-4 h-5 w-72" aria-label="Cargando experiencia de registro" /> : null}
+          {path.length === 0 && landingAssignment._tag === "Failure" ? <Text role="alert" tone="muted" className="mt-4">{m.errors.unavailable}</Text> : null}
         </header>
 
         <div className="flex-1">

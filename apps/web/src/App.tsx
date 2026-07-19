@@ -4,5 +4,6 @@ import { RegistrationWizard } from "./modules/registration/registration-wizard.j
 
 export function App() {
   useAtomMount(composition.featureFlags.lifecycleAtom)
+  useAtomMount(composition.registration.exposureLifecycleAtom)
   return <RegistrationWizard />
 }

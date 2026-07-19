@@ -1,13 +1,13 @@
-import { makeFeatureFlagRealtimeAtoms } from "@proxus/frontend-core/feature-flags"
+import { makeFeatureFlagRealtimeAtoms, makeRegistrationLandingAtoms } from "@proxus/frontend-core/feature-flags"
 import { makeProductLocaleAtoms, type LocaleAtom } from "@proxus/frontend-core/product-locale"
 import { makeRegistrationAtoms } from "@proxus/frontend-core/registration"
 import { compile, index, makeRouterService, param, root, type DestinationOf } from "@proxus/frontend-core/routing"
-import { featureFlagRealtimeWebLayer } from "@proxus/frontend-web/feature-flags"
+import { FeatureFlagInstallationIdentityWebLive, featureFlagRealtimeWebLayer, registrationLandingAnalyticsWebLayer } from "@proxus/frontend-web/feature-flags"
 import { clearBrowserLocalePreference, persistBrowserLocale, preferredBrowserLocale } from "@proxus/frontend-web/product-locale"
 import { makeWebRegistrationPathAtom } from "@proxus/frontend-web/registration"
 import { browserRouterLayer } from "@proxus/frontend-web/routing"
 import { Locale, type Locale as LocaleType } from "@proxus/product-messages"
-import { Effect, ManagedRuntime } from "effect"
+import { Effect, Layer, ManagedRuntime } from "effect"
 import * as Atom from "effect/unstable/reactivity/Atom"
 
 const definition = root({ id: "root", children: [
@@ -55,8 +55,13 @@ export const makeAppComposition = Effect.gen(function*() {
     clearBrowserLocalePreference()
     get.set(locale.selectLocaleAtom, preferredBrowserLocale())
   })
-  const registration = makeRegistrationAtoms(makeWebRegistrationPathAtom(router))
+  const registrationPath = makeRegistrationAtoms(makeWebRegistrationPathAtom(router))
   const featureFlags = makeFeatureFlagRealtimeAtoms(featureFlagRealtimeWebLayer())
+  const registrationLanding = makeRegistrationLandingAtoms({
+    snapshotAtom: featureFlags.snapshotAtom,
+    layer: Layer.merge(FeatureFlagInstallationIdentityWebLive, registrationLandingAnalyticsWebLayer()),
+  })
+  const registration = { ...registrationPath, ...registrationLanding }
   return { router, locale: { ...locale, useDeviceLocaleAtom }, registration, featureFlags, dispose: () => runtime.dispose() }
 })
 

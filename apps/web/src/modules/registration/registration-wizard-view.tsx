@@ -8,10 +8,15 @@ export type RegistrationOptionsState =
   | { readonly _tag: "Failure" }
   | { readonly _tag: "Initial" }
 
+export type RegistrationLandingState =
+  | { readonly _tag: "Success"; readonly value: { readonly variant: "short" | "long" } }
+  | { readonly _tag: "Failure" }
+  | { readonly _tag: "Initial" }
+
 export interface RegistrationWizardViewProps {
   readonly path: RegistrationPath
   readonly options: RegistrationOptionsState
-  readonly landingVariant?: "short" | "long"
+  readonly landingAssignment?: RegistrationLandingState
   readonly onSelect: (node: StudyNode) => void
   readonly onBack: () => void
   readonly onReset: () => void
@@ -28,7 +33,7 @@ const nodeIcon: Record<StudyNode["kind"], string> = {
 export function RegistrationWizardView({
   path,
   options,
-  landingVariant = "short",
+  landingAssignment = { _tag: "Success", value: { variant: "short" } },
   onSelect,
   onBack,
   onReset,
@@ -49,7 +54,9 @@ export function RegistrationWizardView({
           <div className="mb-3 flex items-center justify-between"><Text className="font-bold text-primary">PROXUS</Text><LanguageSelector /></div>
           <Heading level={1}>{title}</Heading>
           <Text tone="muted" className="mt-3">{description}</Text>
-          {path.length === 0 && landingVariant === "long" ? <Text className="mx-auto mt-4 max-w-xl">Encuentra tu comunidad académica y personaliza tu recorrido en pocos pasos.</Text> : null}
+          {path.length === 0 && landingAssignment._tag === "Success" && landingAssignment.value.variant === "long" ? <Text className="mx-auto mt-4 max-w-xl">Encuentra tu comunidad académica y personaliza tu recorrido en pocos pasos.</Text> : null}
+          {path.length === 0 && landingAssignment._tag === "Initial" ? <Skeleton className="mx-auto mt-4 h-5 w-72" aria-label="Cargando experiencia de registro" /> : null}
+          {path.length === 0 && landingAssignment._tag === "Failure" ? <Text role="alert" tone="muted" className="mt-4">{m.errors.unavailable}</Text> : null}
         </header>
 
         {step === "complete" ? (

@@ -1,13 +1,15 @@
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { StudyNode } from "@proxus/shared/study-catalog"
-import { recordRegistrationAnalytics, resolveRegistrationLanding, type RegistrationLandingAssignment } from "@proxus/frontend-web/feature-flags"
 import { Effect, Layer } from "effect"
+import * as AsyncResult from "effect/unstable/reactivity/AsyncResult"
 import * as Atom from "effect/unstable/reactivity/Atom"
-import { useEffect, useState } from "react"
 import { childrenFamily, rootsAtom } from "../study-catalog/atoms.js"
 import {
+  assignmentAtom,
   goBackRegistrationAtom,
+  registrationCompletedAtom,
   registrationPathAtom,
+  registrationStartedAtom,
   resetRegistrationAtom,
   selectRegistrationNodeAtom,
 } from "./atoms.js"
@@ -19,20 +21,15 @@ const completedOptionsAtom = Atom.runtime(Layer.empty).atom(
 
 export function RegistrationWizard() {
   const path = useAtomValue(registrationPathAtom)
+  const assignment = useAtomValue(assignmentAtom)
   const selectNode = useAtomSet(selectRegistrationNodeAtom)
-  const [assignment, setAssignment] = useState<RegistrationLandingAssignment | null>(null)
-  useEffect(() => {
-    let active = true
-    void resolveRegistrationLanding().then((value) => {
-      if (!active) return
-      setAssignment(value)
-      void recordRegistrationAnalytics(value, "feature_flag_exposed")
-    })
-    return () => { active = false }
-  }, [])
+  const registrationStarted = useAtomSet(registrationStartedAtom)
+  const registrationCompleted = useAtomSet(registrationCompletedAtom)
   const onSelect = (node: StudyNode) => {
-    if (assignment !== null && path.length === 0) void recordRegistrationAnalytics(assignment, "registration_started")
-    if (assignment !== null && node.kind === "subject") void recordRegistrationAnalytics(assignment, "registration_completed")
+    if (AsyncResult.isSuccess(assignment)) {
+      if (path.length === 0) registrationStarted(assignment.value)
+      if (node.kind === "subject") registrationCompleted(assignment.value)
+    }
     selectNode(node)
   }
   const parent = path.at(-1)
@@ -48,7 +45,7 @@ export function RegistrationWizard() {
     <RegistrationWizardView
       path={path}
       options={options}
-      landingVariant={assignment?.variant ?? "short"}
+      landingAssignment={assignment}
       onSelect={onSelect}
       onBack={useAtomSet(goBackRegistrationAtom)}
       onReset={useAtomSet(resetRegistrationAtom)}
