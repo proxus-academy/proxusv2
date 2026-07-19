@@ -5,6 +5,7 @@
   "exports": {
     "./feature-flags": "./src/modules/feature-flags/index.ts",
     "./study-catalog": "./src/modules/study-catalog/index.ts",
+    "./lesson-plugins": "./src/modules/lesson-plugins/index.ts",
     "./product-analytics": "./src/modules/product-analytics/index.ts"
   },
   "scripts": {

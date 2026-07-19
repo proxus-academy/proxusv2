@@ -25,6 +25,23 @@ son frontend-only y no cruzan al backend.
 
 No todos los contexts necesitan todas las capas. No se crean packages, directorios ni wrappers vacíos para anticipar necesidades.
 
+### Lesson Plugins
+
+Lesson Plugins es el límite de extensibilidad para implementaciones confiables
+de tipos de lección compiladas con Proxus. `LessonTypeId` identifica un tipo
+pedagógico estable y namespaced, por ejemplo `com.proxus.lesson-counter`; no
+identifica una instancia de lección ni una revisión de contenido. Un
+`LessonPluginManifest` v1 declara identidad, versión del plugin, versión mínima
+del host y capabilities requeridas. Código ejecutable y configuración de
+runtime no forman parte del contrato portable.
+
+El backend compone `LessonPluginRegistry` desde una lista estática y explícita.
+La construcción de la Layer valida todos los manifests antes de exponer el
+registry y falla cerrada ante IDs duplicados, contratos o versiones inválidos,
+host incompatible o capabilities ausentes. Los plugins no se autorregistran al
+importarse. La fixture `com.proxus.lesson-counter` prueba este contrato sin
+introducir todavía persistencia, transporte, Folder, UI o generación.
+
 ## Distribución backend de Feature Flags entre procesos
 
 La publicación operativa se ejecuta en un proceso separado del servidor público.
