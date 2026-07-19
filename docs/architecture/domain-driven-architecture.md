@@ -107,7 +107,7 @@ Los handlers adaptan transporte, invocan servicios y convierten errores internos
 
 ## Infraestructura y persistencia
 
-`backend-infra` es el propietario único de database, schema Drizzle, migraciones, checks y seeds. Los adapters implementan ports de Domain sin introducir decisiones de producto. PGlite cubre desarrollo y tests rápidos; PostgreSQL cubre producción y desarrollo con dos procesos que deban compartir datos.
+`backend-infra` es el propietario único de database, schema Drizzle, migraciones, checks y seeds. Los adapters implementan ports de Domain sin introducir decisiones de producto. Cuando una política de visibilidad puede expresarse en la consulta, el port separa operaciones públicas y administrativas: Study Catalog filtra en Drizzle los nodos publicados y las relaciones cuyos dos extremos están publicados, mientras las operaciones administrativas permanecen sin filtrar. PGlite cubre desarrollo y tests rápidos; PostgreSQL cubre producción y desarrollo con dos procesos que deban compartir datos.
 
 Object storage permanece local al ejecutable mientras no implemente un port requerido por Domain. No se extrae una abstracción sin un consumidor real.
 

@@ -92,6 +92,10 @@ export class StudyCatalog extends Context.Service<
       nodeId: Id,
     ) => Effect.Effect<StudyNodeOfId<Id>, ReadStudyNodeError>
 
+    readonly getPublicNode: <Id extends StudyNodeId>(
+      nodeId: Id,
+    ) => Effect.Effect<StudyNodeOfId<Id>, ReadStudyNodeError>
+
     readonly renameNode: <Id extends StudyNodeId>(
       nodeId: Id,
       name: string,
@@ -119,12 +123,20 @@ export class StudyCatalog extends Context.Service<
       edgeId: StudyEdgeId,
     ) => Effect.Effect<StudyEdge, ReadStudyEdgeError>
 
+    readonly getPublicEdge: (
+      edgeId: StudyEdgeId,
+    ) => Effect.Effect<StudyEdge, ReadStudyEdgeError>
+
     readonly listOutgoingEdges: <Id extends StudyNodeId>(
       sourceNodeId: Id,
     ) => Effect.Effect<
       ReadonlyArray<StudyEdgesFromId<Id>>,
       ReadStudyNodeError
     >
+
+    readonly listPublicOutgoingEdges: <Id extends StudyNodeId>(
+      sourceNodeId: Id,
+    ) => Effect.Effect<ReadonlyArray<StudyEdgesFromId<Id>>, ReadStudyNodeError>
 
     readonly listIncomingEdges: <Id extends StudyNodeId>(
       targetNodeId: Id,
@@ -133,6 +145,10 @@ export class StudyCatalog extends Context.Service<
       ReadStudyNodeError
     >
 
+    readonly listPublicIncomingEdges: <Id extends StudyNodeId>(
+      targetNodeId: Id,
+    ) => Effect.Effect<ReadonlyArray<StudyEdgesToId<Id>>, ReadStudyNodeError>
+
     readonly listTargets: <Id extends StudyNodeId>(
       sourceNodeId: Id,
     ) => Effect.Effect<
@@ -140,12 +156,20 @@ export class StudyCatalog extends Context.Service<
       ReadStudyNodeError
     >
 
+    readonly listPublicTargets: <Id extends StudyNodeId>(
+      sourceNodeId: Id,
+    ) => Effect.Effect<ReadonlyArray<StudyNodeTargetsOfId<Id>>, ReadStudyNodeError>
+
     readonly listSources: <Id extends StudyNodeId>(
       targetNodeId: Id,
     ) => Effect.Effect<
       ReadonlyArray<StudyNodeSourcesOfId<Id>>,
       ReadStudyNodeError
     >
+
+    readonly listPublicSources: <Id extends StudyNodeId>(
+      targetNodeId: Id,
+    ) => Effect.Effect<ReadonlyArray<StudyNodeSourcesOfId<Id>>, ReadStudyNodeError>
   }
 >()(
   "@proxus/backend-domain/modules/study-catalog/service/StudyCatalog",

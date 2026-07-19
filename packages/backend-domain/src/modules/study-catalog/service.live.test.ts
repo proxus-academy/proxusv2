@@ -81,7 +81,9 @@ const withCatalog = <A, E>(
         listNodes: () => Effect.succeed([]),
         listCountries: () => Effect.succeed([]),
         findNodeById: () => Effect.succeed(Option.none()),
+        findPublishedNodeById: () => Effect.succeed(Option.none()),
         findEdgeById: () => Effect.succeed(Option.none()),
+        findPublishedEdgeById: () => Effect.succeed(Option.none()),
         createNode: (node) =>
           Ref.update(recorded, (state) => ({
             ...state,
@@ -110,10 +112,14 @@ const withCatalog = <A, E>(
         updateNodeStatus: (nodeId) =>
           Effect.fail(new StudyNodeNotFound({ nodeId })),
         listOutgoingEdges: () => Effect.succeed([]),
+        listPublishedOutgoingEdges: () => Effect.succeed([]),
         listIncomingEdges: () => Effect.succeed([]),
+        listPublishedIncomingEdges: () => Effect.succeed([]),
         listTargets: () => Effect.succeed([]),
+        listPublishedTargets: () => Effect.succeed([]),
         listChildren: () => Effect.succeed([]),
         listSources: () => Effect.succeed([]),
+        listPublishedSources: () => Effect.succeed([]),
       })
       const context = yield* Layer.build(
         StudyCatalogLive.pipe(
@@ -228,10 +234,21 @@ describe("StudyCatalogLive", () => {
             const missingNode = yield* catalog.getNode(countryId).pipe(Effect.flip)
             expect(missingNode._tag).toBe("StudyNodeNotFound")
 
-            const missingEdge = yield* catalog
-              .getEdge(makeStudyEdgeId("00000000-0000-4000-8000-000000000009"))
-              .pipe(Effect.flip)
+            const missingPublicNode = yield* catalog.getPublicNode(countryId).pipe(Effect.flip)
+            expect(missingPublicNode._tag).toBe("StudyNodeNotFound")
+            const missingPublicChildren = yield* catalog.listChildren(countryId).pipe(Effect.flip)
+            expect(missingPublicChildren._tag).toBe("StudyNodeNotFound")
+
+            const missingEdgeId = makeStudyEdgeId("00000000-0000-4000-8000-000000000009")
+            const missingEdge = yield* catalog.getEdge(missingEdgeId).pipe(Effect.flip)
             expect(missingEdge._tag).toBe("StudyEdgeNotFound")
+            const missingPublicEdge = yield* catalog.getPublicEdge(missingEdgeId).pipe(Effect.flip)
+            expect(missingPublicEdge._tag).toBe("StudyEdgeNotFound")
+
+            expect(yield* catalog.listPublicOutgoingEdges(countryId)).toEqual([])
+            expect(yield* catalog.listPublicIncomingEdges(typeId)).toEqual([])
+            expect(yield* catalog.listPublicTargets(countryId)).toEqual([])
+            expect(yield* catalog.listPublicSources(typeId)).toEqual([])
 
             const mismatch = yield* catalog
               .connect(

@@ -136,6 +136,15 @@ export const makeStudyCatalogRepositoryDrizzle = (db: StudyDatabase) => {
           Effect.map((node) => node as Option.Option<StudyNodeOfId<Id>>),
         )
 
+    const findPublishedNodeById = <Id extends StudyNodeId>(nodeId: Id) =>
+      db.select().from(studyNodes)
+        .where(and(eq(studyNodes.id, nodeId), eq(studyNodes.status, "published")))
+        .limit(1).pipe(
+          Effect.map((rows) => Option.fromUndefinedOr(rows[0]).pipe(Option.map(decodeNode))),
+          failRepository("findPublishedNodeById"),
+          Effect.map((node) => node as Option.Option<StudyNodeOfId<Id>>),
+        )
+
     const findEdgeById = (edgeId: StudyEdgeId) =>
       db
         .select()
@@ -146,6 +155,17 @@ export const makeStudyCatalogRepositoryDrizzle = (db: StudyDatabase) => {
           Effect.map((rows) => Option.fromUndefinedOr(rows[0]).pipe(Option.map(decodeEdge))),
           failRepository("findEdgeById"),
         )
+
+    const findPublishedEdgeById = (edgeId: StudyEdgeId) =>
+      findEdgeById(edgeId).pipe(Effect.flatMap(Option.match({
+        onNone: () => Effect.succeed(Option.none<StudyEdgeType>()),
+        onSome: (edge) => db.select({ id: studyNodes.id }).from(studyNodes)
+          .where(and(inArray(studyNodes.id, [edge.from, edge.to]), eq(studyNodes.status, "published")))
+          .pipe(
+            failRepository("findPublishedEdgeById"),
+            Effect.map((rows) => rows.length === 2 ? Option.some(edge) : Option.none()),
+          ),
+      })))
 
     const createNode = <Node extends StudyNodeType>(node: Node) =>
       db.insert(studyNodes).values(nodeValues(node)).returning().pipe(
@@ -328,6 +348,12 @@ export const makeStudyCatalogRepositoryDrizzle = (db: StudyDatabase) => {
         ),
       )
 
+    const ensurePublishedNode = (nodeId: StudyNodeId) =>
+      findPublishedNodeById(nodeId).pipe(Effect.flatMap(Option.match({
+        onNone: () => Effect.fail(new StudyNodeNotFound({ nodeId })),
+        onSome: Effect.succeed,
+      })))
+
     const listOutgoingEdges = <Id extends StudyNodeId>(
       sourceNodeId: Id,
     ) =>
@@ -343,6 +369,16 @@ export const makeStudyCatalogRepositoryDrizzle = (db: StudyDatabase) => {
         Effect.map((rows) => rows.map(decodeEdge) as unknown as ReadonlyArray<StudyEdgesFromId<Id>>),
       )
 
+    const listPublishedOutgoingEdges = <Id extends StudyNodeId>(sourceNodeId: Id) =>
+      ensurePublishedNode(sourceNodeId).pipe(
+        Effect.andThen(db.select({ edge: studyEdges }).from(studyEdges)
+          .innerJoin(studyNodes, eq(studyNodes.id, studyEdges.toNodeId))
+          .where(and(eq(studyEdges.fromNodeId, sourceNodeId), eq(studyNodes.status, "published")))
+          .orderBy(asc(studyEdges.position), asc(studyEdges.id))
+          .pipe(failRepository("listPublishedOutgoingEdges"))),
+        Effect.map((rows) => rows.map(({ edge }) => decodeEdge(edge)) as unknown as ReadonlyArray<StudyEdgesFromId<Id>>),
+      )
+
     const listIncomingEdges = <Id extends StudyNodeId>(
       targetNodeId: Id,
     ) =>
@@ -356,6 +392,16 @@ export const makeStudyCatalogRepositoryDrizzle = (db: StudyDatabase) => {
             .pipe(failRepository("listIncomingEdges")),
         ),
         Effect.map((rows) => rows.map(decodeEdge) as unknown as ReadonlyArray<StudyEdgesToId<Id>>),
+      )
+
+    const listPublishedIncomingEdges = <Id extends StudyNodeId>(targetNodeId: Id) =>
+      ensurePublishedNode(targetNodeId).pipe(
+        Effect.andThen(db.select({ edge: studyEdges }).from(studyEdges)
+          .innerJoin(studyNodes, eq(studyNodes.id, studyEdges.fromNodeId))
+          .where(and(eq(studyEdges.toNodeId, targetNodeId), eq(studyNodes.status, "published")))
+          .orderBy(asc(studyEdges.position), asc(studyEdges.id))
+          .pipe(failRepository("listPublishedIncomingEdges"))),
+        Effect.map((rows) => rows.map(({ edge }) => decodeEdge(edge)) as unknown as ReadonlyArray<StudyEdgesToId<Id>>),
       )
 
     const listTargets = <Id extends StudyNodeId>(sourceNodeId: Id) =>
@@ -375,6 +421,16 @@ export const makeStudyCatalogRepositoryDrizzle = (db: StudyDatabase) => {
               StudyNodeTargetsOfId<Id>
             >,
         ),
+      )
+
+    const listPublishedTargets = <Id extends StudyNodeId>(sourceNodeId: Id) =>
+      ensurePublishedNode(sourceNodeId).pipe(
+        Effect.andThen(db.select({ node: studyNodes }).from(studyEdges)
+          .innerJoin(studyNodes, eq(studyNodes.id, studyEdges.toNodeId))
+          .where(and(eq(studyEdges.fromNodeId, sourceNodeId), eq(studyNodes.status, "published")))
+          .orderBy(asc(studyEdges.position), asc(studyEdges.id))
+          .pipe(failRepository("listPublishedTargets"))),
+        Effect.map((rows) => rows.map(({ node }) => decodeNode(node)) as unknown as ReadonlyArray<StudyNodeTargetsOfId<Id>>),
       )
 
     const listChildren = <Id extends StudyNodeId>(input: {
@@ -410,6 +466,16 @@ export const makeStudyCatalogRepositoryDrizzle = (db: StudyDatabase) => {
         )
     }
 
+    const listPublishedSources = <Id extends StudyNodeId>(targetNodeId: Id) =>
+      ensurePublishedNode(targetNodeId).pipe(
+        Effect.andThen(db.select({ node: studyNodes }).from(studyEdges)
+          .innerJoin(studyNodes, eq(studyNodes.id, studyEdges.fromNodeId))
+          .where(and(eq(studyEdges.toNodeId, targetNodeId), eq(studyNodes.status, "published")))
+          .orderBy(asc(studyEdges.position), asc(studyEdges.id))
+          .pipe(failRepository("listPublishedSources"))),
+        Effect.map((rows) => rows.map(({ node }) => decodeNode(node)) as unknown as ReadonlyArray<StudyNodeSourcesOfId<Id>>),
+      )
+
     const listSources = <Id extends StudyNodeId>(targetNodeId: Id) =>
       ensureNode(targetNodeId).pipe(
         Effect.andThen(
@@ -433,7 +499,9 @@ export const makeStudyCatalogRepositoryDrizzle = (db: StudyDatabase) => {
       listNodes,
       listCountries,
       findNodeById,
+      findPublishedNodeById,
       findEdgeById,
+      findPublishedEdgeById,
       createNode,
       createEdge,
       updateEdge,
@@ -441,9 +509,13 @@ export const makeStudyCatalogRepositoryDrizzle = (db: StudyDatabase) => {
       renameNode,
       updateNodeStatus,
       listOutgoingEdges,
+      listPublishedOutgoingEdges,
       listIncomingEdges,
+      listPublishedIncomingEdges,
       listTargets,
+      listPublishedTargets,
       listChildren,
       listSources,
+      listPublishedSources,
     })
 }

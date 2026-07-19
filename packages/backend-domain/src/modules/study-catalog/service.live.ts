@@ -229,6 +229,12 @@ export const StudyCatalogLive: Layer.Layer<
         ),
       )
 
+    const getPublicNode = <Id extends StudyNodeId>(nodeId: Id): Effect.Effect<StudyNodeOfId<Id>, ReadStudyNodeError> =>
+      repository.findPublishedNodeById(nodeId).pipe(Effect.flatMap(Option.match({
+        onNone: () => Effect.fail(new StudyNodeNotFound({ nodeId })),
+        onSome: Effect.succeed,
+      })))
+
     const getEdge = (
       edgeId: StudyEdgeId,
     ): Effect.Effect<StudyEdge, ReadStudyEdgeError> =>
@@ -240,6 +246,12 @@ export const StudyCatalogLive: Layer.Layer<
           }),
         ),
       )
+
+    const getPublicEdge = (edgeId: StudyEdgeId): Effect.Effect<StudyEdge, ReadStudyEdgeError> =>
+      repository.findPublishedEdgeById(edgeId).pipe(Effect.flatMap(Option.match({
+        onNone: () => Effect.fail(new StudyEdgeNotFound({ edgeId })),
+        onSome: Effect.succeed,
+      })))
 
     const renameNode = <Id extends StudyNodeId>(
       nodeId: Id,
@@ -279,12 +291,18 @@ export const StudyCatalogLive: Layer.Layer<
       ReadStudyNodeError
     > => repository.listOutgoingEdges(sourceNodeId)
 
+    const listPublicOutgoingEdges = <Id extends StudyNodeId>(sourceNodeId: Id) =>
+      repository.listPublishedOutgoingEdges(sourceNodeId)
+
     const listIncomingEdges = <Id extends StudyNodeId>(
       targetNodeId: Id,
     ): Effect.Effect<
       ReadonlyArray<StudyEdgesToId<Id>>,
       ReadStudyNodeError
     > => repository.listIncomingEdges(targetNodeId)
+
+    const listPublicIncomingEdges = <Id extends StudyNodeId>(targetNodeId: Id) =>
+      repository.listPublishedIncomingEdges(targetNodeId)
 
     const listTargets = <Id extends StudyNodeId>(
       sourceNodeId: Id,
@@ -299,12 +317,15 @@ export const StudyCatalogLive: Layer.Layer<
       ReadonlyArray<StudyNodeTargetsOfId<Id>>,
       ReadStudyNodeError
     > =>
-      getNode(parentId).pipe(
+      getPublicNode(parentId).pipe(
         Effect.flatMap((parent) => repository.listChildren({
           parentId,
           relationshipKinds: childRelationshipsFor(parent.kind),
         })),
       )
+
+    const listPublicTargets = <Id extends StudyNodeId>(sourceNodeId: Id) =>
+      repository.listPublishedTargets(sourceNodeId)
 
     const listSources = <Id extends StudyNodeId>(
       targetNodeId: Id,
@@ -313,6 +334,9 @@ export const StudyCatalogLive: Layer.Layer<
       ReadStudyNodeError
     > => repository.listSources(targetNodeId)
 
+    const listPublicSources = <Id extends StudyNodeId>(targetNodeId: Id) =>
+      repository.listPublishedSources(targetNodeId)
+
     return StudyCatalog.of({
       listNodes,
       listCountries,
@@ -320,16 +344,22 @@ export const StudyCatalogLive: Layer.Layer<
       listChildren,
       createNode,
       getNode,
+      getPublicNode,
       renameNode,
       updateNodeStatus,
       connect,
       updateEdge,
       disconnect,
       getEdge,
+      getPublicEdge,
       listOutgoingEdges,
+      listPublicOutgoingEdges,
       listIncomingEdges,
+      listPublicIncomingEdges,
       listTargets,
+      listPublicTargets,
       listSources,
+      listPublicSources,
     })
   }),
 )

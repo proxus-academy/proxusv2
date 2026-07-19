@@ -45,10 +45,12 @@ export class StudyCatalogRepository extends Context.Service<
 
     readonly findNodeById: <Id extends StudyNodeId>(
       nodeId: Id,
-    ) => Effect.Effect<
-      Option.Option<StudyNodeOfId<Id>>,
-      StudyCatalogRepositoryError
-    >
+    ) => Effect.Effect<Option.Option<StudyNodeOfId<Id>>, StudyCatalogRepositoryError>
+
+    /** Public lookup: unpublished nodes are indistinguishable from missing nodes. */
+    readonly findPublishedNodeById: <Id extends StudyNodeId>(
+      nodeId: Id,
+    ) => Effect.Effect<Option.Option<StudyNodeOfId<Id>>, StudyCatalogRepositoryError>
 
     readonly findEdgeById: (
       edgeId: StudyEdgeId,
@@ -56,6 +58,11 @@ export class StudyCatalogRepository extends Context.Service<
       Option.Option<StudyEdge>,
       StudyCatalogRepositoryError
     >
+
+    /** Public lookup: an edge is visible only when both endpoint nodes are published. */
+    readonly findPublishedEdgeById: (
+      edgeId: StudyEdgeId,
+    ) => Effect.Effect<Option.Option<StudyEdge>, StudyCatalogRepositoryError>
 
     readonly createNode: <Node extends StudyNode>(
       node: Node,
@@ -116,6 +123,10 @@ export class StudyCatalogRepository extends Context.Service<
       StudyNodeNotFound | StudyCatalogRepositoryError
     >
 
+    readonly listPublishedOutgoingEdges: <Id extends StudyNodeId>(
+      sourceNodeId: Id,
+    ) => Effect.Effect<ReadonlyArray<StudyEdgesFromId<Id>>, StudyNodeNotFound | StudyCatalogRepositoryError>
+
     readonly listIncomingEdges: <Id extends StudyNodeId>(
       targetNodeId: Id,
     ) => Effect.Effect<
@@ -123,12 +134,20 @@ export class StudyCatalogRepository extends Context.Service<
       StudyNodeNotFound | StudyCatalogRepositoryError
     >
 
+    readonly listPublishedIncomingEdges: <Id extends StudyNodeId>(
+      targetNodeId: Id,
+    ) => Effect.Effect<ReadonlyArray<StudyEdgesToId<Id>>, StudyNodeNotFound | StudyCatalogRepositoryError>
+
     readonly listTargets: <Id extends StudyNodeId>(
       sourceNodeId: Id,
     ) => Effect.Effect<
       ReadonlyArray<StudyNodeTargetsOfId<Id>>,
       StudyNodeNotFound | StudyCatalogRepositoryError
     >
+
+    readonly listPublishedTargets: <Id extends StudyNodeId>(
+      sourceNodeId: Id,
+    ) => Effect.Effect<ReadonlyArray<StudyNodeTargetsOfId<Id>>, StudyNodeNotFound | StudyCatalogRepositoryError>
 
     readonly listChildren: <Id extends StudyNodeId>(
       input: {
@@ -139,6 +158,10 @@ export class StudyCatalogRepository extends Context.Service<
       ReadonlyArray<StudyNodeTargetsOfId<Id>>,
       StudyCatalogRepositoryError
     >
+
+    readonly listPublishedSources: <Id extends StudyNodeId>(
+      targetNodeId: Id,
+    ) => Effect.Effect<ReadonlyArray<StudyNodeSourcesOfId<Id>>, StudyNodeNotFound | StudyCatalogRepositoryError>
 
     readonly listSources: <Id extends StudyNodeId>(
       targetNodeId: Id,

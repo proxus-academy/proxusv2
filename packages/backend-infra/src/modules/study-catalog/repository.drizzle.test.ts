@@ -382,6 +382,31 @@ describe("StudyCatalogRepository Drizzle contract", () => {
           })).toEqual([])
           expect(sources).toEqual([country])
 
+          expect(Option.isNone(yield* repository.findPublishedNodeById(typeId))).toBe(true)
+          expect(Option.isNone(yield* repository.findPublishedEdgeById(edgeId))).toBe(true)
+          expect(yield* repository.listPublishedOutgoingEdges(countryId)).toEqual([])
+          expect(yield* repository.listPublishedTargets(countryId)).toEqual([])
+          expect((yield* repository.listPublishedIncomingEdges(typeId).pipe(Effect.flip))._tag).toBe("StudyNodeNotFound")
+          expect((yield* repository.listPublishedSources(typeId).pipe(Effect.flip))._tag).toBe("StudyNodeNotFound")
+
+          const publishedType = yield* repository.updateNodeStatus(typeId, "published", later)
+          expect(Option.getOrThrow(yield* repository.findPublishedNodeById(typeId))).toEqual(publishedType)
+          expect(Option.getOrThrow(yield* repository.findPublishedEdgeById(edgeId))).toEqual(createdEdge)
+          expect(yield* repository.listPublishedOutgoingEdges(countryId)).toEqual([createdEdge])
+          expect(yield* repository.listPublishedIncomingEdges(typeId)).toEqual([createdEdge])
+          expect(yield* repository.listPublishedTargets(countryId)).toEqual([publishedType])
+          expect(yield* repository.listPublishedSources(typeId)).toEqual([country])
+
+          yield* repository.updateNodeStatus(countryId, "archived", later)
+          expect(Option.isNone(yield* repository.findPublishedNodeById(countryId))).toBe(true)
+          expect(Option.isNone(yield* repository.findPublishedEdgeById(edgeId))).toBe(true)
+          expect((yield* repository.listPublishedOutgoingEdges(countryId).pipe(Effect.flip))._tag).toBe("StudyNodeNotFound")
+          expect((yield* repository.listPublishedTargets(countryId).pipe(Effect.flip))._tag).toBe("StudyNodeNotFound")
+          expect(yield* repository.listPublishedIncomingEdges(typeId)).toEqual([])
+          expect(yield* repository.listPublishedSources(typeId)).toEqual([])
+          expect(yield* repository.listOutgoingEdges(countryId)).toEqual([createdEdge])
+          expect(yield* repository.listIncomingEdges(typeId)).toEqual([createdEdge])
+
           const duplicate = yield* repository.createEdge(edge).pipe(Effect.flip)
           expect(duplicate._tag).toBe("StudyEdgeAlreadyExists")
 

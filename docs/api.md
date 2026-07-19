@@ -36,12 +36,17 @@ Prefix: `/study-catalog`
 | GET | `/nodes/:nodeId/targets` | List related target nodes |
 | GET | `/nodes/:nodeId/sources` | List related source nodes |
 
-`/countries` and `/nodes/children` expose published country roots and order them
-deterministically. `/nodes/children/:nodeId` first resolves the parent, selects
-its allowed relationship kinds exhaustively from the parent node kind, and
-returns only published children ordered by relationship position and ID. Other
-public graph reads will eventually restrict results to published catalog data;
-that broader publication policy is not implemented yet.
+Every public read exposes only published nodes. A graph edge is public only when
+both endpoint nodes are published. Node-based graph routes treat an unpublished
+anchor exactly like a missing node (`404`), and direct edge reads similarly hide
+edges with either unpublished endpoint. Lists filter this policy in persistence
+and preserve deterministic relationship position/ID ordering.
+
+`/countries` and `/nodes/children` expose published country roots.
+`/nodes/children/:nodeId` first resolves a published parent, selects its allowed
+relationship kinds exhaustively from the parent node kind, and returns only
+published children. Administrative reads remain unfiltered and can inspect all
+node statuses and their edges.
 
 ## Administrative study catalog
 
