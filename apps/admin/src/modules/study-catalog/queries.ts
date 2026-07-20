@@ -1,5 +1,11 @@
-import type { StudyEdge, StudyNode, StudyNodeId, StudyNodeKind, StudyNodeStatus } from "@proxus/shared/study-catalog"
-import { Effect } from "effect"
+import {
+  StudyNodeKind,
+  StudyNodeStatus,
+  type StudyEdge,
+  type StudyNode,
+  type StudyNodeId,
+} from "@proxus/shared/study-catalog"
+import { Effect, Schema } from "effect"
 import * as Atom from "effect/unstable/reactivity/Atom"
 import { AdminStudyCatalogClient } from "./api.js"
 import { studyCatalogRuntime } from "./runtime.js"
@@ -8,11 +14,13 @@ export type NodeKindFilter = StudyNodeKind
 export type NodeStatusFilter = StudyNodeStatus
 export type NodeFilterKey = `${NodeKindFilter}:${NodeStatusFilter}`
 
+const NodeFilterParts = Schema.Tuple([StudyNodeKind, StudyNodeStatus])
+
 export const nodesFamily = Atom.family((key: NodeFilterKey) =>
   studyCatalogRuntime.atom(
     Effect.gen(function*() {
       const catalog = yield* AdminStudyCatalogClient
-      const [kind, status] = key.split(":") as [NodeKindFilter, NodeStatusFilter]
+      const [kind, status] = yield* Schema.decodeUnknownEffect(NodeFilterParts)(key.split(":"))
       return yield* catalog.listNodes({ query: { kind, status } })
     }),
   ),

@@ -49,18 +49,32 @@ export const updateNodeStatusMutationFamily = Atom.family((nodeId: StudyNodeId) 
   ),
 )
 
-const refreshRelations = (get: { refresh: (atom: any) => void }, from: StudyNodeId, to: StudyNodeId) => {
-  get.refresh(outgoingRelationsFamily(from)); get.refresh(incomingRelationsFamily(to))
-}
-
 export interface ConnectNodesInput { readonly edge: unknown }
 export const connectNodesMutationFamily = Atom.family((nodeId: StudyNodeId) =>
   studyCatalogRuntime.fn(
     Effect.fnUntraced(function*(input: ConnectNodesInput, get) {
       const payload = yield* Schema.decodeUnknownEffect(CreateStudyEdgePayload)(input.edge)
       const catalog = yield* AdminStudyCatalogClient
-      const edge = yield* catalog.connect({ payload: payload as never })
-      refreshRelations(get, edge.from, edge.to)
+      let edge: StudyEdge
+      switch (payload._tag) {
+        case "CountryTypeEdge":
+          edge = yield* catalog.connect({ payload })
+          break
+        case "TypeUniversityEdge":
+          edge = yield* catalog.connect({ payload })
+          break
+        case "UniversityDegreeEdge":
+          edge = yield* catalog.connect({ payload })
+          break
+        case "UniversitySubjectEdge":
+          edge = yield* catalog.connect({ payload })
+          break
+        case "DegreeSubjectEdge":
+          edge = yield* catalog.connect({ payload })
+          break
+      }
+      get.refresh(outgoingRelationsFamily(edge.from))
+      get.refresh(incomingRelationsFamily(edge.to))
       return edge
     }),
   ),
@@ -79,8 +93,10 @@ export const updateEdgeMutationFamily = Atom.family((edgeId: StudyEdgeId) =>
       const payload = yield* Schema.decodeUnknownEffect(UpdateStudyEdgePayload)({ from: input.from, to: input.to, position: input.position })
       const catalog = yield* AdminStudyCatalogClient
       const edge = yield* catalog.updateEdge({ params: { edgeId }, payload })
-      refreshRelations(get, input.previousFrom, input.previousTo)
-      refreshRelations(get, edge.from, edge.to)
+      get.refresh(outgoingRelationsFamily(input.previousFrom))
+      get.refresh(incomingRelationsFamily(input.previousTo))
+      get.refresh(outgoingRelationsFamily(edge.from))
+      get.refresh(incomingRelationsFamily(edge.to))
       return edge
     }),
   ),
@@ -92,7 +108,8 @@ export const disconnectEdgeMutationFamily = Atom.family((edgeId: StudyEdgeId) =>
     Effect.fnUntraced(function*(input: DisconnectEdgeInput, get) {
       const catalog = yield* AdminStudyCatalogClient
       yield* catalog.disconnect({ params: { edgeId } })
-      refreshRelations(get, input.from, input.to)
+      get.refresh(outgoingRelationsFamily(input.from))
+      get.refresh(incomingRelationsFamily(input.to))
     }),
   ),
 )

@@ -1,5 +1,5 @@
 import { PgliteClient } from "@effect/sql-pglite"
-import { eq } from "drizzle-orm"
+import { eq, sql } from "drizzle-orm"
 import * as PgliteDrizzle from "drizzle-orm/effect-pglite"
 import {
   CountryNode,
@@ -19,14 +19,18 @@ import {
   makeUniversityNodeId,
 } from "@proxus/shared/study-catalog"
 import { describe, expect, test } from "vitest"
-import { DateTime, Effect, Layer, Option } from "effect"
+import { Context, DateTime, Effect, Layer, Option } from "effect"
 import { migratePglite } from "../../database/pglite.js"
 import {
   studyAssets,
   studyEdges,
   studyNodes,
 } from "../../database/schema.js"
-import { StudyCatalogRepository } from "@proxus/backend-domain/study-catalog"
+import {
+  StudyCatalog,
+  StudyCatalogLive,
+  StudyCatalogRepository,
+} from "@proxus/backend-domain/study-catalog"
 import { makeStudyCatalogRepositoryDrizzle } from "./repository.drizzle.js"
 import { StudyCatalogRepositoryPgliteLive } from "./repository.pglite.layer.js"
 
@@ -45,6 +49,9 @@ const degreeId = makeDegreeNodeId("00000000-0000-4000-8000-000000000005")
 const subjectId = makeSubjectNodeId("00000000-0000-4000-8000-000000000006")
 const secondTypeId = makeStudyTypeNodeId("00000000-0000-4000-8000-000000000007")
 const thirdTypeId = makeStudyTypeNodeId("00000000-0000-4000-8000-000000000008")
+const secondCountryId = makeCountryNodeId(
+  "00000000-0000-4000-8000-000000000009",
+)
 
 const country = new CountryNode({
   id: countryId,
@@ -124,6 +131,114 @@ describe("StudyCatalogRepository Drizzle contract", () => {
     ),
     15_000,
   )
+
+  test("maps an unexpectedly empty INSERT RETURNING result to a repository failure", () => {
+    const ClientLive = PgliteClient.layer()
+
+    return Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function*() {
+          const context = yield* Layer.build(ClientLive)
+          return yield* Effect.gen(function*() {
+            const db = yield* PgliteDrizzle.makeWithDefaults()
+            yield* migratePglite("./drizzle")
+            yield* db.execute(sql`
+              CREATE FUNCTION suppress_study_node_insert() RETURNS trigger AS $$
+              BEGIN
+                RETURN NULL;
+              END;
+              $$ LANGUAGE plpgsql
+            `)
+            yield* db.execute(sql`
+              CREATE TRIGGER suppress_study_node_insert
+              BEFORE INSERT ON ${studyNodes}
+              FOR EACH ROW EXECUTE FUNCTION suppress_study_node_insert()
+            `)
+
+            const repository = makeStudyCatalogRepositoryDrizzle(db)
+            const failure = yield* repository.createNode(country).pipe(Effect.flip)
+
+            expect(failure).toMatchObject({
+              _tag: "StudyCatalogRepositoryError",
+              operation: "createNode",
+              cause: { _tag: "MissingReturnedRow", operation: "createNode" },
+            })
+            expect(yield* db.select().from(studyNodes)).toEqual([])
+          }).pipe(Effect.provide(context))
+        }),
+      ),
+    )
+  }, 15_000)
+
+  test("decodes persisted node and edge discriminants without inferring kinds from branded IDs", () => {
+    const ClientLive = PgliteClient.layer()
+
+    return Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function*() {
+          const context = yield* Layer.build(ClientLive)
+          return yield* Effect.gen(function*() {
+            const db = yield* PgliteDrizzle.makeWithDefaults()
+            yield* migratePglite("./drizzle")
+            yield* db.insert(studyNodes).values([
+              {
+                id: countryId,
+                kind: "degree",
+                name: "Persisted degree",
+                imageAssetId: null,
+                status: "published",
+                createdAt: DateTime.toDateUtc(now),
+                updatedAt: DateTime.toDateUtc(now),
+              },
+              {
+                id: typeId,
+                kind: "subject",
+                name: "Persisted subject",
+                imageAssetId: null,
+                status: "published",
+                createdAt: DateTime.toDateUtc(now),
+                updatedAt: DateTime.toDateUtc(now),
+              },
+            ])
+            yield* db.insert(studyEdges).values({
+              id: edgeId,
+              kind: "CountryTypeEdge",
+              fromNodeId: countryId,
+              toNodeId: typeId,
+              position: 0,
+            })
+
+            const repository = makeStudyCatalogRepositoryDrizzle(db)
+            const storedNode = Option.getOrThrow(
+              yield* repository.findNodeById(countryId),
+            )
+            expect(storedNode).toBeInstanceOf(DegreeNode)
+            expect(storedNode.kind).toBe("degree")
+
+            const edgeFailure = yield* repository
+              .findEdgeById(edgeId)
+              .pipe(Effect.flip)
+            const outgoingFailure = yield* repository
+              .listOutgoingEdges(countryId)
+              .pipe(Effect.flip)
+            const targetFailure = yield* repository
+              .listTargets(countryId)
+              .pipe(Effect.flip)
+
+            expect(edgeFailure).toMatchObject({
+              _tag: "StudyCatalogRepositoryError",
+            })
+            expect(outgoingFailure).toMatchObject({
+              _tag: "StudyCatalogRepositoryError",
+            })
+            expect(targetFailure).toMatchObject({
+              _tag: "StudyCatalogRepositoryError",
+            })
+          }).pipe(Effect.provide(context))
+        }),
+      ),
+    )
+  }, 15_000)
 
   test("rejects persisted endpoint kinds that contradict the edge", () => {
     const ClientLive = PgliteClient.layer()
@@ -343,6 +458,142 @@ describe("StudyCatalogRepository Drizzle contract", () => {
             from: countryId, to: subjectId, position: 0,
           }).pipe(Effect.flip)
           expect(mismatch._tag).toBe("StudyEdgeEndpointKindMismatch")
+        }),
+      ),
+    ),
+    15_000,
+  )
+
+  test("applies complete public publication policy over the PGlite adapter", () =>
+    Effect.runPromise(
+      withRepository(
+        Effect.gen(function*() {
+          const repository = yield* StudyCatalogRepository
+          const publishedType = new StudyTypeNode({
+            ...studyType,
+            id: secondTypeId,
+            name: "Published studies",
+            status: "published",
+          })
+          yield* Effect.forEach(
+            [country, studyType, publishedType],
+            repository.createNode,
+            { discard: true },
+          )
+          const hiddenEdge = yield* repository.createEdge(
+            new CountryTypeEdge({
+              id: edgeId,
+              from: countryId,
+              to: typeId,
+              position: 0,
+            }),
+          )
+          const visibleEdge = yield* repository.createEdge(
+            new CountryTypeEdge({
+              id: makeStudyEdgeId(
+                "00000000-0000-4000-8000-000000000109",
+              ),
+              from: countryId,
+              to: secondTypeId,
+              position: 1,
+            }),
+          )
+          const catalog = yield* Effect.scoped(
+            Layer.build(StudyCatalogLive.pipe(
+              Layer.provide(Layer.succeed(
+                StudyCatalogRepository,
+                repository,
+              )),
+            )).pipe(Effect.map((service) =>
+              Context.get(service, StudyCatalog),
+            )),
+          )
+
+          expect(yield* catalog.getNode(typeId)).toEqual(studyType)
+          expect((yield* catalog.getPublishedNode(typeId).pipe(Effect.flip))._tag)
+            .toBe("StudyNodeNotFound")
+          expect(yield* catalog.getEdge(hiddenEdge.id)).toEqual(hiddenEdge)
+          expect((yield* catalog.getPublishedEdge(hiddenEdge.id).pipe(Effect.flip))._tag)
+            .toBe("StudyEdgeNotFound")
+          expect(yield* catalog.listPublishedOutgoingEdges(countryId)).toEqual([
+            visibleEdge,
+          ])
+          expect(yield* catalog.listPublishedTargets(countryId)).toEqual([
+            publishedType,
+          ])
+          expect((yield* catalog.listChildren(typeId).pipe(Effect.flip))._tag)
+            .toBe("StudyNodeNotFound")
+        }),
+      ),
+    ),
+    15_000,
+  )
+
+  test("serializes concurrent create, move and remove operations by source", () =>
+    Effect.runPromise(
+      withRepository(
+        Effect.gen(function*() {
+          const repository = yield* StudyCatalogRepository
+          const secondCountry = new CountryNode({
+            ...country,
+            id: secondCountryId,
+            name: "Portugal",
+          })
+          const secondType = new StudyTypeNode({
+            ...studyType,
+            id: secondTypeId,
+            name: "Vocational",
+          })
+          const thirdType = new StudyTypeNode({
+            ...studyType,
+            id: thirdTypeId,
+            name: "Languages",
+          })
+          yield* Effect.forEach(
+            [country, secondCountry, studyType, secondType, thirdType],
+            repository.createNode,
+            { discard: true },
+          )
+          const first = yield* repository.createEdge(new CountryTypeEdge({
+            id: edgeId,
+            from: countryId,
+            to: typeId,
+            position: 0,
+          }))
+          const second = yield* repository.createEdge(new CountryTypeEdge({
+            id: makeStudyEdgeId("00000000-0000-4000-8000-000000000107"),
+            from: countryId,
+            to: secondTypeId,
+            position: 0,
+          }))
+          const third = new CountryTypeEdge({
+            id: makeStudyEdgeId("00000000-0000-4000-8000-000000000108"),
+            from: countryId,
+            to: thirdTypeId,
+            position: 0,
+          })
+
+          yield* Effect.all([
+            repository.updateEdge(first.id, {
+              from: secondCountryId,
+              to: typeId,
+              position: 0,
+            }),
+            repository.removeEdge(second.id),
+            repository.createEdge(third),
+          ], { concurrency: "unbounded" })
+
+          expect(yield* repository.listOutgoingEdges(countryId)).toEqual([
+            new CountryTypeEdge({ ...third, position: 0 }),
+          ])
+          expect(yield* repository.listOutgoingEdges(secondCountryId)).toEqual([
+            new CountryTypeEdge({
+              id: first.id,
+              from: secondCountryId,
+              to: typeId,
+              position: 0,
+            }),
+          ])
         }),
       ),
     ),

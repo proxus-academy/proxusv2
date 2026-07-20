@@ -17,23 +17,17 @@ import {
   makeStudyTypeNodeId,
   makeSubjectNodeId,
   makeUniversityNodeId,
-  type CreatedStudyEdge,
-  type CreatedStudyNode,
   type CreateStudyEdgeInput,
   type CreateStudyNodeInput,
   type StudyEdge,
   type StudyEdgeId,
-  type StudyEdgesFromId,
-  type StudyEdgesToId,
+  type StudyNode,
   type StudyNodeId,
   type StudyNodeKind,
-  type StudyNodeOfId,
-  type StudyNodeSourcesOfId,
   type StudyNodeStatus,
-  type StudyNodeTargetsOfId,
   type UpdateStudyEdgePayload,
 } from "@proxus/shared/study-catalog"
-import { Clock, DateTime, Effect, Layer, Option, Random } from "effect"
+import { Array, Clock, DateTime, Effect, Layer, Option, Random } from "effect"
 import { childRelationshipsFor } from "./model.js"
 import {
   StudyCatalogRepository,
@@ -50,11 +44,16 @@ import {
 
 const randomUUIDv4 = Effect.gen(function*() {
   const bytes = yield* Effect.forEach(
-    Array.from({ length: 16 }),
-    () => Random.nextIntBetween(0, 255),
+    Array.makeBy(16, (index) => index),
+    (index) => Random.nextIntBetween(0, 255).pipe(
+      Effect.map((byte) =>
+        index === 6
+          ? (byte & 0x0f) | 0x40
+          : index === 8
+            ? (byte & 0x3f) | 0x80
+            : byte),
+    ),
   )
-  bytes[6] = (bytes[6]! & 0x0f) | 0x40
-  bytes[8] = (bytes[8]! & 0x3f) | 0x80
   const hex = bytes.map((byte) => byte.toString(16).padStart(2, "0"))
   return [
     hex.slice(0, 4).join(""),
@@ -82,9 +81,9 @@ export const StudyCatalogLive: Layer.Layer<
     const listCountries = () => repository.listCountries()
     const listRoots = () => repository.listCountries()
 
-    const createNode = <Input extends CreateStudyNodeInput>(
-      input: Input,
-    ): Effect.Effect<CreatedStudyNode<Input>, CreateStudyNodeError> =>
+    const createNode = (
+      input: CreateStudyNodeInput,
+    ): Effect.Effect<StudyNode, CreateStudyNodeError> =>
       Effect.gen(function*() {
         const now = DateTime.makeUnsafe(yield* Clock.currentTimeMillis)
 
@@ -150,11 +149,11 @@ export const StudyCatalogLive: Layer.Layer<
               }),
             )
         }
-      }).pipe(Effect.map((node) => node as CreatedStudyNode<Input>))
+      })
 
-    const connect = <Input extends CreateStudyEdgeInput>(
-      input: Input,
-    ): Effect.Effect<CreatedStudyEdge<Input>, ConnectStudyNodesError> =>
+    const connect = (
+      input: CreateStudyEdgeInput,
+    ): Effect.Effect<StudyEdge, ConnectStudyNodesError> =>
       Effect.gen(function*() {
         const id = makeStudyEdgeId(yield* randomUUIDv4)
 
@@ -210,22 +209,33 @@ export const StudyCatalogLive: Layer.Layer<
               input.position,
             )
         }
-      }).pipe(Effect.map((edge) => edge as CreatedStudyEdge<Input>))
+      })
 
     const updateEdge = (
       edgeId: StudyEdgeId,
       input: UpdateStudyEdgePayload,
     ) => repository.updateEdge(edgeId, input)
 
-    const getNode = <Id extends StudyNodeId>(
-      nodeId: Id,
-    ): Effect.Effect<StudyNodeOfId<Id>, ReadStudyNodeError> =>
+    const getNode = (
+      nodeId: StudyNodeId,
+    ): Effect.Effect<StudyNode, ReadStudyNodeError> =>
       repository.findNodeById(nodeId).pipe(
         Effect.flatMap(
           Option.match({
             onNone: () => Effect.fail(new StudyNodeNotFound({ nodeId })),
             onSome: Effect.succeed,
           }),
+        ),
+      )
+
+    const getPublishedNode = (
+      nodeId: StudyNodeId,
+    ): Effect.Effect<StudyNode, ReadStudyNodeError> =>
+      getNode(nodeId).pipe(
+        Effect.flatMap((node) =>
+          node.status === "published"
+            ? Effect.succeed(node)
+            : Effect.fail(new StudyNodeNotFound({ nodeId })),
         ),
       )
 
@@ -241,10 +251,45 @@ export const StudyCatalogLive: Layer.Layer<
         ),
       )
 
-    const renameNode = <Id extends StudyNodeId>(
-      nodeId: Id,
+    const nodeIsPublished = (nodeId: StudyNodeId) =>
+      repository.findNodeById(nodeId).pipe(
+        Effect.map(Option.exists((node) => node.status === "published")),
+      )
+
+    const edgeIsPublished = (edge: StudyEdge) =>
+      Effect.all([
+        nodeIsPublished(edge.from),
+        nodeIsPublished(edge.to),
+      ]).pipe(Effect.map(([source, target]) => source && target))
+
+    const filterPublishedEdges = (edges: ReadonlyArray<StudyEdge>) =>
+      Effect.forEach(edges, (edge) =>
+        edgeIsPublished(edge).pipe(
+          Effect.map((published) =>
+            published ? Option.some(edge) : Option.none<StudyEdge>(),
+          ),
+        ),
+      ).pipe(Effect.map(Array.getSomes))
+
+    const getPublishedEdge = (
+      edgeId: StudyEdgeId,
+    ): Effect.Effect<StudyEdge, ReadStudyEdgeError> =>
+      getEdge(edgeId).pipe(
+        Effect.flatMap((edge) =>
+          edgeIsPublished(edge).pipe(
+            Effect.flatMap((published) =>
+              published
+                ? Effect.succeed(edge)
+                : Effect.fail(new StudyEdgeNotFound({ edgeId })),
+            ),
+          ),
+        ),
+      )
+
+    const renameNode = (
+      nodeId: StudyNodeId,
       name: string,
-    ): Effect.Effect<StudyNodeOfId<Id>, UpdateStudyNodeError> =>
+    ): Effect.Effect<StudyNode, UpdateStudyNodeError> =>
       Clock.currentTimeMillis.pipe(
         Effect.flatMap((millis) =>
           repository.renameNode(
@@ -255,10 +300,10 @@ export const StudyCatalogLive: Layer.Layer<
         ),
       )
 
-    const updateNodeStatus = <Id extends StudyNodeId>(
-      nodeId: Id,
+    const updateNodeStatus = (
+      nodeId: StudyNodeId,
       status: StudyNodeStatus,
-    ): Effect.Effect<StudyNodeOfId<Id>, UpdateStudyNodeError> =>
+    ): Effect.Effect<StudyNode, UpdateStudyNodeError> =>
       Clock.currentTimeMillis.pipe(
         Effect.flatMap((millis) =>
           repository.updateNodeStatus(
@@ -272,46 +317,66 @@ export const StudyCatalogLive: Layer.Layer<
     const disconnect = (edgeId: StudyEdgeId) =>
       repository.removeEdge(edgeId)
 
-    const listOutgoingEdges = <Id extends StudyNodeId>(
-      sourceNodeId: Id,
-    ): Effect.Effect<
-      ReadonlyArray<StudyEdgesFromId<Id>>,
-      ReadStudyNodeError
-    > => repository.listOutgoingEdges(sourceNodeId)
+    const listOutgoingEdges = (
+      sourceNodeId: StudyNodeId,
+    ): Effect.Effect<ReadonlyArray<StudyEdge>, ReadStudyNodeError> =>
+      repository.listOutgoingEdges(sourceNodeId)
 
-    const listIncomingEdges = <Id extends StudyNodeId>(
-      targetNodeId: Id,
-    ): Effect.Effect<
-      ReadonlyArray<StudyEdgesToId<Id>>,
-      ReadStudyNodeError
-    > => repository.listIncomingEdges(targetNodeId)
+    const listIncomingEdges = (
+      targetNodeId: StudyNodeId,
+    ): Effect.Effect<ReadonlyArray<StudyEdge>, ReadStudyNodeError> =>
+      repository.listIncomingEdges(targetNodeId)
 
-    const listTargets = <Id extends StudyNodeId>(
-      sourceNodeId: Id,
-    ): Effect.Effect<
-      ReadonlyArray<StudyNodeTargetsOfId<Id>>,
-      ReadStudyNodeError
-    > => repository.listTargets(sourceNodeId)
+    const listTargets = (
+      sourceNodeId: StudyNodeId,
+    ): Effect.Effect<ReadonlyArray<StudyNode>, ReadStudyNodeError> =>
+      repository.listTargets(sourceNodeId)
 
-    const listChildren = <Id extends StudyNodeId>(
-      parentId: Id,
-    ): Effect.Effect<
-      ReadonlyArray<StudyNodeTargetsOfId<Id>>,
-      ReadStudyNodeError
-    > =>
-      getNode(parentId).pipe(
+    const listChildren = (
+      parentId: StudyNodeId,
+    ): Effect.Effect<ReadonlyArray<StudyNode>, ReadStudyNodeError> =>
+      getPublishedNode(parentId).pipe(
         Effect.flatMap((parent) => repository.listChildren({
           parentId,
           relationshipKinds: childRelationshipsFor(parent.kind),
         })),
+        Effect.map((nodes) =>
+          nodes.filter(({ status }) => status === "published"),
+        ),
       )
 
-    const listSources = <Id extends StudyNodeId>(
-      targetNodeId: Id,
-    ): Effect.Effect<
-      ReadonlyArray<StudyNodeSourcesOfId<Id>>,
-      ReadStudyNodeError
-    > => repository.listSources(targetNodeId)
+    const listSources = (
+      targetNodeId: StudyNodeId,
+    ): Effect.Effect<ReadonlyArray<StudyNode>, ReadStudyNodeError> =>
+      repository.listSources(targetNodeId)
+
+    const listPublishedOutgoingEdges = (sourceNodeId: StudyNodeId) =>
+      getPublishedNode(sourceNodeId).pipe(
+        Effect.andThen(repository.listOutgoingEdges(sourceNodeId)),
+        Effect.flatMap(filterPublishedEdges),
+      )
+
+    const listPublishedIncomingEdges = (targetNodeId: StudyNodeId) =>
+      getPublishedNode(targetNodeId).pipe(
+        Effect.andThen(repository.listIncomingEdges(targetNodeId)),
+        Effect.flatMap(filterPublishedEdges),
+      )
+
+    const listPublishedTargets = (sourceNodeId: StudyNodeId) =>
+      getPublishedNode(sourceNodeId).pipe(
+        Effect.andThen(repository.listTargets(sourceNodeId)),
+        Effect.map((nodes) =>
+          nodes.filter(({ status }) => status === "published"),
+        ),
+      )
+
+    const listPublishedSources = (targetNodeId: StudyNodeId) =>
+      getPublishedNode(targetNodeId).pipe(
+        Effect.andThen(repository.listSources(targetNodeId)),
+        Effect.map((nodes) =>
+          nodes.filter(({ status }) => status === "published"),
+        ),
+      )
 
     return StudyCatalog.of({
       listNodes,
@@ -320,16 +385,22 @@ export const StudyCatalogLive: Layer.Layer<
       listChildren,
       createNode,
       getNode,
+      getPublishedNode,
       renameNode,
       updateNodeStatus,
       connect,
       updateEdge,
       disconnect,
       getEdge,
+      getPublishedEdge,
       listOutgoingEdges,
       listIncomingEdges,
       listTargets,
       listSources,
+      listPublishedOutgoingEdges,
+      listPublishedIncomingEdges,
+      listPublishedTargets,
+      listPublishedSources,
     })
   }),
 )

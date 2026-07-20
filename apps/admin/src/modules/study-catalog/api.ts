@@ -4,7 +4,7 @@ import { FetchHttpClient } from "effect/unstable/http"
 import { HttpApiClient } from "effect/unstable/httpapi"
 
 type AdminClient = HttpApiClient.ForApi<typeof AdminApi>
-export class AdminHttpClient extends Context.Service<AdminHttpClient, AdminClient>()(
+class AdminHttpClient extends Context.Service<AdminHttpClient, AdminClient>()(
   "@proxus/admin/modules/study-catalog/api/AdminHttpClient",
 ) {}
 

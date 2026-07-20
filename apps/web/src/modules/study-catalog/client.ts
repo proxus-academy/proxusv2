@@ -1,5 +1,4 @@
 export {
-  PublicHttpClient,
   PublicStudyCatalogClient,
 } from "@proxus/frontend-core/study-catalog"
 export {

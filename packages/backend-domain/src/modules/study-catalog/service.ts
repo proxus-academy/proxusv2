@@ -1,7 +1,5 @@
 import type {
   CountryNode,
-  CreatedStudyEdge,
-  CreatedStudyNode,
   CreateStudyEdgeInput,
   CreateStudyNodeInput,
   StudyEdge,
@@ -9,16 +7,11 @@ import type {
   StudyEdgeEndpointKindMismatch,
   StudyEdgeId,
   StudyEdgeNotFound,
-  StudyEdgesFromId,
-  StudyEdgesToId,
   StudyNode,
   StudyNodeId,
   StudyNodeKind,
   StudyNodeNotFound,
-  StudyNodeOfId,
-  StudyNodeSourcesOfId,
   StudyNodeStatus,
-  StudyNodeTargetsOfId,
   UpdateStudyEdgePayload,
 } from "@proxus/shared/study-catalog"
 import { Context, Effect } from "effect"
@@ -77,34 +70,37 @@ export class StudyCatalog extends Context.Service<
       StudyCatalogRepositoryError
     >
 
-    readonly listChildren: <Id extends StudyNodeId>(
-      parentId: Id,
-    ) => Effect.Effect<
-      ReadonlyArray<StudyNodeTargetsOfId<Id>>,
-      ReadStudyNodeError
-    >
+    readonly listChildren: (
+      parentId: StudyNodeId,
+    ) => Effect.Effect<ReadonlyArray<StudyNode>, ReadStudyNodeError>
 
-    readonly createNode: <Input extends CreateStudyNodeInput>(
-      input: Input,
-    ) => Effect.Effect<CreatedStudyNode<Input>, CreateStudyNodeError>
+    readonly createNode: (
+      input: CreateStudyNodeInput,
+    ) => Effect.Effect<StudyNode, CreateStudyNodeError>
 
-    readonly getNode: <Id extends StudyNodeId>(
-      nodeId: Id,
-    ) => Effect.Effect<StudyNodeOfId<Id>, ReadStudyNodeError>
+    /** Administrative read: returns every persisted publication status. */
+    readonly getNode: (
+      nodeId: StudyNodeId,
+    ) => Effect.Effect<StudyNode, ReadStudyNodeError>
 
-    readonly renameNode: <Id extends StudyNodeId>(
-      nodeId: Id,
+    /** Public read: unpublished and archived nodes are indistinguishable from absence. */
+    readonly getPublishedNode: (
+      nodeId: StudyNodeId,
+    ) => Effect.Effect<StudyNode, ReadStudyNodeError>
+
+    readonly renameNode: (
+      nodeId: StudyNodeId,
       name: string,
-    ) => Effect.Effect<StudyNodeOfId<Id>, UpdateStudyNodeError>
+    ) => Effect.Effect<StudyNode, UpdateStudyNodeError>
 
-    readonly updateNodeStatus: <Id extends StudyNodeId>(
-      nodeId: Id,
+    readonly updateNodeStatus: (
+      nodeId: StudyNodeId,
       status: StudyNodeStatus,
-    ) => Effect.Effect<StudyNodeOfId<Id>, UpdateStudyNodeError>
+    ) => Effect.Effect<StudyNode, UpdateStudyNodeError>
 
-    readonly connect: <Input extends CreateStudyEdgeInput>(
-      input: Input,
-    ) => Effect.Effect<CreatedStudyEdge<Input>, ConnectStudyNodesError>
+    readonly connect: (
+      input: CreateStudyEdgeInput,
+    ) => Effect.Effect<StudyEdge, ConnectStudyNodesError>
 
     readonly updateEdge: (
       edgeId: StudyEdgeId,
@@ -115,37 +111,47 @@ export class StudyCatalog extends Context.Service<
       edgeId: StudyEdgeId,
     ) => Effect.Effect<void, DisconnectStudyNodesError>
 
+    /** Administrative read: does not apply publication filtering. */
     readonly getEdge: (
       edgeId: StudyEdgeId,
     ) => Effect.Effect<StudyEdge, ReadStudyEdgeError>
 
-    readonly listOutgoingEdges: <Id extends StudyNodeId>(
-      sourceNodeId: Id,
-    ) => Effect.Effect<
-      ReadonlyArray<StudyEdgesFromId<Id>>,
-      ReadStudyNodeError
-    >
+    /** Public read: visible only while both endpoint nodes are published. */
+    readonly getPublishedEdge: (
+      edgeId: StudyEdgeId,
+    ) => Effect.Effect<StudyEdge, ReadStudyEdgeError>
 
-    readonly listIncomingEdges: <Id extends StudyNodeId>(
-      targetNodeId: Id,
-    ) => Effect.Effect<
-      ReadonlyArray<StudyEdgesToId<Id>>,
-      ReadStudyNodeError
-    >
+    readonly listOutgoingEdges: (
+      sourceNodeId: StudyNodeId,
+    ) => Effect.Effect<ReadonlyArray<StudyEdge>, ReadStudyNodeError>
 
-    readonly listTargets: <Id extends StudyNodeId>(
-      sourceNodeId: Id,
-    ) => Effect.Effect<
-      ReadonlyArray<StudyNodeTargetsOfId<Id>>,
-      ReadStudyNodeError
-    >
+    readonly listIncomingEdges: (
+      targetNodeId: StudyNodeId,
+    ) => Effect.Effect<ReadonlyArray<StudyEdge>, ReadStudyNodeError>
 
-    readonly listSources: <Id extends StudyNodeId>(
-      targetNodeId: Id,
-    ) => Effect.Effect<
-      ReadonlyArray<StudyNodeSourcesOfId<Id>>,
-      ReadStudyNodeError
-    >
+    readonly listTargets: (
+      sourceNodeId: StudyNodeId,
+    ) => Effect.Effect<ReadonlyArray<StudyNode>, ReadStudyNodeError>
+
+    readonly listSources: (
+      targetNodeId: StudyNodeId,
+    ) => Effect.Effect<ReadonlyArray<StudyNode>, ReadStudyNodeError>
+
+    readonly listPublishedOutgoingEdges: (
+      sourceNodeId: StudyNodeId,
+    ) => Effect.Effect<ReadonlyArray<StudyEdge>, ReadStudyNodeError>
+
+    readonly listPublishedIncomingEdges: (
+      targetNodeId: StudyNodeId,
+    ) => Effect.Effect<ReadonlyArray<StudyEdge>, ReadStudyNodeError>
+
+    readonly listPublishedTargets: (
+      sourceNodeId: StudyNodeId,
+    ) => Effect.Effect<ReadonlyArray<StudyNode>, ReadStudyNodeError>
+
+    readonly listPublishedSources: (
+      targetNodeId: StudyNodeId,
+    ) => Effect.Effect<ReadonlyArray<StudyNode>, ReadStudyNodeError>
   }
 >()(
   "@proxus/backend-domain/modules/study-catalog/service/StudyCatalog",

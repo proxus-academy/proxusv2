@@ -2,7 +2,7 @@
 
 > **Estado:** normativa de arquitectura
 > **Alcance:** backend Effect, contratos compartidos y procesos ejecutables  
-> **Última revisión:** 2026-07-16
+> **Última revisión:** 2026-07-20
 
 ## Organización
 
@@ -18,48 +18,32 @@ packages/backend-admin-transport/src/modules/study-catalog/ HTTP administrativo
 
 Feature Flags usa el mismo flujo completo para distribuir snapshots públicos:
 `shared` define el wire snapshot, Domain lee el snapshot activo mediante un
-repository port, Infra persiste revisiones completas en PostgreSQL/PGlite y el
-transport público aplica caché HTTP. La identidad de instalación y la evaluación
+repository port, Infra persiste revisiones completas en PostgreSQL (y usa
+PGlite solo dentro de un proceso de desarrollo/test) y el transport público
+aplica caché HTTP. La identidad de instalación y la evaluación
 son frontend-only y no cruzan al backend.
 
 No todos los contexts necesitan todas las capas. No se crean packages, directorios ni wrappers vacíos para anticipar necesidades.
 
-## Eventos backend y reactions
+## Distribución backend de Feature Flags entre procesos
 
-`BackendAppEvent` es el catálogo global tipado, compuesto desde uniones de
-eventos propiedad de cada módulo; no representa una cola física ni promete
-persistencia, orden o replay. Inicialmente contiene
-`FeatureFlagSnapshotPublished`, emitido por
-`FeatureFlagSnapshotPublisher.publishSnapshot` después de persistir y activar la
-revisión. La lectura pública usa el servicio separado
-`FeatureFlagSnapshotReader`, que no depende del bus de eventos.
-
-`AppEventBus` es un dispatcher backend in-process y best-effort. Los módulos
-aportan contributions tipadas que el composition root reúne en un registry
-estático; este selecciona reactions por tag. El bus usa una cola bounded: cuando
-se llena, `publish` aplica backpressure, y no completa hasta que todas las
-reactions coincidentes se han intentado. Las ejecuta con concurrencia acotada y
-aislamiento observable de fallos para que una integración secundaria no rompa
-las demás ni el caso de uso ya persistido. En shutdown deja de admitir eventos,
-intenta drenar la cola durante un timeout y reporta explícitamente cuántos se
-pierden si vence. No promete persistencia ni entrega entre procesos. El primer
-reaction proyecta el evento de Feature Flags al contrato realtime público;
-analytics no es una reaction mientras no exista un evento backend analítico real.
+La publicación operativa se ejecuta en un proceso separado del servidor público.
+Ese comando valida el snapshot publicable completo con `Schema`, rechaza la
+revisión sintética `0`, comprueba que no haya migraciones pendientes y usa el
+repository port para insertar y activar la revisión atómicamente. El servidor
+público solo compone `FeatureFlagSnapshotReader` y lee la revisión activa desde
+la misma base de datos PostgreSQL.
 
 ```text
-FeatureFlagSnapshotPublisher.publishSnapshot → repository.publish → AppEventBus
-                                                    → realtime reaction
-                                                      → scoped PubSub
-                                                        → SSE clients
+publisher process → repository.publish → PostgreSQL
+                                      ← repository.readActive ← public HTTP process
 ```
 
-`RealtimeBroker` es el port intercambiable de publicación/suscripción realtime;
-su adapter memory actual usa un PubSub scoped, acotado y freshness-first. La
-misma instancia de Layer se comparte entre reactions y handlers SSE, y libera
-suscripciones al desconectar. El port permanece independiente del adapter memory para permitir un adapter Redis futuro sin cambiar reactions ni handlers. No es el catálogo global, el bus ni una outbox. Si una reaction futura requiere
-entrega durable, transacciones entre publicación y persistencia, replay o cruce
-de procesos, debe usar una outbox/broker explícito en vez de endurecer estas
-abstracciones in-memory.
+PostgreSQL es el mecanismo de distribución entre procesos. No existe un canal
+push in-process: no podría observar publicaciones efectuadas por el proceso real
+y añadiría una falsa garantía de entrega. Los clientes obtienen el snapshot por
+HTTP y revalidan con `If-None-Match`; `ETag` y `Cache-Control` mantienen la
+lectura pull-based eficiente sin introducir outbox, broker ni stream público.
 
 ## Packages y ejecutables
 
@@ -92,7 +76,10 @@ shared ← backend-domain ← backend-transport ← apps/server
 Restricciones:
 
 - Domain no importa HttpApi, SQL, Drizzle, Node ni SDKs cloud.
+- Shared y Domain solo admiten `effect` en runtime y `vitest` desde tests como dependencias externas normativas.
 - Los transports no importan Infra ni repositories concretos.
+- El transport público no importa el transport administrativo ni `AdminApi`; el administrativo no importa el transport público ni `PublicApi`.
+- `PublicApi` y `AdminApi` no se importan mutuamente; solo el agregado no productivo `ProxusApi` conoce ambos.
 - Infra no importa transports.
 - `apps/server` no importa `AdminApi` ni el transport administrativo.
 - `apps/admin-server` no importa `PublicApi` ni el transport público.
@@ -103,17 +90,17 @@ Restricciones:
 
 `packages/shared` contiene únicamente lo que cruza el límite proceso/cliente: IDs y modelos públicos, requests, responses, errores estables y contratos HttpApi. No contiene filas SQL, configuración del servidor ni implementación de repositories.
 
-Los handlers adaptan transporte, invocan servicios y convierten errores internos a respuestas públicas seguras. La autorización de producto pertenece al servicio; el transporte obtendrá una identidad verificada cuando se implemente el control de acceso. Realtime ya define el seam de scope verificado completo (principal/user, sesión, roles y permisos): mientras no exista auth real, solo se admite el stream público de hints anónimos y cualquier stream privado debe fallar cerrado.
+Los handlers adaptan transporte, invocan servicios y convierten errores internos a respuestas públicas seguras. La autorización de producto pertenece al servicio; el transporte obtendrá una identidad verificada cuando se implemente el control de acceso. No se anticipan canales privados ni scopes de conexión mientras no existan autenticación y un caso de uso reales.
 
 ## Infraestructura y persistencia
 
-`backend-infra` es el propietario único de database, schema Drizzle, migraciones, checks y seeds. Los adapters implementan ports de Domain sin introducir decisiones de producto. PGlite cubre desarrollo y tests rápidos; PostgreSQL cubre producción y desarrollo con dos procesos que deban compartir datos.
+`backend-infra` es el propietario único de database, schema Drizzle, migraciones, checks y seeds. Los adapters implementan ports de Domain sin introducir decisiones de producto. PGlite cubre desarrollo y tests rápidos dentro de un único proceso; PostgreSQL cubre producción y cualquier desarrollo con dos procesos que deban compartir datos. No se ejecutan servidor y publisher simultáneamente contra un mismo `PGLITE_DATA_DIR`.
 
 Object storage permanece local al ejecutable mientras no implemente un port requerido por Domain. No se extrae una abstracción sin un consumidor real.
 
 ## Frontend
 
-Los clientes públicos se generan desde `PublicApi`. Admin compone un cliente `AdminApi` para mutaciones/consultas administrativas y otro `PublicApi` para lecturas públicas, con URLs distintas. El flujo es:
+Los clientes públicos se generan desde `PublicApi`. Admin compone un cliente `AdminApi` para mutaciones/consultas administrativas y otro `PublicApi` para lecturas públicas, con URLs distintas. Feature Flags se lee únicamente mediante el port `FeatureFlagDistribution` y el `snapshotAtom` creado por `makeFeatureFlagSnapshotModule`; su `lifecycleAtom` hace polling scoped en la raíz de cada aplicación y el adapter web usa el cliente HTTP tipado y la caché condicional del navegador. El flujo es:
 
 ```text
 view → atom → application client o platform port → adapter
@@ -123,10 +110,10 @@ La lógica neutral vive en `frontend-core`, los adapters web en `frontend-web` y
 
 ## Testing
 
-- Domain: modelo y servicio con repository memory.
-- Infra: contrato de repository, constraints, migraciones y seeds con PGlite/PostgreSQL.
-- Transports: servicio sustituido en su interface; adaptación, status y errores.
-- Composition roots: clientes tipados, persistencia real y ausencia de rutas cruzadas.
+- Domain: modelo y servicio con repository memory, incluida la política pública de nodos/edges publicados y lecturas admin sin ese filtro.
+- Infra: contrato de repository, constraints, upgrades poblados, locks de sources y seeds con PGlite; el gate mínimo PostgreSQL 17 valida además el driver real, migraciones, Feature Flags y el orden global source(s)-antes-de-edge con inserts, update/remove y retry tras cambio concurrente de source según `docs/testing.md`.
+- Transports: servicio sustituido en su interface; adaptación, status y errores. Feature Flags cubre `If-None-Match`, `200`, `304` y el `500` seguro.
+- Composition roots: clientes tipados, persistencia real, ausencia de rutas cruzadas y límite raw de 256 KiB anterior al decoder con respuesta 413.
 - Frontend: atoms con Layers de test y comportamiento observable de componentes.
 
-No se presentan `boundaries` ni `verify:architecture` como checks disponibles hasta que existan scripts reales en el workspace.
+`pnpm boundaries` aplica estas direcciones y la separación public/admin con dependency-cruiser, excluyendo árboles generados. No se presenta `verify:architecture` como check disponible porque no existe ese script en el workspace.
