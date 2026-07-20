@@ -1,4 +1,5 @@
 import { ProductAnalytics, type ProductAnalyticsContext } from "@proxus/backend-domain/product-analytics"
+import { RecordProductAnalyticsBatchResponse } from "@proxus/shared/product-analytics"
 import { PublicApi } from "@proxus/shared/public-api"
 import { Context, Effect, Layer } from "effect"
 import { HttpServerRequest } from "effect/unstable/http"
@@ -40,6 +41,7 @@ export const PublicProductAnalyticsHandlers = HttpApiBuilder.group(PublicApi, "p
   const context = yield* ProductAnalyticsHttpContext
   return handlers.handle("recordBatch", ({ payload }) => Effect.gen(function*() {
     const request = yield* HttpServerRequest.HttpServerRequest
-    return yield* analytics.recordBatch(payload.events, yield* context.resolve(request))
+    const result = yield* analytics.recordBatch(payload.events, yield* context.resolve(request))
+    return new RecordProductAnalyticsBatchResponse(result)
   }))
 }))

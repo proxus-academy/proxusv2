@@ -1,4 +1,3 @@
-import { AppEventBusLive, BackendReactionRegistryLive } from "@proxus/backend-domain/app-events"
 import { FeatureFlagSnapshotReaderLive } from "@proxus/backend-domain/feature-flags"
 import { ProductAnalyticsLive } from "@proxus/backend-domain/product-analytics"
 import { StudyCatalogLive } from "@proxus/backend-domain/study-catalog"
@@ -7,7 +6,6 @@ import { FeatureFlagSnapshotRepositoryPgliteLive } from "@proxus/backend-infra/f
 import { ProductAnalyticsRepositoryMemory } from "@proxus/backend-infra/product-analytics/memory"
 import { StudyCatalogRepositoryPgliteLive } from "@proxus/backend-infra/study-catalog/pglite"
 import { ProductAnalyticsHttpContextFailClosed } from "@proxus/backend-transport/product-analytics"
-import { BackendRealtimeReactionsLive, RealtimeEventsLive } from "@proxus/backend-transport/realtime"
 import { PublicApi } from "@proxus/shared/public-api"
 import { Effect, Layer } from "effect"
 import { FetchHttpClient, HttpRouter, HttpServer } from "effect/unstable/http"
@@ -20,22 +18,12 @@ const EmbeddedPersistenceLive = Layer.mergeAll(
   FeatureFlagSnapshotRepositoryPgliteLive,
 ).pipe(Layer.provide(PgliteLive()))
 
-const EmbeddedContributionsLive = BackendRealtimeReactionsLive.pipe(Layer.provide(RealtimeEventsLive))
-const EmbeddedRegistryLive = BackendReactionRegistryLive.pipe(Layer.provide(EmbeddedContributionsLive))
-const EmbeddedEventBusLive = AppEventBusLive.pipe(Layer.provide(EmbeddedRegistryLive))
-const EmbeddedEventSystemLive = Layer.mergeAll(
-  RealtimeEventsLive,
-  EmbeddedContributionsLive,
-  EmbeddedRegistryLive,
-  EmbeddedEventBusLive,
-)
 const EmbeddedFeatureFlagsLive = FeatureFlagSnapshotReaderLive.pipe(Layer.provide(EmbeddedPersistenceLive))
 
 const EmbeddedRoutesLive = PublicApiRoutes.pipe(
   Layer.provide(Layer.mergeAll(
     StudyCatalogLive.pipe(Layer.provide(EmbeddedPersistenceLive)),
     EmbeddedFeatureFlagsLive,
-    EmbeddedEventSystemLive,
     ProductAnalyticsLive.pipe(Layer.provide(ProductAnalyticsRepositoryMemory)),
     ProductAnalyticsHttpContextFailClosed,
   )),

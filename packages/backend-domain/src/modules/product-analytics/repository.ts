@@ -1,4 +1,4 @@
-import { Context, Effect, Schema } from "effect"
+import { Array, Context, Effect, Schema } from "effect"
 import type { ProductAnalyticsEnvelope } from "./model.js"
 
 export class ProductAnalyticsRepositoryError extends Schema.TaggedErrorClass<ProductAnalyticsRepositoryError>()(
@@ -14,5 +14,7 @@ export class ProductAnalyticsRepositoryError extends Schema.TaggedErrorClass<Pro
   },
 ) {}
 export class ProductAnalyticsRepository extends Context.Service<ProductAnalyticsRepository, {
-  readonly writeBatch: (batch: ReadonlyArray<ProductAnalyticsEnvelope>) => Effect.Effect<void, ProductAnalyticsRepositoryError>
+  readonly writeBatch: (
+    batch: Array.NonEmptyReadonlyArray<ProductAnalyticsEnvelope>,
+  ) => Effect.Effect<void, ProductAnalyticsRepositoryError>
 }>()("@proxus/backend-domain/modules/product-analytics/repository/ProductAnalyticsRepository") {}

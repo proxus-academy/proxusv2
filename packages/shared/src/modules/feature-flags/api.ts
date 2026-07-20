@@ -1,5 +1,11 @@
 import { Schema } from "effect"
-import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi"
+import {
+  HttpApiEndpoint,
+  HttpApiError,
+  HttpApiGroup,
+  HttpApiSchema,
+  OpenApi,
+} from "effect/unstable/httpapi"
 
 export const MaximumConfigurationRevision = 9_007_199_254_740_991
 const keyPattern = /^[a-z][a-z0-9]*(?:\.[a-z][a-z0-9]*)*$/
@@ -37,14 +43,84 @@ const validConfigurations = Schema.makeFilter<ReadonlyArray<FeatureFlagConfigura
     ? undefined : "each default must identify a configured variant"
 })
 
-/** One immutable, atomically activated public configuration snapshot. */
-export class FeatureFlagSnapshot extends Schema.Class<FeatureFlagSnapshot>("FeatureFlagSnapshot")({
-  configurationRevision: Schema.Int.pipe(Schema.check(Schema.isBetween({ minimum: 0, maximum: MaximumConfigurationRevision }))),
-  flags: Schema.Array(FeatureFlagConfiguration).pipe(Schema.check(validConfigurations)),
-}) {}
+const featureFlagConfigurations = Schema.Array(FeatureFlagConfiguration).pipe(
+  Schema.check(validConfigurations),
+)
 
-export class PublicFeatureFlagsApi extends HttpApiGroup.make("featureFlags", { topLevel: true }).add(
-  HttpApiEndpoint.get("getActiveSnapshot", "/feature-flags/snapshot", {
-    success: FeatureFlagSnapshot,
-  }),
-) {}
+/** Revision zero exists only as the synthetic response for an empty repository. */
+export const SyntheticEmptyFeatureFlagSnapshot = Schema.Struct({
+  configurationRevision: Schema.Literal(0),
+  flags: Schema.Tuple([]),
+}).annotate({ identifier: "SyntheticEmptyFeatureFlagSnapshot" })
+export type SyntheticEmptyFeatureFlagSnapshot =
+  typeof SyntheticEmptyFeatureFlagSnapshot.Type
+
+/** A snapshot eligible for publication and persistence. */
+export const PublishedFeatureFlagSnapshot = Schema.Struct({
+  configurationRevision: Schema.Int.pipe(
+    Schema.check(
+      Schema.isBetween({
+        minimum: 1,
+        maximum: MaximumConfigurationRevision,
+      }),
+    ),
+  ),
+  flags: featureFlagConfigurations,
+}).annotate({ identifier: "PublishedFeatureFlagSnapshot" })
+export type PublishedFeatureFlagSnapshot =
+  typeof PublishedFeatureFlagSnapshot.Type
+
+/** One immutable public snapshot: synthetic revision zero or a published revision. */
+export const FeatureFlagSnapshot = Schema.Union([
+  SyntheticEmptyFeatureFlagSnapshot,
+  PublishedFeatureFlagSnapshot,
+]).annotate({ identifier: "FeatureFlagSnapshot" })
+export type FeatureFlagSnapshot = typeof FeatureFlagSnapshot.Type
+
+const conditionalResponseHeaders = {
+  ETag: {
+    description: "Strong validator derived from the active configuration revision.",
+    required: true,
+    schema: { type: "string" },
+  },
+  "Cache-Control": {
+    description: "Public snapshot revalidation policy.",
+    required: true,
+    schema: { type: "string" },
+  },
+}
+
+const getActiveSnapshot = HttpApiEndpoint.get(
+  "getActiveSnapshot",
+  "/feature-flags/snapshot",
+  {
+    headers: {
+      "if-none-match": Schema.optional(Schema.String),
+    },
+    success: [
+      FeatureFlagSnapshot,
+      HttpApiSchema.Empty(304),
+    ],
+    error: HttpApiError.InternalServerErrorNoContent,
+  },
+).annotate(OpenApi.Transform, (operation) => {
+  const responses = operation.responses
+  for (const status of ["200", "304"] as const) {
+    const response = responses?.[status]
+    if (response !== undefined) {
+      responses[status] = {
+        ...response,
+        headers: {
+          ...response.headers,
+          ...conditionalResponseHeaders,
+        },
+      }
+    }
+  }
+  return operation
+})
+
+export class PublicFeatureFlagsApi extends HttpApiGroup.make(
+  "featureFlags",
+  { topLevel: true },
+).add(getActiveSnapshot) {}

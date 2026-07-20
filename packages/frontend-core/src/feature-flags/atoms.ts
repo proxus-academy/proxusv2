@@ -14,24 +14,29 @@ export const evaluateSnapshotFeatureFlag = <A extends string>(
   snapshot: FeatureFlagSnapshot,
   subjectId: string | null,
 ): FeatureFlagDecision<A> => {
+  const safeDefault = () => evaluateFeatureFlag(localDefinition, null)
+  const isLocalVariant = (value: string): value is A =>
+    localDefinition.variants.some(([localValue]) => localValue === value)
+
   const remote = snapshot.flags.find((flag) => flag.key === localDefinition.key)
-  if (remote === undefined) return evaluateFeatureFlag(localDefinition, subjectId)
-  if (!remote.enabled) return evaluateFeatureFlag(localDefinition, null)
-  const known = new Set(localDefinition.variants.map(([value]) => value))
-  if (!known.has(remote.default as A) || remote.variants.some(({ value }) => !known.has(value as A))) {
-    return evaluateFeatureFlag(localDefinition, null)
+  if (remote === undefined || !remote.enabled) return safeDefault()
+
+  const remoteDefault = remote.default
+  if (!isLocalVariant(remoteDefault)) return safeDefault()
+
+  const variants: Array<readonly [value: A, weight: number]> = []
+  for (const remoteVariant of remote.variants) {
+    if (!isLocalVariant(remoteVariant.value)) return safeDefault()
+    variants.push([remoteVariant.value, remoteVariant.weight])
   }
-  try {
-    return evaluateFeatureFlag(defineFeatureFlag({
-      key: remote.key,
-      allocationVersion: remote.allocationVersion,
-      assignmentUnit: "installation",
-      default: remote.default as A,
-      variants: remote.variants.map(({ value, weight }) => [value as A, weight] as const),
-    }), subjectId)
-  } catch {
-    return evaluateFeatureFlag(localDefinition, null)
-  }
+
+  return evaluateFeatureFlag(defineFeatureFlag({
+    key: remote.key,
+    allocationVersion: remote.allocationVersion,
+    assignmentUnit: "installation",
+    default: remoteDefault,
+    variants,
+  }), subjectId)
 }
 
 export const makeSnapshotFeatureFlagDecisionAtom = <A extends string, E = never>(options: {

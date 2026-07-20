@@ -1,16 +1,15 @@
+import { Option, Schema } from "effect"
+
 const featureFlagDefinitionTypeId: unique symbol = Symbol.for(
   "@proxus/shared/FeatureFlagDefinition",
 )
-const featureFlagSubjectIdTypeId: unique symbol = Symbol.for(
-  "@proxus/shared/FeatureFlagSubjectId",
-)
-
 const FEATURE_FLAG_KEY = /^[a-z][a-z0-9]*(?:\.[a-z][a-z0-9]*)*$/
-const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
-export type FeatureFlagSubjectId = string & {
-  readonly [featureFlagSubjectIdTypeId]: true
-}
+export const FeatureFlagSubjectId = Schema.String.pipe(
+  Schema.check(Schema.isUUID(4)),
+  Schema.brand("FeatureFlagSubjectId"),
+)
+export type FeatureFlagSubjectId = typeof FeatureFlagSubjectId.Type
 
 export interface FeatureFlagDefinition<A extends string> {
   readonly [featureFlagDefinitionTypeId]: true
@@ -41,23 +40,16 @@ export interface FeatureFlagBootstrap {
 }
 
 /** Validates and canonicalizes the public installation UUID. */
-export const makeFeatureFlagSubjectId = (value: string): FeatureFlagSubjectId => {
-  if (!UUID_V4.test(value)) {
-    throw new TypeError("feature flag subject must be a UUID v4")
-  }
-  return value.toLowerCase() as FeatureFlagSubjectId
-}
+export const makeFeatureFlagSubjectId = (value: string): FeatureFlagSubjectId =>
+  Schema.decodeUnknownSync(FeatureFlagSubjectId)(value.toLowerCase())
 
 export const parseFeatureFlagSubjectId = (
   value: string | null | undefined,
-): FeatureFlagSubjectId | null => {
-  if (typeof value !== "string") return null
-  try {
-    return makeFeatureFlagSubjectId(value)
-  } catch {
-    return null
-  }
-}
+): FeatureFlagSubjectId | null => typeof value === "string"
+  ? Option.getOrNull(
+      Schema.decodeUnknownOption(FeatureFlagSubjectId)(value.toLowerCase()),
+    )
+  : null
 
 /** Builds an immutable, validated definition; evaluators only accept this branded result. */
 export const defineFeatureFlag = <const A extends string>(

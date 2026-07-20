@@ -56,14 +56,14 @@ packages/frontend-web/src/feature-flags/
 El piloto puede expresarse con una definición concreta y readonly:
 
 ```ts
-export const RegistrationCta = {
-  key: "registration.cta",
+export const RegistrationLanding = {
+  key: "registration.landing",
   allocationVersion: 1,
   assignmentUnit: "installation",
-  default: "control",
+  default: "short",
   variants: [
-    ["control", 5_000],
-    ["benefitCopy", 5_000],
+    ["short", 5_000],
+    ["long", 5_000],
   ],
 } as const
 ```
@@ -112,9 +112,9 @@ El bucket puede permanecer como detalle del evaluador y de sus tests; se añadir
 ## Integración Atom-first
 
 ```text
-bootstrap inicial + definición pública + override dev
+snapshot distribuido + identidad de instalación
                       ↓
-            registrationCtaDecisionAtom
+       registrationLandingAssignmentAtom
                       ↓
                     vista
 ```
@@ -171,7 +171,7 @@ Conceptualmente, con `Context.Service`, identificador global estable y métodos 
 ```ts
 interface ProductAnalytics {
   readonly recordBatch: (
-    events: ReadonlyArray<ProductAnalyticsEvent>,
+    events: ReadonlyArray<PublicProductAnalyticsEvent>,
     context: ProductAnalyticsContext,
   ) => Effect.Effect<ProductAnalyticsRecordResult, ProductAnalyticsError>
 }
@@ -339,18 +339,23 @@ port `FeatureFlagInstallationIdentity`; el adapter web es el único módulo que
 conoce `localStorage` y Web Crypto. El backend no emite cookie, no conoce esa
 identidad y no recalcula variantes. Las flags siguen sin ser autoridad.
 
-PostgreSQL/PGlite guarda revisiones inmutables con la configuración pública
-completa. Un índice parcial garantiza una sola revisión activa y el cambio de
-revisión se realiza como una activación atómica, nunca por actualización parcial
-de flags. Ausencia de fila activa produce el snapshot vacío de revisión `0`.
+PostgreSQL guarda revisiones inmutables con la configuración pública completa;
+PGlite cubre el mismo adapter solo dentro de un proceso de desarrollo/test. Un
+índice parcial garantiza una sola revisión activa y el cambio de revisión se
+realiza como una activación atómica, nunca por actualización parcial de flags.
+Ausencia de fila activa produce el snapshot vacío de revisión `0`, reservado
+exclusivamente para ese valor sintético. Schema y SQL exigen publicaciones y
+filas persistidas con revisión `>= 1`.
 `GET /feature-flags/snapshot` distribuye el snapshot completo con ETag derivado de
 la revisión y cache pública revalidable. La publicación operativa valida un JSON
 completo y ejecuta `pnpm --filter @proxus/backend-infra db:publish-feature-flags
 <snapshot.json>` con `DATABASE_URL`; inserción y activación ocurren en una única
-transacción serializada. Un trigger impide modificar configuración, revisión o
-fecha de revisiones existentes. El rango persistido queda limitado al rango entero
-sin pérdida del wire (`0..Number.MAX_SAFE_INTEGER`) y el adapter lee `bigint` antes
-de convertirlo.
+transacción serializada después de comprobar migraciones pendientes. Un trigger
+impide modificar configuración, revisión o fecha de revisiones existentes. El
+rango persistido queda limitado al rango entero sin pérdida del wire
+(`1..Number.MAX_SAFE_INTEGER`) y el adapter lee `bigint` antes de convertirlo.
+No se ofrece publisher PGlite entre procesos: servidor y comando simultáneos no
+deben abrir el mismo `PGLITE_DATA_DIR`; para ese flujo se usa PostgreSQL local.
 
 Frontend-core conserva loading/error/success en el query atom y deriva decisiones
 sin copiar estado a React. Una key ausente usa su definición local. Si el snapshot
@@ -374,34 +379,30 @@ contexto fail-closed (`consent: unknown`) y rechaza toda ingestión como `no-con
 el adapter BigQuery esté configurado. Desarrollo permite opt-in únicamente mediante el
 header explícitamente dev `x-proxus-dev-analytics-consent: granted` y evidencia browser
 same-origin (`Origin`/`Host` coincidentes y `Sec-Fetch-Site: same-origin`). El contrato
-HTTP excluye `registration_completed`: solo un productor server-side puede emitirlo.
-Las exposiciones sin una decisión recalculada desde identidad/configuración confiable se
-rechazan, igual que timestamps fuera del skew configurado.
+HTTP incluye `registration_completed` únicamente como señal UI no autoritativa: no
+representa éxito del caso de uso backend. En revisión `0` se acepta solo el default local
+`short`, sin rehash; timestamps fuera del skew configurado se rechazan.
 
-El cierre serializa el cambio a estado cerrado con la admisión. Una interrupción espera
-la escritura in-flight; el timeout se aplica al backlog restante, por lo que nunca se
-presenta como garantía de entrega. Los fallos parciales de BigQuery se correlacionan por
-`insertId`: solo se reintentan las filas fallidas con motivos transitorios. Memoria no
+El cierre serializa el cambio a estado cerrado con la admisión. Un único
+`shutdownTimeout` limita interrupción, repository in-flight, drain y backoff de retries;
+no promete entrega. Los fallos parciales de BigQuery se correlacionan por `insertId`, el
+SDK se invoca con `partialRetries: 0` y solo se reintenta el subset único/acotado de filas
+fallidas con motivos transitorios. Memoria no
 evicta filas silenciosamente. El SDK Node de
 BigQuery no expone una operación de cierre; el cliente se construye una vez por Layer,
 pero no se finge un finalizer inexistente.
 
-## Decisión implementada: invalidación realtime SSE (2026-07-18)
+## Decisión implementada: distribución pull-based entre procesos (2026-07-20)
 
-La publicación de un snapshot persiste primero y luego emite
-`FeatureFlagSnapshotPublished` al catálogo modular `BackendAppEvent`. El
-`AppEventBus` ejecuta un registry estático de reactions tipadas con aislamiento
-de errores. Catálogo y dispatcher son conceptos distintos: el primero es una
-unión de tipos; el segundo ejecuta las reactions locales coincidentes con
-concurrencia acotada y no promete transacción, replay, durabilidad ni entrega
-entre procesos.
+El publisher operativo y el servidor HTTP son procesos distintos. La revisión se
+valida y activa atómicamente en PostgreSQL; el servidor público observa el cambio
+leyendo esa persistencia compartida. Un dispatcher o canal push en memoria no
+puede transportar la publicación real entre esos procesos y por tanto fue
+retirado en lugar de presentarlo como una invalidación fiable.
 
-La única reaction inicial transforma el evento interno en
-`FeatureFlagSnapshotChanged { revision }` y lo publica en un PubSub realtime
-scoped, acotado y sliding. SSE no expone el snapshot ni el evento backend.
-`GET /realtime/events` se declara schema-first con
-`HttpApiSchema.StreamSse`, añade heartbeat y mantiene semántica de invalidación:
-el cliente obtiene el snapshot al arrancar/reconectar y vuelve a obtenerlo al
-recibir una revisión o detectar un hueco. No se implementan outbox ni replay
-durable. Product analytics permanece fuera del registry porque no existe aún un
-evento backend analítico real que justifique esa reaction.
+`GET /feature-flags/snapshot` declara `If-None-Match` y las respuestas `200`,
+`304` y `500`. Los clientes usan una única lectura atom-first a través de
+`FeatureFlagDistribution`; el adapter web aprovecha `ETag`, `Cache-Control` y la
+revalidación condicional del navegador. No se implementan stream, heartbeat,
+replay ni aliases de compatibilidad para una superficie que aún no se había
+publicado.

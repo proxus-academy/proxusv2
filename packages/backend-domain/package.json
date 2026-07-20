@@ -3,7 +3,6 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./app-events": "./src/app-events/index.ts",
     "./feature-flags": "./src/modules/feature-flags/index.ts",
     "./study-catalog": "./src/modules/study-catalog/index.ts",
     "./product-analytics": "./src/modules/product-analytics/index.ts"

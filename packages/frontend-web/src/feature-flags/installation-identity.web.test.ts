@@ -12,4 +12,26 @@ describe("web feature flag installation identity", () => {
     expect(second).toBe(first)
     expect(values.get(featureFlagInstallationStorageKey)).toBe(first)
   })))
+
+  test("keeps one in-memory identity when storage reads and writes are blocked", () => Effect.runPromise(Effect.gen(function*() {
+    let generated = 0
+    const storage = {
+      getItem: (_key: string): string | null => {
+        throw new Error("storage read blocked")
+      },
+      setItem: (_key: string, _value: string): void => {
+        throw new Error("storage write blocked")
+      },
+    }
+    const adapter = makeFeatureFlagInstallationIdentityWeb(storage, () => {
+      generated++
+      return "00000000-0000-4000-8000-000000000002"
+    })
+
+    const first = yield* adapter.getOrCreate()
+    const second = yield* adapter.getOrCreate()
+    expect(first).toBe("00000000-0000-4000-8000-000000000002")
+    expect(second).toBe(first)
+    expect(generated).toBe(1)
+  })))
 })

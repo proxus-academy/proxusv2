@@ -4,16 +4,23 @@ import { Effect, Layer } from "effect"
 import { FetchHttpClient } from "effect/unstable/http"
 import { HttpApiClient } from "effect/unstable/httpapi"
 
-/** Browser Fetch adapter for the platform-neutral distribution port. */
-export const makeFeatureFlagDistributionWebLive = (baseUrl: string) => Layer.effect(
+/** Browser adapter with an injectable HTTP client for deterministic contract tests. */
+export const featureFlagDistributionWebLayer = (baseUrl = "/api") => Layer.effect(
   FeatureFlagDistribution,
   HttpApiClient.make(PublicApi, { baseUrl }).pipe(
     Effect.map((client) => FeatureFlagDistribution.of({
-      getActiveSnapshot: () => client.getActiveSnapshot().pipe(
+      getActiveSnapshot: () => client.getActiveSnapshot({ headers: {} }).pipe(
         Effect.mapError((cause) => new FeatureFlagDistributionError({ cause })),
+        Effect.flatMap((snapshot) => snapshot === undefined
+          ? Effect.fail(new FeatureFlagDistributionError({ cause: "unexpected-not-modified-response" }))
+          : Effect.succeed(snapshot)),
       ),
     })),
-    // @effect-diagnostics-next-line strictEffectProvide:off
-    Effect.provide(FetchHttpClient.layer),
   ),
 )
+
+/** Live browser Fetch composition; public APIs are always rooted at `/api`. */
+export const makeFeatureFlagDistributionWebLive = (baseUrl = "/api") =>
+  featureFlagDistributionWebLayer(baseUrl).pipe(
+    Layer.provide(FetchHttpClient.layer),
+  )

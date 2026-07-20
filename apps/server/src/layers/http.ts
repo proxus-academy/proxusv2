@@ -2,9 +2,7 @@
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import { createServer } from "node:http"
 import * as NodeHttpServer from "@effect/platform-node/NodeHttpServer"
-import { AppEventBusLive, BackendReactionRegistryLive } from "@proxus/backend-domain/app-events"
-import { BackendRealtimeReactionsLive, makeRealtimeEventsLive } from "@proxus/backend-transport/realtime"
-import { Config, Effect, Layer } from "effect"
+import { Config, Layer } from "effect"
 import { HttpRouter } from "effect/unstable/http"
 import { PublicApiRoutes } from "../http.js"
 import { FeatureFlagsDevLive } from "./feature-flags.dev.js"
@@ -19,17 +17,6 @@ const NodeServerLive = NodeHttpServer.layerConfig(createServer, {
   port: Config.int("PORT").pipe(Config.withDefault(3000)),
 })
 
-const RealtimeEventsConfiguredLive = Layer.unwrap(Effect.gen(function*() {
-  const capacity = yield* Config.int("REALTIME_CAPACITY").pipe(Config.withDefault(32))
-  const heartbeatIntervalMs = yield* Config.int("REALTIME_HEARTBEAT_INTERVAL_MS").pipe(Config.withDefault(15_000))
-  return makeRealtimeEventsLive({ capacity, heartbeatIntervalMs })
-}))
-// Reuse these exact Layer values so the handler, reactions, and bus share one scoped broker.
-const ContributionsLive = BackendRealtimeReactionsLive.pipe(Layer.provide(RealtimeEventsConfiguredLive))
-const RegistryLive = BackendReactionRegistryLive.pipe(Layer.provide(ContributionsLive))
-const EventBusLive = AppEventBusLive.pipe(Layer.provide(RegistryLive))
-const EventSystemLive = Layer.mergeAll(RealtimeEventsConfiguredLive, ContributionsLive, RegistryLive, EventBusLive)
-
 const makeHttpLive = <A, E, R>(application: Layer.Layer<A, E, R>) =>
   HttpRouter.serve(PublicApiRoutes.pipe(Layer.provide(application))).pipe(Layer.provide(NodeServerLive))
 
@@ -37,11 +24,9 @@ export const HttpDevLive = makeHttpLive(Layer.mergeAll(
   StudyCatalogDevLive,
   ProductAnalyticsDevLive,
   FeatureFlagsDevLive,
-  EventSystemLive,
 ))
 export const HttpProdLive = makeHttpLive(Layer.mergeAll(
   StudyCatalogProdLive,
   ProductAnalyticsProdLive,
   FeatureFlagsProdLive,
-  EventSystemLive,
 ))

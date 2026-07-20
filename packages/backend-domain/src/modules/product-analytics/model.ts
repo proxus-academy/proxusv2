@@ -1,4 +1,4 @@
-import type { ProductAnalyticsEvent } from "@proxus/shared/product-analytics"
+import type { PublicProductAnalyticsEvent } from "@proxus/shared/product-analytics"
 
 export interface ProductAnalyticsContext {
   readonly consent: "granted" | "denied" | "unknown"
@@ -15,9 +15,9 @@ export interface ProductAnalyticsEnvelope {
   readonly flagKey: string
   readonly variant: string
   readonly revision: number
-  readonly event: ProductAnalyticsEvent
+  readonly event: PublicProductAnalyticsEvent
 }
-export type ProductAnalyticsRejectionReason = "no-consent" | "invalid" | "full" | "closed"
+type ProductAnalyticsRejectionReason = "no-consent" | "invalid" | "full" | "closed"
 
 /** Admission is atomic: a batch is either wholly accepted or wholly rejected with a reason. */
 export type ProductAnalyticsRecordResult =

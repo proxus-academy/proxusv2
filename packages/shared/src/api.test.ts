@@ -22,11 +22,18 @@ describe("API roots", () => {
     expect(adminDocument.paths["/study-catalog/countries"]).toBeUndefined()
   })
 
-  it("composes both contracts for tooling and tests", () => {
+  it("derives the tooling contract from both narrow roots without duplicate groups", () => {
     const document = OpenApi.fromApi(ProxusApi)
+    const expectedGroups = [...new Set([
+      ...Object.keys(PublicApi.groups),
+      ...Object.keys(AdminApi.groups),
+    ])].sort()
 
+    expect(Object.keys(ProxusApi.groups).sort()).toEqual(expectedGroups)
     expect(document.info.title).toBe("Proxus API")
     expect(document.paths["/study-catalog/countries"]?.get).toBeDefined()
+    expect(document.paths["/feature-flags/snapshot"]?.get).toBeDefined()
+    expect(document.paths["/product-analytics/events"]?.post).toBeDefined()
     expect(document.paths["/study-catalog/nodes/{nodeId}"]?.get).toBeDefined()
     expect(document.paths["/study-catalog/nodes/children"]?.get).toBeDefined()
     expect(

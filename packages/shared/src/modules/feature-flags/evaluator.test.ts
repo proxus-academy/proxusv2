@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
-  RegistrationCta,
+  RegistrationLanding,
   defineFeatureFlag,
   evaluateFeatureFlag,
   featureFlagBucket,
@@ -23,8 +23,8 @@ describe("feature flag evaluator", () => {
     ["00000000-0000-4000-8000-000000000002", 6_059, "long"],
   ] as const)("keeps golden allocation for %s", (subject, bucket, value) => {
     const subjectId = makeFeatureFlagSubjectId(subject)
-    expect(featureFlagBucket(RegistrationCta, subjectId)).toBe(bucket)
-    expect(evaluateFeatureFlag(RegistrationCta, subject)).toEqual({
+    expect(featureFlagBucket(RegistrationLanding, subjectId)).toBe(bucket)
+    expect(evaluateFeatureFlag(RegistrationLanding, subject)).toEqual({
       key: "registration.landing",
       value,
       allocationVersion: 1,
@@ -36,14 +36,14 @@ describe("feature flag evaluator", () => {
     const lower = "abcdefab-cdef-4abc-8def-abcdefabcdef"
     const upper = lower.toUpperCase()
     expect(makeFeatureFlagSubjectId(upper)).toBe(lower)
-    expect(evaluateFeatureFlag(RegistrationCta, upper)).toEqual(
-      evaluateFeatureFlag(RegistrationCta, lower),
+    expect(evaluateFeatureFlag(RegistrationLanding, upper)).toEqual(
+      evaluateFeatureFlag(RegistrationLanding, lower),
     )
     for (const invalid of ["installation-alpha", " ", "00000000-0000-1000-8000-000000000001", "00000000-0000-4000-7000-000000000001"]) {
       expect(parseFeatureFlagSubjectId(invalid)).toBeNull()
-      expect(evaluateFeatureFlag(RegistrationCta, invalid).source).toBe("default")
+      expect(evaluateFeatureFlag(RegistrationLanding, invalid).source).toBe("default")
     }
-    expect(evaluateFeatureFlag(RegistrationCta, null).value).toBe("short")
+    expect(evaluateFeatureFlag(RegistrationLanding, null).value).toBe("short")
   })
 
   it("uses half-open variant intervals", () => {

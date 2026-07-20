@@ -11,6 +11,30 @@ const configuration = [{ key: "registration.cta", enabled: true, allocationVersi
 import { FeatureFlagSnapshotRepositoryPgliteLive } from "./repository.pglite.layer.js"
 
 describe("FeatureFlagSnapshotRepository Drizzle", () => {
+  test("rejects an active SQL row that does not decode as a snapshot", () => {
+    const client = PgliteClient.layer()
+    const repository = FeatureFlagSnapshotRepositoryPgliteLive.pipe(Layer.provide(client))
+    return Effect.runPromise(Effect.scoped(Effect.gen(function*() {
+      const context = yield* Layer.build(Layer.merge(client, repository))
+      return yield* Effect.gen(function*() {
+        yield* migratePglite("./drizzle")
+        const db = yield* PgliteDrizzle.makeWithDefaults()
+        yield* db.insert(featureFlagSnapshots).values({
+          configurationRevision: 1n,
+          configuration: [{ key: "registration.cta" }],
+          active: true,
+        })
+
+        const snapshots = yield* FeatureFlagSnapshotRepository
+        const failure = yield* snapshots.readActive().pipe(Effect.flip)
+        expect(failure).toMatchObject({
+          _tag: "FeatureFlagSnapshotRepositoryError",
+          operation: "readActive",
+        })
+      }).pipe(Effect.provide(context))
+    })))
+  }, 15_000)
+
   test("returns absence and then reads the complete active snapshot atomically", () => {
     const client = PgliteClient.layer()
     const repository = FeatureFlagSnapshotRepositoryPgliteLive.pipe(Layer.provide(client))
@@ -21,6 +45,15 @@ describe("FeatureFlagSnapshotRepository Drizzle", () => {
         const snapshots = yield* FeatureFlagSnapshotRepository
         expect(yield* snapshots.readActive()).toBeNull()
         const db = yield* PgliteDrizzle.makeWithDefaults()
+        const reservedRevision = yield* Effect.exit(
+          db.insert(featureFlagSnapshots).values({
+            configurationRevision: 0n,
+            configuration: [],
+            active: true,
+          }),
+        )
+        expect(reservedRevision._tag).toBe("Failure")
+
         yield* snapshots.publish({ configurationRevision: 7, flags: configuration })
         expect(yield* snapshots.readActive()).toMatchObject({ configurationRevision: 7, flags: [{ key: "registration.cta" }] })
 

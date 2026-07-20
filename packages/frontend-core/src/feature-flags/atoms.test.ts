@@ -1,16 +1,16 @@
-import { RegistrationCta, type FeatureFlagSnapshot } from "@proxus/shared/feature-flags"
+import { RegistrationLanding, type FeatureFlagSnapshot } from "@proxus/shared/feature-flags"
 import * as Cause from "effect/Cause"
 import * as AsyncResult from "effect/unstable/reactivity/AsyncResult"
 import * as Atom from "effect/unstable/reactivity/Atom"
 import * as AtomRegistry from "effect/unstable/reactivity/AtomRegistry"
 import { describe, expect, it } from "vitest"
-import { makeSnapshotFeatureFlagDecisionAtom } from "./atoms.js"
+import { evaluateSnapshotFeatureFlag, makeSnapshotFeatureFlagDecisionAtom } from "./atoms.js"
 
 const validSubject = "00000000-0000-4000-8000-000000000002"
 const emptySnapshot: FeatureFlagSnapshot = { configurationRevision: 0, flags: [] }
 
 const makeDecision = <E>(snapshotAtom: Atom.Atom<AsyncResult.AsyncResult<FeatureFlagSnapshot, E>>, subjectId: string | null) =>
-  makeSnapshotFeatureFlagDecisionAtom({ definition: RegistrationCta, snapshotAtom, subjectIdAtom: Atom.make(subjectId) })
+  makeSnapshotFeatureFlagDecisionAtom({ definition: RegistrationLanding, snapshotAtom, subjectIdAtom: Atom.make(subjectId) })
 
 describe("feature flag decision atom", () => {
   it("preserves snapshot loading, failure, and success", () => {
@@ -24,7 +24,7 @@ describe("feature flag decision atom", () => {
     registry.set(snapshotAtom, AsyncResult.success(emptySnapshot))
     expect(registry.get(decisionAtom)).toMatchObject({
       _tag: "Success",
-      value: { value: "long", source: "allocation" },
+      value: { value: "short", source: "default" },
     })
   })
 
@@ -41,5 +41,33 @@ describe("feature flag decision atom", () => {
       flags: [{ key: "registration.landing", enabled: true, allocationVersion: 3, default: "future", variants: [{ value: "future", weight: 10_000 }] }],
     }))
     expect(AsyncResult.getOrThrow(registry.get(makeDecision(remote, validSubject)))).toMatchObject({ value: "short", source: "default" })
+  })
+
+  it.each([
+    {
+      name: "missing",
+      snapshot: emptySnapshot,
+    },
+    {
+      name: "disabled",
+      snapshot: {
+        configurationRevision: 1,
+        flags: [{ key: "registration.landing", enabled: false, allocationVersion: 2, default: "long", variants: [{ value: "long", weight: 10_000 }] }],
+      } satisfies FeatureFlagSnapshot,
+    },
+    {
+      name: "unknown",
+      snapshot: {
+        configurationRevision: 2,
+        flags: [{ key: "registration.landing", enabled: true, allocationVersion: 3, default: "future", variants: [{ value: "future", weight: 10_000 }] }],
+      } satisfies FeatureFlagSnapshot,
+    },
+  ])("uses the safe local default for a $name configuration", ({ snapshot }) => {
+    expect(evaluateSnapshotFeatureFlag(RegistrationLanding, snapshot, validSubject)).toEqual({
+      key: "registration.landing",
+      value: "short",
+      allocationVersion: 1,
+      source: "default",
+    })
   })
 })

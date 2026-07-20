@@ -90,7 +90,7 @@ export const featureFlagSnapshots = pgTable(
     uniqueIndex("feature_flag_snapshots_single_active_uidx")
       .on(table.active)
       .where(sql`${table.active} = true`),
-    check("feature_flag_snapshots_revision_wire_range_check", sql`${table.configurationRevision} between 0 and 9007199254740991`),
+    check("feature_flag_snapshots_revision_wire_range_check", sql`${table.configurationRevision} between 1 and 9007199254740991`),
   ],
 )
 

@@ -11,7 +11,4 @@ export const RegistrationLanding = defineFeatureFlag({
   ],
 } as const)
 
-/** @deprecated use RegistrationLanding. */
-export const RegistrationCta = RegistrationLanding
 export type RegistrationLandingVariant = (typeof RegistrationLanding.variants)[number][0]
-export type RegistrationCtaVariant = RegistrationLandingVariant

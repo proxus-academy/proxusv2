@@ -1,6 +1,12 @@
+import { PublicApi } from "../../public-api.js"
 import { Schema } from "effect"
+import { OpenApi } from "effect/unstable/httpapi"
 import { describe, expect, test } from "vitest"
-import { FeatureFlagSnapshot, MaximumConfigurationRevision } from "./api.js"
+import {
+  FeatureFlagSnapshot,
+  MaximumConfigurationRevision,
+  PublishedFeatureFlagSnapshot,
+} from "./api.js"
 
 const valid = {
   configurationRevision: MaximumConfigurationRevision,
@@ -10,8 +16,47 @@ const valid = {
 }
 
 describe("FeatureFlagSnapshot wire schema", () => {
-  test("accepts the complete lossless revision range", () => {
-    expect(Schema.decodeUnknownSync(FeatureFlagSnapshot)(valid).configurationRevision).toBe(Number.MAX_SAFE_INTEGER)
+  test("reserves revision zero for the synthetic empty snapshot", () => {
+    expect(Schema.decodeUnknownSync(FeatureFlagSnapshot)({
+      configurationRevision: 0,
+      flags: [],
+    })).toEqual({ configurationRevision: 0, flags: [] })
+    expect(() => Schema.decodeUnknownSync(FeatureFlagSnapshot)({
+      configurationRevision: 0,
+      flags: valid.flags,
+    })).toThrow()
+    expect(() => Schema.decodeUnknownSync(PublishedFeatureFlagSnapshot)({
+      configurationRevision: 0,
+      flags: [],
+    })).toThrow()
+  })
+
+  test("accepts the complete lossless published revision range", () => {
+    expect(
+      Schema.decodeUnknownSync(PublishedFeatureFlagSnapshot)(valid)
+        .configurationRevision,
+    ).toBe(Number.MAX_SAFE_INTEGER)
+  })
+
+  test("declares conditional request and response semantics in OpenAPI", () => {
+    const operation = OpenApi.fromApi(PublicApi).paths["/feature-flags/snapshot"]?.get
+
+    expect(operation?.parameters).toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: "if-none-match", in: "header", required: false }),
+    ]))
+    expect(operation?.responses["200"]).toMatchObject({
+      headers: {
+        ETag: { required: true },
+        "Cache-Control": { required: true },
+      },
+    })
+    expect(operation?.responses["304"]).toMatchObject({
+      headers: {
+        ETag: { required: true },
+        "Cache-Control": { required: true },
+      },
+    })
+    expect(operation?.responses["500"]).toBeDefined()
   })
 
   test.each([
