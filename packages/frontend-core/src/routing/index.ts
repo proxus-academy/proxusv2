@@ -31,12 +31,17 @@ export type RouteNode<
   readonly [RouteParamsTypeId]?: Params
 }
 
+export type RootRouteNode<
+  Id extends string = string,
+  Children extends readonly RuntimeRouteNode[] = readonly RuntimeRouteNode[],
+> = RouteNode<Id, {}, Children, false> & { readonly kind: "root" }
+
 type AnyRouteNode = RouteNode
 
 export const root = <const Id extends string, const Children extends readonly RuntimeRouteNode[]>(input: {
   readonly id: Id
   readonly children: Children
-}): RouteNode<Id, {}, Children, false> => ({ kind: "root", terminal: false, ...input })
+}): RootRouteNode<Id, Children> => ({ kind: "root", terminal: false, ...input })
 
 export const layout = <const Id extends string, const Children extends readonly RuntimeRouteNode[]>(input: {
   readonly id: Id
@@ -260,7 +265,11 @@ function decodedRoute(
   }
 }
 
-export const compile = <Node extends AnyRouteNode>(tree: Node): CompiledRoutes<Node> => {
+export const compile = <Node extends RootRouteNode>(tree: Node): CompiledRoutes<Node> => {
+  if (tree.kind !== "root") {
+    throw new RouteConfigurationError({ message: "A compiled route definition must start at a typed root" })
+  }
+
   const allIds = new Set<string>()
   const terminalRoutes = new Map<string, CompiledRecord>()
   const routePatterns = new Map<string, string>()
@@ -440,6 +449,7 @@ export class NavigationError extends Schema.TaggedErrorClass<NavigationError>()(
 ) {}
 
 export type RouterObservableError = NavigationError | RouteNotFound | RouteEncodingError | Schema.SchemaError
+export type RouterCommandError = NavigationError | RouteEncodingError | Schema.SchemaError
 
 export interface RouterLocation<Destination extends RouteDestination> {
   readonly destination: Destination
@@ -456,8 +466,8 @@ export interface RouterService<Destination extends RouteDestination> {
   readonly location: Atom.Atom<RouterLocation<Destination>>
   /** The latest routing failure. Successful navigation clears it. */
   readonly error: Atom.Atom<RouterObservableError | undefined>
-  readonly push: (destination: Destination, options?: NavigationOptions) => Effect.Effect<void, NavigationError>
-  readonly replace: (destination: Destination, options?: NavigationOptions) => Effect.Effect<void, NavigationError>
+  readonly push: (destination: Destination, options?: NavigationOptions) => Effect.Effect<void, RouterCommandError>
+  readonly replace: (destination: Destination, options?: NavigationOptions) => Effect.Effect<void, RouterCommandError>
   readonly back: Effect.Effect<void, NavigationError>
   readonly forward: Effect.Effect<void, NavigationError>
 }
@@ -502,31 +512,44 @@ export const memoryRouterLayer = <Destination extends RouteDestination>(
   initial: Destination,
 ): Layer.Layer<RouterIdentifier<Destination>> =>
   Layer.sync(routerTag, () => {
-    const current = makeObservableValue(initial)
-    const location = makeObservableValue<RouterLocation<Destination>>({ destination: initial, search: "" })
-    const error = makeObservableValue<RouterObservableError | undefined>(undefined)
-    let history = [initial]
+    interface RouterState {
+      readonly location: RouterLocation<Destination>
+      readonly error: RouterObservableError | undefined
+    }
+
+    const initialLocation: RouterLocation<Destination> = { destination: initial, search: "" }
+    const state = makeObservableValue<RouterState>({ location: initialLocation, error: undefined })
+    const current = Atom.map(state.atom, ({ location }) => location.destination)
+    const location = Atom.map(state.atom, ({ location }) => location)
+    const error = Atom.map(state.atom, ({ error }) => error)
+    let history = [initialLocation]
     let cursor = 0
     const select = (next: number) => Effect.sync(() => {
-      if (next < 0 || next >= history.length || next === cursor) return
+      const selected = history[next]
+      if (selected === undefined || next === cursor) return
       cursor = next
-      current.set(history[cursor]!)
-      location.set({ destination: history[cursor]!, search: location.get().search })
+      state.set({ location: selected, error: undefined })
     })
     return routerTag.of({
-      current: current.atom,
-      location: location.atom,
-      error: error.atom,
-      push: (next, options) => Effect.sync(() => {
+      current,
+      location,
+      error,
+      push: (destination, options) => Effect.sync(() => {
+        const next: RouterLocation<Destination> = {
+          destination,
+          search: options?.search ?? state.get().location.search,
+        }
         history = [...history.slice(0, cursor + 1), next]
         cursor++
-        current.set(next)
-        location.set({ destination: next, search: options?.search ?? location.get().search })
+        state.set({ location: next, error: undefined })
       }),
-      replace: (next, options) => Effect.sync(() => {
+      replace: (destination, options) => Effect.sync(() => {
+        const next: RouterLocation<Destination> = {
+          destination,
+          search: options?.search ?? state.get().location.search,
+        }
         history = history.map((item, indexValue) => indexValue === cursor ? next : item)
-        current.set(next)
-        location.set({ destination: next, search: options?.search ?? location.get().search })
+        state.set({ location: next, error: undefined })
       }),
       back: Effect.suspend(() => select(cursor - 1)),
       forward: Effect.suspend(() => select(cursor + 1)),

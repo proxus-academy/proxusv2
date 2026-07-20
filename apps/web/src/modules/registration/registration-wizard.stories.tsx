@@ -1,4 +1,9 @@
 import {
+  appendRegistrationNode,
+  goBackRegistrationPath,
+} from "@proxus/frontend-core/registration"
+import { StudyCatalogUnavailable } from "@proxus/frontend-core/study-catalog"
+import {
   CountryNode,
   DegreeNode,
   StudyTypeNode,
@@ -12,7 +17,9 @@ import {
   type StudyNode,
 } from "@proxus/shared/study-catalog"
 import type { Meta, StoryObj } from "@storybook/react-vite"
+import { catalogFor } from "@proxus/product-messages"
 import { DateTime } from "effect"
+import { HttpApiError } from "effect/unstable/httpapi"
 import { useState } from "react"
 import {
   RegistrationWizardView,
@@ -66,6 +73,11 @@ const subject = new SubjectNode({
 })
 
 const noop = () => undefined
+const registrationPath = (nodes: ReadonlyArray<StudyNode>): RegistrationPath => {
+  let path: RegistrationPath = []
+  for (const node of nodes) path = appendRegistrationNode(path, node)
+  return path
+}
 
 const meta = {
   title: "Web/Registration/RegistrationWizard",
@@ -74,9 +86,14 @@ const meta = {
   args: {
     path: [],
     options: { _tag: "Success", value: [spain, france] },
+    landingAssignment: { _tag: "Success", value: { variant: "short" } },
+    navigationFailed: false,
+    messages: catalogFor("es"),
+    languageSelector: <span>Español</span>,
     onSelect: noop,
     onBack: noop,
     onReset: noop,
+    onRetryNavigation: noop,
   },
 } satisfies Meta<typeof RegistrationWizardView>
 
@@ -91,25 +108,30 @@ export const Loading: Story = {
 
 export const Empty: Story = {
   args: {
-    path: [spain],
+    path: registrationPath([spain]),
     options: { _tag: "Success", value: [] },
   },
 }
 
 export const Failure: Story = {
-  args: { options: { _tag: "Failure" } },
+  args: {
+    options: {
+      _tag: "Failure",
+      error: new StudyCatalogUnavailable({ error: new HttpApiError.InternalServerError({}) }),
+    },
+  },
 }
 
 export const UniversityStep: Story = {
   args: {
-    path: [spain, universityStudies],
+    path: registrationPath([spain, universityStudies]),
     options: { _tag: "Success", value: [university] },
   },
 }
 
 export const Complete: Story = {
   args: {
-    path: [spain, universityStudies, university, degree, subject],
+    path: registrationPath([spain, universityStudies, university, degree, subject]),
     options: { _tag: "Success", value: [] },
   },
 }
@@ -132,9 +154,14 @@ function InteractiveWizard() {
     <RegistrationWizardView
       path={path}
       options={options}
-      onSelect={(node) => setPath((current) => [...current, node])}
-      onBack={() => setPath((current) => current.slice(0, -1))}
+      landingAssignment={{ _tag: "Success", value: { variant: "short" } }}
+      messages={catalogFor("es")}
+      languageSelector={<span>Español</span>}
+      navigationFailed={false}
+      onSelect={(node) => setPath((current) => appendRegistrationNode(current, node))}
+      onBack={() => setPath((current) => goBackRegistrationPath(current))}
       onReset={() => setPath([])}
+      onRetryNavigation={noop}
     />
   )
 }

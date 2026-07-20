@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./navigation": "./src/navigation/index.ts",
     "./product-locale": "./src/product-locale/index.ts",
     "./registration": "./src/registration/index.ts",
     "./registration/testing": "./src/registration/testing.ts",

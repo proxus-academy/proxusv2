@@ -19,12 +19,22 @@ const router = compile(definition)
 type TestDestination = DestinationOf<typeof definition>
 
 describe("routing compiler", () => {
-  it("encodes accumulated parameters and decodes a match chain", () => {
-    expect(Effect.runSync(router.encode(router.destination("edit-user", { userId: 42 })))).toBe("/users/42/edit")
-    expect(Effect.runSync(router.decode("/users/42/edit")).matches).toEqual([
-      { id: "root", params: {} }, { id: "shell", params: {} }, { id: "users", params: {} },
-      { id: "user", params: { userId: 42 } }, { id: "edit-user", params: { userId: 42 } },
-    ])
+  it("only compiles a typed root and round-trips its runtime destination", () => {
+    if (false) {
+      // @ts-expect-error a path node cannot be a compiled definition root
+      compile(path({ id: "orphan", path: "orphan" }))
+    }
+
+    const destination = router.destination("edit-user", { userId: 42 })
+    const encoded = Effect.runSync(router.encode(destination))
+    expect(encoded).toBe("/users/42/edit")
+    expect(Effect.runSync(router.decode(encoded))).toMatchObject({
+      destination: { id: "edit-user", params: { userId: 42 } },
+      matches: [
+        { id: "root", params: {} }, { id: "shell", params: {} }, { id: "users", params: {} },
+        { id: "user", params: { userId: 42 } }, { id: "edit-user", params: { userId: 42 } },
+      ],
+    })
   })
 
   it("keeps match parameters discriminated by route id", () => {
@@ -114,7 +124,7 @@ describe("memory router", () => {
     expect(rejectOtherRouter).toBeDefined()
   })
 
-  it("supports push, replace, back and forward", () => {
+  it("supports push, replace, back and forward while restoring query history", () => {
     const Router = makeRouterService<TestDestination>("@proxus/frontend-core/routing/test/Router")
     const home = router.destination("home")
     const newUser = router.destination("new-user")
@@ -124,12 +134,19 @@ describe("memory router", () => {
       const context = yield* Layer.build(memoryRouterLayer(Router, home))
       return yield* Effect.gen(function*() {
         const service = yield* Router
-        yield* service.push(editUser)
-        yield* service.replace(newUser)
+        yield* service.push(editUser, { search: "step=country" })
+        yield* service.push(newUser, { search: "step=university" })
         yield* service.back
-        expect(registry.get(service.current).id).toBe("home")
+        expect(registry.get(service.current).id).toBe("edit-user")
+        expect(registry.get(service.location).search).toBe("step=country")
         yield* service.forward
         expect(registry.get(service.current).id).toBe("new-user")
+        expect(registry.get(service.location).search).toBe("step=university")
+        yield* service.replace(home, { search: "step=complete" })
+        expect(registry.get(service.location)).toMatchObject({
+          destination: { id: "home" },
+          search: "step=complete",
+        })
       }).pipe(Effect.provide(context))
     }))
     Effect.runSync(test)

@@ -22,6 +22,8 @@ export interface MessagesCatalog {
     readonly subject: { readonly title: string; readonly description: string }
     readonly complete: { readonly title: string; readonly description: string }
     readonly progress: (input: { readonly current: number; readonly total: number }) => string
+    readonly longDescription: string
+    readonly landingLoading: string
     readonly restart: string
     readonly home: string
     readonly homeShort: string
@@ -50,6 +52,8 @@ const esCatalog = {
     subject: { title: "¿Qué asignatura estudias?", description: "Ya casi hemos terminado" },
     complete: { title: "¡Todo listo!", description: "Hemos guardado tu itinerario de estudio" },
     progress: ({ current, total }) => `Paso ${current} de ${total}`,
+    longDescription: "Encuentra tu comunidad académica y personaliza tu recorrido en pocos pasos.",
+    landingLoading: "Cargando experiencia de registro",
     restart: "Empezar de nuevo",
     home: "Volver al inicio",
     homeShort: "Inicio",
@@ -78,6 +82,8 @@ const enCatalog = {
     subject: { title: "What subject are you studying?", description: "You're almost done" },
     complete: { title: "All done!", description: "We've saved your study path" },
     progress: ({ current, total }) => `Step ${current} of ${total}`,
+    longDescription: "Find your academic community and personalize your journey in just a few steps.",
+    landingLoading: "Loading registration experience",
     restart: "Start again",
     home: "Back to start",
     homeShort: "Start",

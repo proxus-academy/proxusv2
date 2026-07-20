@@ -2,7 +2,7 @@ import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { composition } from "./composition.js"
 import { isLocale, type MessagesCatalog } from "@proxus/product-messages"
 
-export const { localeAtom, messagesCatalogAtom, selectLocaleAtom, useDeviceLocaleAtom } = composition.locale
+const { localeAtom, messagesCatalogAtom, selectLocaleAtom, useDeviceLocaleAtom } = composition.locale
 
 export function useMessagesCatalog(): MessagesCatalog {
   return useAtomValue(messagesCatalogAtom)

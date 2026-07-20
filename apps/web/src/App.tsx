@@ -2,7 +2,18 @@ import { useAtomMount } from "@effect/atom-react"
 import { composition } from "./composition.js"
 import { RegistrationWizard } from "./modules/registration/registration-wizard.js"
 
-export function App() {
+function ProductLifecycle() {
+  useAtomMount(composition.locale.localeLifecycleAtom)
   useAtomMount(composition.featureFlags.lifecycleAtom)
-  return <RegistrationWizard />
+  useAtomMount(composition.registration.registrationPathLifecycleAtom)
+  return null
+}
+
+export function App() {
+  return (
+    <>
+      <ProductLifecycle />
+      <RegistrationWizard />
+    </>
+  )
 }

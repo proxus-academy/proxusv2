@@ -1,13 +1,29 @@
 import { catalogFor, type Locale } from "@proxus/product-messages"
+import type { Effect } from "effect"
 import * as Atom from "effect/unstable/reactivity/Atom"
+import type { RetryableCommandRunner } from "../navigation/index.js"
 
-export type LocaleAtom = Atom.Writable<Locale, Locale>
+export interface ProductLocaleNavigation<E> {
+  readonly localeAtom: Atom.Atom<Locale>
+  readonly replaceLocale: (
+    locale: Locale,
+    get: Atom.FnContext,
+  ) => Effect.Effect<void, E>
+}
 
-export const makeProductLocaleAtoms = (localeAtom: LocaleAtom) => {
-  const messagesCatalogAtom = Atom.make((get) => catalogFor(get(localeAtom)))
-  const selectLocaleAtom = Atom.fnSync<Locale>()((locale, get) => get.set(localeAtom, locale))
+export const makeProductLocaleAtoms = <E>(
+  navigation: ProductLocaleNavigation<E>,
+  runner: RetryableCommandRunner,
+) => {
+  const messagesCatalogAtom = Atom.make((get) => catalogFor(get(navigation.localeAtom)))
+  const selectLocaleAtom = Atom.fn<Locale>()((locale, get) =>
+    runner.run(get, navigation.replaceLocale(locale, get)))
 
-  return { localeAtom, messagesCatalogAtom, selectLocaleAtom } as const
+  return {
+    localeAtom: navigation.localeAtom,
+    messagesCatalogAtom,
+    selectLocaleAtom,
+  }
 }
 
 export type ProductLocaleAtoms = ReturnType<typeof makeProductLocaleAtoms>

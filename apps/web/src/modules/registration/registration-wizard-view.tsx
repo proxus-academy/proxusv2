@@ -1,20 +1,32 @@
+import type {
+  StudyCatalogViewError,
+  StudyCatalogViewState,
+} from "@proxus/frontend-core/study-catalog"
+import type { MessagesCatalog } from "@proxus/product-messages"
 import type { StudyNode } from "@proxus/shared/study-catalog"
 import { Button, ChoiceCard, Heading, Skeleton, Text } from "@proxus/ui"
-import { LanguageSelector, useMessagesCatalog } from "../../product-locale.js"
+import { Match } from "effect"
+import type { ReactNode } from "react"
 import { expectedTargetKinds, stepFromPath, type RegistrationPath } from "./model.js"
 
-export type RegistrationOptionsState =
-  | { readonly _tag: "Success"; readonly value: ReadonlyArray<StudyNode> }
+export type RegistrationOptionsState = StudyCatalogViewState<ReadonlyArray<StudyNode>>
+
+type RegistrationLandingState =
+  | { readonly _tag: "Success"; readonly value: { readonly variant: "short" | "long" } }
   | { readonly _tag: "Failure" }
   | { readonly _tag: "Initial" }
 
 export interface RegistrationWizardViewProps {
   readonly path: RegistrationPath
   readonly options: RegistrationOptionsState
-  readonly landingVariant?: "short" | "long"
+  readonly landingAssignment: RegistrationLandingState
+  readonly navigationFailed: boolean
+  readonly messages: MessagesCatalog
+  readonly languageSelector: ReactNode
   readonly onSelect: (node: StudyNode) => void
   readonly onBack: () => void
   readonly onReset: () => void
+  readonly onRetryNavigation: () => void
 }
 
 const nodeIcon: Record<StudyNode["kind"], string> = {
@@ -25,15 +37,28 @@ const nodeIcon: Record<StudyNode["kind"], string> = {
   subject: "✏️",
 }
 
+const studyCatalogErrorMessage = (
+  error: StudyCatalogViewError,
+  messages: MessagesCatalog,
+) => Match.value(error).pipe(
+  Match.tag("StudyCatalogNotFound", () => messages.errors.studyCatalog.nodeNotFound),
+  Match.tag("StudyCatalogUnavailable", () => messages.errors.unavailable),
+  Match.tag("StudyCatalogUnexpected", () => messages.errors.unexpected),
+  Match.exhaustive,
+)
+
 export function RegistrationWizardView({
   path,
   options,
-  landingVariant = "short",
+  landingAssignment,
+  navigationFailed,
+  messages: m,
+  languageSelector,
   onSelect,
   onBack,
   onReset,
+  onRetryNavigation,
 }: RegistrationWizardViewProps) {
-  const m = useMessagesCatalog()
   const step = stepFromPath(path)
   const { title, description } = m.registration[step]
   const allowedKinds = expectedTargetKinds(step)
@@ -46,11 +71,20 @@ export function RegistrationWizardView({
       <div aria-hidden className="absolute left-1/2 top-20 size-[32rem] -translate-x-1/2 rounded-full bg-primary/15 blur-3xl" />
       <section className="relative mx-auto flex min-h-[80vh] max-w-3xl flex-col justify-center">
         <header className="mb-10 text-center">
-          <div className="mb-3 flex items-center justify-between"><Text className="font-bold text-primary">PROXUS</Text><LanguageSelector /></div>
+          <div className="mb-3 flex items-center justify-between"><Text className="font-bold text-primary">PROXUS</Text>{languageSelector}</div>
           <Heading level={1}>{title}</Heading>
           <Text tone="muted" className="mt-3">{description}</Text>
-          {path.length === 0 && landingVariant === "long" ? <Text className="mx-auto mt-4 max-w-xl">Encuentra tu comunidad académica y personaliza tu recorrido en pocos pasos.</Text> : null}
+          {path.length === 0 && landingAssignment._tag === "Success" && landingAssignment.value.variant === "long" ? <Text className="mx-auto mt-4 max-w-xl">{m.registration.longDescription}</Text> : null}
+          {path.length === 0 && landingAssignment._tag === "Initial" ? <Skeleton className="mx-auto mt-4 h-5 w-72" aria-label={m.registration.landingLoading} /> : null}
+          {path.length === 0 && landingAssignment._tag === "Failure" ? <Text role="alert" tone="muted" className="mt-4">{m.errors.unavailable}</Text> : null}
         </header>
+
+        {navigationFailed ? (
+          <div role="alert" className="mb-6 rounded-xl border border-destructive/30 bg-card p-6 text-center">
+            <Text>{m.errors.unexpected}</Text>
+            <Button className="mt-4" onClick={onRetryNavigation}>{m.common.retry}</Button>
+          </div>
+        ) : null}
 
         {step === "complete" ? (
           <div className="rounded-2xl border-2 border-primary/30 bg-card p-8 text-center shadow-sticker">
@@ -73,7 +107,7 @@ export function RegistrationWizardView({
           </div>
         ) : options._tag === "Failure" ? (
           <div role="alert" className="rounded-xl border border-destructive/30 bg-card p-6 text-center">
-            <Text>{m.errors.unavailable}</Text>
+            <Text>{studyCatalogErrorMessage(options.error, m)}</Text>
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2" aria-label={m.registration.loading}>

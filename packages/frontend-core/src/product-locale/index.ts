@@ -1,5 +1,5 @@
 export {
   makeProductLocaleAtoms,
-  type LocaleAtom,
   type ProductLocaleAtoms,
+  type ProductLocaleNavigation,
 } from "./atoms.js"
