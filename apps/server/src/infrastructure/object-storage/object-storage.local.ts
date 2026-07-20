@@ -1,31 +1,32 @@
 import { createHmac, timingSafeEqual } from "node:crypto"
-// @effect-diagnostics preferSchemaOverJson:off globalDate:off globalDateInEffect:off
-import { Context, Effect, FileSystem, Layer, Path, Schema, Stream } from "effect"
+import { Clock, Context, DateTime, Effect, FileSystem, Layer, Path, Schema, Stream } from "effect"
 import {
   InvalidObjectKey,
   ObjectAlreadyExists,
   ObjectNotFound,
+  ObjectKey,
   ObjectStorage,
   ObjectStorageError,
-  type ObjectKey,
 } from "./object-storage.js"
 
 const bodyFileName = "body"
 const metadataFileName = "metadata.json"
-const keyPattern = /^[A-Za-z0-9][A-Za-z0-9._-]*(?:\/[A-Za-z0-9][A-Za-z0-9._-]*)*$/
 
-interface Metadata {
-  readonly contentType: string
-}
+const Metadata = Schema.Struct({
+  contentType: Schema.String,
+})
+const MetadataJson = Schema.fromJsonString(Metadata)
 
-interface TransferClaims {
-  readonly version: 1
-  readonly operation: "upload" | "download"
-  readonly key: string
-  readonly expiresAt: number
-  readonly contentType?: string
-  readonly maxContentLength?: number
-}
+const TransferClaims = Schema.Struct({
+  version: Schema.Literal(1),
+  operation: Schema.Literals(["upload", "download"]),
+  key: Schema.String,
+  expiresAt: Schema.Number,
+  contentType: Schema.optional(Schema.String),
+  maxContentLength: Schema.optional(Schema.Number),
+})
+type TransferClaims = typeof TransferClaims.Type
+const TransferClaimsJson = Schema.fromJsonString(TransferClaims)
 
 export interface LocalObjectStorageOptions {
   readonly root: string
@@ -44,10 +45,9 @@ const isPlatformReason = (cause: unknown, tag: string): boolean =>
   "_tag" in cause.reason && cause.reason._tag === tag
 
 const validateKey = (key: string): Effect.Effect<ObjectKey, InvalidObjectKey> =>
-  key.length <= 1024 && keyPattern.test(key) &&
-      !key.split("/").some((segment) => segment === "." || segment === "..")
-    ? Effect.succeed(key as ObjectKey)
-    : Effect.fail(new InvalidObjectKey({ key }))
+  Schema.decodeUnknownEffect(ObjectKey)(key).pipe(
+    Effect.mapError(() => new InvalidObjectKey({ key })),
+  )
 
 const normalizePrefix = (value: string): string =>
   `/${value.split("/").filter(Boolean).join("/")}`
@@ -59,7 +59,7 @@ const encodeKey = (key: string): string =>
   key.split("/").map(encodeURIComponent).join("/")
 
 const encodeClaims = (claims: TransferClaims, secret: string): string => {
-  const payload = Buffer.from(JSON.stringify(claims)).toString("base64url")
+  const payload = Buffer.from(Schema.encodeSync(TransferClaimsJson)(claims)).toString("base64url")
   const signature = createHmac("sha256", secret).update(payload).digest("base64url")
   return `${payload}.${signature}`
 }
@@ -74,21 +74,20 @@ const decodeClaims = (
       if (payload === undefined || payload === "" || encodedSignature === undefined || encodedSignature === "" || extra !== undefined) throw new Error("Malformed token")
       const actual = Buffer.from(encodedSignature, "base64url")
       const expected = createHmac("sha256", secret).update(payload).digest()
-      if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) {
+      if (
+        actual.toString("base64url") !== encodedSignature ||
+        actual.length !== expected.length ||
+        !timingSafeEqual(actual, expected)
+      ) {
         throw new Error("Invalid signature")
       }
-      const value: unknown = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"))
-      if (
-        typeof value !== "object" || value === null ||
-        !("version" in value) || value.version !== 1 ||
-        !("operation" in value) || (value.operation !== "upload" && value.operation !== "download") ||
-        !("key" in value) || typeof value.key !== "string" ||
-        !("expiresAt" in value) || typeof value.expiresAt !== "number"
-      ) throw new Error("Invalid claims")
-      return value as TransferClaims
+      return Buffer.from(payload, "base64url").toString("utf8")
     },
     catch: () => new InvalidTransferToken(),
-  })
+  }).pipe(
+    Effect.flatMap(Schema.decodeUnknownEffect(TransferClaimsJson)),
+    Effect.mapError(() => new InvalidTransferToken()),
+  )
 
 export class InvalidTransferToken extends Schema.TaggedErrorClass<InvalidTransferToken>()(
   "InvalidTransferToken",
@@ -159,7 +158,7 @@ export const layer = (options: LocalObjectStorageOptions): Layer.Layer<
         )
         yield* fs.writeFile(
           path.join(directory, metadataFileName),
-          new TextEncoder().encode(JSON.stringify({ contentType: input.contentType } satisfies Metadata)),
+          new TextEncoder().encode(Schema.encodeSync(MetadataJson)({ contentType: input.contentType })),
           { flag: "wx" },
         ).pipe(Effect.mapError((cause) => storageError("put", key, cause)))
         yield* fs.rename(directory, destination).pipe(
@@ -181,10 +180,9 @@ export const layer = (options: LocalObjectStorageOptions): Layer.Layer<
         ? new ObjectNotFound({ key })
         : storageError("get", key, cause)),
     )
-    const metadata = yield* Effect.try({
-      try: () => JSON.parse(new TextDecoder().decode(metadataBytes)) as Metadata,
-      catch: (cause) => storageError("get", key, cause),
-    })
+    const metadata = yield* Schema.decodeUnknownEffect(MetadataJson)(
+      new TextDecoder().decode(metadataBytes),
+    ).pipe(Effect.mapError((cause) => storageError("get", key, cause)))
     const info = yield* fs.stat(path.join(directory, bodyFileName)).pipe(
       Effect.mapError((cause) => isPlatformReason(cause, "NotFound")
         ? new ObjectNotFound({ key })
@@ -216,7 +214,9 @@ export const layer = (options: LocalObjectStorageOptions): Layer.Layer<
     Effect.gen(function*() {
       const claims = yield* decodeClaims(token, options.signingSecret)
       if (claims.operation !== operation) return yield* new InvalidTransferToken()
-      if (claims.expiresAt <= Date.now()) return yield* new ExpiredTransferToken()
+      if (claims.expiresAt <= (yield* Clock.currentTimeMillis)) {
+        return yield* new ExpiredTransferToken()
+      }
       yield* validateKey(claims.key)
       return claims
     })
@@ -228,43 +228,43 @@ export const layer = (options: LocalObjectStorageOptions): Layer.Layer<
     publicUrl: (rawKey) => validateKey(rawKey).pipe(
       Effect.map((key) => appendUrlPath(options.publicBaseUrl, publicPath, encodeKey(key))),
     ),
-    createUploadTarget: (input) => validateKey(input.key).pipe(
-      Effect.map((key) => {
-        const expiresAt = new Date(Date.now() + input.expiresIn)
-        const token = encodeClaims({
-          version: 1,
-          operation: "upload",
-          key,
-          expiresAt: expiresAt.getTime(),
-          contentType: input.contentType,
-          maxContentLength: input.maxContentLength,
-        }, options.signingSecret)
-        return {
-          key,
-          url: appendUrlPath(options.publicBaseUrl, `${transferPath}/upload`, token),
-          method: "PUT" as const,
-          headers: { "content-type": input.contentType },
-          expiresAt,
-        }
-      }),
-    ),
-    createDownloadTarget: (input) => validateKey(input.key).pipe(
-      Effect.map((key) => {
-        const expiresAt = new Date(Date.now() + input.expiresIn)
-        const token = encodeClaims({
-          version: 1,
-          operation: "download",
-          key,
-          expiresAt: expiresAt.getTime(),
-        }, options.signingSecret)
-        return {
-          url: appendUrlPath(options.publicBaseUrl, `${transferPath}/download`, token),
-          method: "GET" as const,
-          headers: {},
-          expiresAt,
-        }
-      }),
-    ),
+    createUploadTarget: (input) => Effect.gen(function*() {
+      const key = yield* validateKey(input.key)
+      const expiresAtMillis = (yield* Clock.currentTimeMillis) + input.expiresIn
+      const expiresAt = DateTime.toDateUtc(DateTime.makeUnsafe(expiresAtMillis))
+      const token = encodeClaims({
+        version: 1,
+        operation: "upload",
+        key,
+        expiresAt: expiresAtMillis,
+        contentType: input.contentType,
+        maxContentLength: input.maxContentLength,
+      }, options.signingSecret)
+      return {
+        key,
+        url: appendUrlPath(options.publicBaseUrl, `${transferPath}/upload`, token),
+        method: "PUT" as const,
+        headers: { "content-type": input.contentType },
+        expiresAt,
+      }
+    }),
+    createDownloadTarget: (input) => Effect.gen(function*() {
+      const key = yield* validateKey(input.key)
+      const expiresAtMillis = (yield* Clock.currentTimeMillis) + input.expiresIn
+      const expiresAt = DateTime.toDateUtc(DateTime.makeUnsafe(expiresAtMillis))
+      const token = encodeClaims({
+        version: 1,
+        operation: "download",
+        key,
+        expiresAt: expiresAtMillis,
+      }, options.signingSecret)
+      return {
+        url: appendUrlPath(options.publicBaseUrl, `${transferPath}/download`, token),
+        method: "GET" as const,
+        headers: {},
+        expiresAt,
+      }
+    }),
   })
 
   return Context.make(ObjectStorage, storage).pipe(

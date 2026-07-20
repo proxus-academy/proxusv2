@@ -21,12 +21,17 @@ const causeHasTag = (cause: unknown, tag: string): boolean =>
   typeof cause === "object" && cause !== null && "_tag" in cause &&
     (cause._tag === tag || ("cause" in cause && causeHasTag(cause.cause, tag)))
 
-const errorResponse = (error: { readonly _tag?: string; readonly cause?: unknown }) => {
+const errorTag = (error: unknown): string | undefined =>
+  typeof error === "object" && error !== null && "_tag" in error && typeof error._tag === "string"
+    ? error._tag
+    : undefined
+
+const errorResponse = (error: unknown) => {
   if (causeHasTag(error, "UploadTooLarge")) {
     return HttpServerResponse.empty({ status: 413 })
   }
 
-  switch (error._tag) {
+  switch (errorTag(error)) {
     case "ObjectNotFound":
       return HttpServerResponse.empty({ status: 404 })
     case "ObjectAlreadyExists":
@@ -57,7 +62,8 @@ const limitBytes = (
       : Effect.succeed([next, [chunk]] as const)
   }))
 
-const routePath = (value: string): HttpRouter.PathInput => value as HttpRouter.PathInput
+const normalizeRoutePath = (value: string): `/${string}` =>
+  `/${value.split("/").filter(Boolean).join("/")}`
 
 export interface LocalObjectStorageHttpOptions {
   readonly publicPath?: string
@@ -68,14 +74,14 @@ export interface LocalObjectStorageHttpOptions {
 export const httpLayer = (
   options: LocalObjectStorageHttpOptions = {},
 ): Layer.Layer<never, never, HttpRouter.HttpRouter | ObjectStorage | LocalObjectStorageTransfers> => {
-  const publicPath = `/${(options.publicPath ?? "/objects").split("/").filter(Boolean).join("/")}`
-  const transferPath = `/${(options.transferPath ?? "/object-transfers").split("/").filter(Boolean).join("/")}`
+  const publicPath = normalizeRoutePath(options.publicPath ?? "/objects")
+  const transferPath = normalizeRoutePath(options.transferPath ?? "/object-transfers")
 
   return HttpRouter.use((router) => Effect.gen(function*() {
     const storage = yield* ObjectStorage
     const transfers = yield* LocalObjectStorageTransfers
 
-    yield* router.add("PUT", routePath(`${transferPath}/upload/*`), (request) =>
+    yield* router.add("PUT", `${transferPath}/upload/*`, (request) =>
       Effect.gen(function*() {
         const claims = yield* transfers.verify(tokenFromUrl(request.url), "upload")
         const contentType = request.headers["content-type"]?.split(";", 1)[0]?.trim()
@@ -104,7 +110,7 @@ export const httpLayer = (
         })
         return HttpServerResponse.empty({ status: 201 })
       }).pipe(Effect.catchEager((error) =>
-        Effect.succeed(errorResponse(error as { readonly _tag?: string; readonly cause?: unknown })))),
+        Effect.succeed(errorResponse(error)))),
     )
 
     const download = (request: HttpServerRequest.HttpServerRequest) =>
@@ -116,9 +122,9 @@ export const httpLayer = (
           contentLength: Number(object.contentLength),
         })
       }).pipe(Effect.catchEager((error) =>
-        Effect.succeed(errorResponse(error as { readonly _tag?: string; readonly cause?: unknown }))))
+        Effect.succeed(errorResponse(error))))
 
-    yield* router.add("GET", routePath(`${transferPath}/download/*`), download)
+    yield* router.add("GET", `${transferPath}/download/*`, download)
 
     const publicDownload = (request: HttpServerRequest.HttpServerRequest) =>
       storage.get(keyFromUrl(request.url, publicPath)).pipe(
@@ -132,6 +138,6 @@ export const httpLayer = (
 
     // HttpRouter automatically falls back from HEAD to GET. The Web response
     // adapter removes the body while retaining the GET headers.
-    yield* router.add("GET", routePath(`${publicPath}/*`), publicDownload)
+    yield* router.add("GET", `${publicPath}/*`, publicDownload)
   }))
 }

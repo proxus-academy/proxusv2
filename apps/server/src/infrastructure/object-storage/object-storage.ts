@@ -1,6 +1,17 @@
 import { Context, Effect, Schema, Stream } from "effect"
 
-export type ObjectKey = string & { readonly ObjectKey: unique symbol }
+const validObjectKey = Schema.makeFilter<string>((key) =>
+  key.length <= 1024 &&
+      /^[A-Za-z0-9][A-Za-z0-9._-]*(?:\/[A-Za-z0-9][A-Za-z0-9._-]*)*$/.test(key) &&
+      !key.split("/").some((segment) => segment === "." || segment === "..")
+    ? undefined
+    : "must be a safe relative object key")
+
+export const ObjectKey = Schema.String.pipe(
+  Schema.check(validObjectKey),
+  Schema.brand("ObjectKey"),
+)
+export type ObjectKey = typeof ObjectKey.Type
 
 export class InvalidObjectKey extends Schema.TaggedErrorClass<InvalidObjectKey>()(
   "InvalidObjectKey",
