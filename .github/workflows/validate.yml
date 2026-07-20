@@ -1,0 +1,71 @@
+name: Validate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Use pinned Node.js
+        uses: actions/setup-node@0a44ba7841725637a19e28fa30b79a866c81b0a6 # v4.0.4
+        with:
+          node-version: 22.22.2
+      - name: Enable pinned pnpm
+        run: |
+          npm install --global corepack@0.35.0
+          corepack enable pnpm
+      - name: Install frozen dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Validate static, Vitest/PGlite, and build checks
+        run: pnpm validate:pr
+
+  postgres:
+    name: PostgreSQL 17
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17.7-bookworm
+        env:
+          POSTGRES_DB: proxus_postgres_test
+          POSTGRES_PASSWORD: proxus
+          POSTGRES_USER: proxus
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U proxus -d proxus_postgres_test"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      DATABASE_URL: postgresql://proxus:proxus@localhost:5432/proxus_postgres_test
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Use pinned Node.js
+        uses: actions/setup-node@0a44ba7841725637a19e28fa30b79a866c81b0a6 # v4.0.4
+        with:
+          node-version: 22.22.2
+      - name: Enable pinned pnpm
+        run: |
+          npm install --global corepack@0.35.0
+          corepack enable pnpm
+      - name: Install frozen dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Migrate the fresh PostgreSQL database
+        run: pnpm --filter @proxus/backend-infra db:migrate:postgres
+      - name: Run the real PostgreSQL migration check and adapter suite
+        run: pnpm --filter @proxus/backend-infra test:postgres

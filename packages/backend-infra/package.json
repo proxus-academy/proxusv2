@@ -15,7 +15,8 @@
   "scripts": {
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --exclude 'src/postgres/**' --no-file-parallelism --maxWorkers=1",
+    "test:postgres": "node -e \"if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required for test:postgres')\" && vitest run src/postgres --no-file-parallelism --maxWorkers=1",
     "db:generate": "drizzle-kit generate --config drizzle.config.ts",
     "db:check": "drizzle-kit check --config drizzle.config.ts",
     "db:check:postgres": "tsx src/database/check.postgres.ts",

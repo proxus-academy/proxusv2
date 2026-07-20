@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "storybook build",
     "storybook": "sh ./scripts/dev.sh",
     "build-storybook": "storybook build",
     "typecheck": "tsc --noEmit"
