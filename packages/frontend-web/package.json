@@ -5,6 +5,7 @@
   "exports": {
     "./feature-flags": "./src/feature-flags/index.ts",
     "./product-locale": "./src/product-locale/index.ts",
+    "./public-product": "./src/public-product/index.ts",
     "./registration": "./src/registration/index.ts",
     "./routing": "./src/routing/index.ts",
     "./study-catalog": "./src/study-catalog/index.ts"

@@ -146,6 +146,15 @@ frontend-core routing definition + Router service
   → future native in-memory/native-navigation adapter
 ```
 
+The public product route contract is exported by
+`@proxus/frontend-core/public-product`. Web and mobile-web deliberately share
+that contract and their product flow while keeping separate application Router
+identities and separate screens. Their minimal composition roots call the shared
+`@proxus/frontend-web/public-product` factory, which selects the browser
+adapters. A future native client reuses the neutral route contract and product
+modules but selects native adapters; it does not depend on the web composition.
+Presentation differences alone do not fork routes or atoms.
+
 The browser adapter is the sole owner of `pushState`, `replaceState`, and
 `popstate`. One internal state cell owns `RouterLocation` plus the latest typed
 error; `current`, `location`, and `error` are pure projections of that cell. Each
