@@ -22,10 +22,10 @@
     "motel:status": "motel status",
     "motel:stop": "motel stop",
     "build:storybook": "pnpm --filter @proxus/storybook build-storybook",
-    "build": "pnpm -r build",
-    "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test",
-    "test:ci": "pnpm -r --workspace-concurrency=1 test",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:ci": "turbo run test --concurrency=1",
     "check": "pnpm typecheck && pnpm build",
     "effect:diagnostics": "node scripts/run-effect-diagnostics.mjs",
     "lint": "eslint \"apps/*/**/*.{ts,tsx}\" \"packages/*/**/*.{ts,tsx}\" --no-error-on-unmatched-pattern --no-warn-ignored --max-warnings 0",
@@ -43,6 +43,7 @@
     "dependency-cruiser": "18.1.0",
     "eslint": "10.7.0",
     "knip": "6.27.0",
+    "turbo": "^2.10.5",
     "typescript": "^5.8.3",
     "typescript-eslint": "8.64.0"
   }

@@ -168,9 +168,19 @@ After a frozen install, `validate` runs `pnpm validate:pr`, which performs:
 
 1. validator self-tests;
 2. static validation;
-3. the implemented normal Vitest suites in serial workspace order, including
-   PGlite but excluding `packages/backend-infra/src/postgres`;
-4. every workspace build, including the static Storybook build.
+3. the implemented normal Vitest suites through Turborepo with concurrency one,
+   including PGlite but excluding `packages/backend-infra/src/postgres`;
+4. every workspace build through the package dependency graph, including the
+   static Storybook build.
+
+Turborepo schedules `build`, `typecheck` and `test` from the dependencies declared
+in workspace manifests and caches deterministic task results locally. Builds run
+dependency builds first and cache declared `dist` and `storybook-static` outputs;
+typechecks and tests cache successful logs because they do not produce committed
+artifacts. CI intentionally keeps normal tests at concurrency one for the PGlite
+resource constraints described above. Global validators (`lint`, `boundaries`,
+`knip`, workspace contracts and validator self-tests) remain explicit root tasks
+and are not treated as package-local affected checks. No remote cache is configured.
 
 `postgres` provisions `postgres:17.7-bookworm` with a `pg_isready` healthcheck
 and a fresh `proxus_postgres_test` database. It explicitly runs the production
@@ -266,6 +276,7 @@ to dependencies loaded indirectly by Vite/Storybook builds, shared CSS or inline
 pnpm validate:self-test
 pnpm effect:diagnostics
 pnpm typecheck
+pnpm turbo run build --filter @proxus/web
 pnpm lint
 pnpm boundaries
 pnpm knip
