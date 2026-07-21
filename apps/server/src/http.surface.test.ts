@@ -66,7 +66,7 @@ describe("public server surface", () => {
 
       const snapshot = yield* Effect.promise(() => web.handler(new Request("http://proxus.test/feature-flags/snapshot")))
       expect(snapshot.status).toBe(200)
-      expect(snapshot.headers.get("cache-control")).toContain("max-age=60")
+      expect(snapshot.headers.get("cache-control")).toContain("max-age=300")
       const etag = snapshot.headers.get("etag")
       expect(etag).toBe('"feature-flags-0"')
       expect(yield* Effect.promise(() => snapshot.json())).toEqual({ configurationRevision: 0, flags: [] })

@@ -75,7 +75,7 @@ describe("feature flag conditional requests", () => {
       expect(response.status).toBe(200)
       expect(response.headers.get("etag")).toBe(current)
       expect(response.headers.get("cache-control")).toBe(
-        "public, max-age=60, stale-while-revalidate=300",
+        "public, max-age=300, stale-while-revalidate=300",
       )
       expect(yield* Effect.promise(() => response.json())).toEqual(snapshot)
 

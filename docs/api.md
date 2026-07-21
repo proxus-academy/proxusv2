@@ -122,7 +122,7 @@ complete response set:
 | `500` | empty | Safe internal failure; no repository or schema detail |
 
 Successful reads include a revision-derived strong `ETag` and
-`Cache-Control: public, max-age=60, stale-while-revalidate=300`. The generated
+`Cache-Control: public, max-age=300, stale-while-revalidate=300`. The generated
 OpenAPI operation declares the optional request validator, `200`/`304`/`500`,
 and the `ETag`/`Cache-Control` headers on both cacheable responses.
 `If-None-Match` follows RFC weak comparison semantics, including entity-tag

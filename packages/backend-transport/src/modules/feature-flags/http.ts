@@ -5,7 +5,7 @@ import { Effect, Schema } from "effect"
 import { HttpServerResponse } from "effect/unstable/http"
 import { HttpApiBuilder, HttpApiError } from "effect/unstable/httpapi"
 
-const cacheControl = "public, max-age=60, stale-while-revalidate=300"
+const cacheControl = "public, max-age=300, stale-while-revalidate=300"
 const decodeSnapshot = Schema.decodeUnknownEffect(FeatureFlagSnapshot)
 const snapshotResponse = HttpServerResponse.schemaJson(FeatureFlagSnapshot)
 const internalServerError = () => new HttpApiError.InternalServerError({})

@@ -6,7 +6,6 @@ import * as AtomRegistry from "effect/unstable/reactivity/AtomRegistry"
 import { TestClock } from "effect/testing"
 import { describe, expect, it } from "vitest"
 import {
-  defaultFeatureFlagSnapshotRefreshInterval,
   FeatureFlagDistribution,
   makeFeatureFlagSnapshotModule,
 } from "./distribution.js"
@@ -49,7 +48,9 @@ describe("feature flag snapshot module", () => {
             expect(yield* AtomRegistry.getResult(registry, featureFlags.snapshotAtom)).toEqual(snapshot(1))
             expect(reads).toBe(1)
 
-            yield* TestClock.adjust(defaultFeatureFlagSnapshotRefreshInterval)
+            yield* TestClock.adjust(Duration.minutes(4))
+            expect(reads).toBe(1)
+            yield* TestClock.adjust(Duration.minutes(1))
             const revalidating = registry.get(featureFlags.snapshotAtom)
             expect(AsyncResult.isSuccess(revalidating)).toBe(true)
             if (AsyncResult.isSuccess(revalidating)) {

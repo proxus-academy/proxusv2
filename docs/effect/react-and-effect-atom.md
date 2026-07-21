@@ -116,8 +116,8 @@ Cada aplicación compone el port neutral `FeatureFlagDistribution` con su adapte
 de plataforma y crea un único módulo mediante `makeFeatureFlagSnapshotModule`.
 El módulo devuelve `snapshotAtom` y `lifecycleAtom`: `App` monta únicamente el
 lifecycle, que hace la lectura inicial y revalida mediante el `Clock` de Effect y
-el `AtomRegistry` activo. El intervalo es configurable y por defecto son 60
-segundos, coherentes con `Cache-Control: max-age=60`; al desmontarse se cierra su
+el `AtomRegistry` activo. El intervalo es configurable y por defecto son cinco
+minutos, coherentes con `Cache-Control: max-age=300`; al desmontarse se cierra su
 scope y se cancela el polling. `frontend-core` no usa timers ni globals del
 browser.
 

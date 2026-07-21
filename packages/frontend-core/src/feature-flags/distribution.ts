@@ -10,8 +10,8 @@ export class FeatureFlagDistribution extends Context.Service<FeatureFlagDistribu
   readonly getActiveSnapshot: () => Effect.Effect<FeatureFlagSnapshot, FeatureFlagDistributionError>
 }>()("@proxus/frontend-core/feature-flags/distribution/FeatureFlagDistribution") {}
 
-/** Matches the public snapshot HTTP `max-age=60` cache policy. */
-export const defaultFeatureFlagSnapshotRefreshInterval = Duration.seconds(60)
+/** Matches the public snapshot HTTP five-minute cache TTL. */
+export const defaultFeatureFlagSnapshotRefreshInterval = Duration.minutes(5)
 
 /**
  * Owns the snapshot query and its pull-based refresh lifecycle. Mounting the
