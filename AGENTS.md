@@ -151,18 +151,18 @@ pnpm --filter <paquete> test
 pnpm --filter <paquete> build
 ```
 
-Comprobación global:
+Comprobación estática y global:
 
 ```bash
-pnpm effect:diagnostics
-pnpm typecheck
+pnpm validate:self-test
+pnpm static
 pnpm test
 pnpm build
 ```
 
-`pnpm check` ejecuta actualmente `typecheck` y `build`; no incluye tests ni diagnostics de Effect.
+`pnpm static` incluye diagnostics de Effect para los 15 proyectos TypeScript del workspace (también sus configs TS), typecheck, ESLint type-aware, dependency-cruiser, Knip y contratos de packages. No existe baseline de hallazgos aceptados ni deben añadirse allowlists para ocultarlos. `pnpm validate:pr` ejecuta el self-test, `static`, los tests Vitest/PGlite implementados y los builds.
 
-No existen actualmente scripts globales de lint, `boundaries` o `verify:architecture`. No los presentes como validación ejecutada ni asumas que están disponibles hasta que se incorporen al workspace.
+`pnpm check` conserva el atajo histórico `typecheck` + `build`; no incluye tests ni el resto de validadores estáticos. `check`, `static` y `validate:pr` no requieren PostgreSQL ni Docker; el workflow añade un job separado con PostgreSQL 17 que ejecuta migraciones y `@proxus/backend-infra test:postgres` como gate real mínimo. Los journeys de browser siguen pendientes y no son un gate. Consulta `docs/testing.md` antes de describir la cobertura real.
 
 Al finalizar, indica qué comandos se ejecutaron, su resultado y qué comprobaciones relevantes no se ejecutaron.
 

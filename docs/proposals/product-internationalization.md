@@ -2,16 +2,9 @@
 
 ## Estado
 
-Propuesta revisada adversarialmente. No describe una funcionalidad ya implementada.
+Implementada parcialmente en las aplicaciones de producto. La decisión inicial de evaluar Paraglide fue reemplazada tras el spike por catálogos TypeScript explícitos: resultan más simples, más seguros para parámetros y coherentes con la arquitectura atom-first actual.
 
-La revisión identificó como condiciones bloqueantes antes de implementar:
-
-1. demostrar una única fuente de verdad entre Effect Atom y el runtime de mensajes;
-2. definir una transición de locale sin ciclos entre runtime, URL, almacenamiento y documento;
-3. resolver el locale antes del primer render para evitar contenido en un idioma incorrecto;
-4. cerrar la semántica de URL, historial y persistencia;
-5. demostrar generación reproducible del catálogo en el monorepo;
-6. decidir si un lanzamiento en inglés puede aceptar nombres de catálogo todavía españoles.
+Permanecen fuera de esta entrega la traducción de `StudyNode.name`, las superficies no alcanzables del wizard y la internacionalización del admin.
 
 ## Objetivo
 
@@ -51,31 +44,20 @@ Actualmente:
 
 ## Decisión propuesta
 
-### Motor de mensajes
+### Catálogos TypeScript
 
-Realizar primero un spike de integración y, si se valida, adoptar **Paraglide JS 2**.
+Los mensajes se definen mediante un `MessagesCatalog` explícito. Cada propiedad es un `string` o una función tipada que recibe un objeto de parámetros y devuelve `string`. Todos los locales usan `satisfies MessagesCatalog`, y el mapa de catálogos usa `satisfies Record<Locale, MessagesCatalog>`.
 
-Motivos:
-
-- genera funciones TypeScript para cada mensaje;
-- comprueba claves y parámetros durante el typecheck;
-- soporta plurales, selects y formatos basados en `Intl`;
-- permite tree-shaking por mensaje;
-- encaja con Vite sin obligar a que los componentes dependan de un provider React;
-- permite compartir el catálogo entre ambas aplicaciones.
-
-API esperada:
+API de consumo:
 
 ```ts
-import * as m from "@proxus/product-i18n/messages"
+const m = useMessagesCatalog()
 
-m.registration_country_title()
-m.registration_progress({ current: 2, total: 5 })
+m.common.back
+m.registration.progress({ current: 2, total: 5 })
 ```
 
-El typecheck debe rechazar mensajes inexistentes y argumentos incompletos o incorrectos.
-
-Si el spike descubre incompatibilidades relevantes con Vite 7, el workspace pnpm, Effect Atom o el consumo desde varios paquetes, la alternativa conservadora será `i18next` + `react-i18next`, configurado con selector API, recursos TypeScript y tipado estricto.
+Esto comprueba claves, completitud de locales y parámetros sin código generado, runtime global ni locale props. Los mensajes de error permanecen predefinidos en el catálogo; el matching exhaustivo entre errores públicos Effect y mensajes vive en código de presentación separado.
 
 ### Locales iniciales
 
@@ -93,40 +75,30 @@ Añadir un locale requerirá su catálogo completo y deberá fallar en CI si fal
 
 ### Catálogo compartido de producto
 
-Crear:
+Estructura implementada:
 
 ```text
-packages/product-i18n/
-├── messages/
-│   ├── es.json
-│   └── en.json
-├── project.inlang/
+packages/product-messages/
 ├── src/
+│   ├── catalog.ts
+│   ├── catalog.test.ts
 │   ├── index.ts
-│   ├── locale.ts
-│   └── messages.ts
-└── package.json
+│   └── study-catalog-error-message.ts
+├── package.json
+└── tsconfig.json
 ```
 
-Este paquete contendrá:
-
-- locales soportados;
-- fallback;
-- mensajes comunes de producto;
-- funciones generadas y tipadas;
-- formatos comunes de fechas, números y listas.
+Este paquete contiene locales soportados, el contrato de catálogo, los catálogos completos y mappers de presentación compartidos que convierten errores públicos tipados a mensajes predefinidos.
 
 No contendrá copy del admin. Tampoco contendrá decisiones visuales específicas de una aplicación salvo que el mensaje sea realmente compartido.
 
 ### Fuente de verdad y estado independiente de plataforma
 
-El locale efectivo expuesto mediante Effect Atom será la única fuente de verdad para las aplicaciones. El runtime del motor de mensajes no mantendrá una selección independiente observable por los componentes.
+El locale efectivo expuesto mediante Effect Atom es la única fuente de verdad reactiva. `useMessagesCatalog()` lee ese atom y devuelve el objeto estable correspondiente desde `catalogs[locale]`. No existe runtime de traducción global, Context adicional ni prop drilling de locale.
 
-El spike debe definir y probar el puente exacto con Paraglide (`overwriteGetLocale`/`overwriteSetLocale` o API equivalente). Las vistas no llamarán directamente al runtime ni sincronizarán locale mediante `useEffect`. Si Paraglide no permite que un atom gobierne el runtime, provoque un rerender sin reload y mantenga tests aislados, se considerará un bloqueo y se evaluará i18next.
+Los mensajes parametrizados se evalúan durante render; nunca se almacenan strings traducidos como estado de larga vida.
 
-Los mensajes se evaluarán durante render o en derivaciones reactivas; nunca se almacenarán strings traducidos como constantes de módulo o estado de larga vida.
-
-Añadir una capacidad de locale en `packages/frontend-core/src/i18n`:
+Añadir una capacidad de locale en `packages/frontend-core/src/product-locale`:
 
 ```text
 locale.ts
@@ -145,7 +117,7 @@ El locale es estado de aplicación y debe modelarse atom-first. Los componentes 
 
 ### Adapter de navegador
 
-Añadir en `packages/frontend-web/src/i18n`:
+Añadir en `packages/frontend-web/src/product-locale`:
 
 ```text
 locale-preference.ts
@@ -360,17 +332,17 @@ Convenciones iniciales:
 
 ## Carga y rendimiento
 
-La primera fase no implementará lazy loading de locales. Paraglide compila funciones ESM y ofrece tree-shaking por mensaje, pero eso no implica chunks por locale. Se medirá el bundle real de ambas apps. Si el tamaño justificase partición, se redactará una propuesta separada con el mecanismo exacto de `dynamic import`, preload, recuperación y compatibilidad futura con SSR.
+La primera fase no implementa lazy loading: los catálogos TypeScript son pequeños y se incluyen en el bundle de producto. Si su tamaño justificase partición, se redactará una propuesta separada con límites de chunk, preload, recuperación y comportamiento durante el cambio de locale.
 
 ## Pruebas
 
-### Generación y catálogos
+### Catálogos
 
-- generación reproducible desde un checkout limpio;
-- typecheck falla ante parámetros incorrectos;
-- validación de catálogos incompletos;
+- el typecheck falla ante parámetros incorrectos;
+- `satisfies MessagesCatalog` valida cada catálogo;
+- `Record<Locale, MessagesCatalog>` valida locales completos;
 - build de las dos aplicaciones consume el mismo package;
-- decisión explícita sobre versionar o generar artefactos en CI.
+- no existen artefactos generados ni writers concurrentes.
 
 ### `frontend-core`
 
@@ -422,7 +394,7 @@ Criterios observables de accesibilidad:
 - registrar el locale como contexto útil, no como identidad del usuario;
 - no incluir datos sensibles en parámetros de mensajes ni telemetría;
 - separar el mensaje mostrado del detalle técnico registrado;
-- detectar fallos de carga/generación de catálogos;
+- detectar fallos inesperados al resolver locale o presentar errores;
 - no utilizar traducciones para construir claves de métricas de alta cardinalidad.
 
 ## Plan de entrega
@@ -435,25 +407,17 @@ Criterios observables de accesibilidad:
 4. Definir variante lingüística (`es-ES` y `en-GB` o `en-US`), tono, glosario, owner y revisión humana.
 5. Aprobar requisitos de accesibilidad, formatos y deuda explícita de RTL.
 
-### Fase 0: spike técnico
+### Fase 0: spike técnico completado
 
-1. Integrar Paraglide en una rama o cambio aislado.
-2. Crear un mensaje con parámetros y un plural para `es` y `en`.
-3. Consumirlo desde web, mobile-web y un package compartido.
-4. Verificar cambio reactivo de locale.
-5. Validar Vite dev/build, TypeScript y workspace pnpm.
-6. Elegir paquete compartido compilado una vez o compilación por app; no permitir dos procesos escribiendo el mismo output.
-7. Fijar versión del compilador y comprobar generación determinista desde checkout limpio.
-8. Definir output generado, `exports`, orden de scripts y política de artefactos; si no se versionan, CI generará antes de typecheck/build; si se versionan, CI exigirá ausencia de drift.
-9. Verificar que atom y runtime tienen una única fuente de verdad, rerender sin reload y aislamiento entre registries/tests.
-10. Probar bootstrap previo a React sin flash y transición sin ciclos bajo Strict Mode.
-11. Comprobar que barrels/wrappers no destruyen tree-shaking.
-12. Comparar con i18next si falla cualquiera de esos gates.
-13. Documentar la decisión final antes de la migración completa.
+1. Se evaluó Paraglide y se descartó por complejidad de runtime, generación y tipado insuficiente de interpolaciones simples.
+2. Se validó un contrato TypeScript explícito con strings y funciones parametrizadas.
+3. Se adoptó Effect Atom como única fuente reactiva del locale.
+4. Se expuso `useMessagesCatalog()` como API de consumo sin prop drilling.
+5. Se validó consumo desde web, mobile-web y el package compartido.
 
 ### Fase 1: infraestructura y wizard
 
-1. Crear `packages/product-i18n`.
+1. Crear `packages/product-messages`.
 2. Añadir `Locale`, fallback y atoms.
 3. Implementar adapters web y persistencia.
 4. Sincronizar URL y `<html lang>`.
@@ -504,7 +468,7 @@ La localización del catálogo convertiría contrato, persistencia, repositories
 Durante la implementación se ejecutará, como mínimo:
 
 ```bash
-pnpm --filter @proxus/product-i18n typecheck
+pnpm --filter @proxus/product-messages typecheck
 pnpm --filter @proxus/frontend-core typecheck
 pnpm --filter @proxus/frontend-core test
 pnpm --filter @proxus/frontend-web typecheck
@@ -528,9 +492,8 @@ Los nombres exactos de filtros y scripts se confirmarán contra los `package.jso
 5. ¿Los nombres del catálogo deben estar localizados antes del lanzamiento público en inglés?
 6. ¿Se usará `en-GB` o `en-US`, y quién aprueba el copy?
 7. ¿Las traducciones se revisarán solo en Git o se integrará un TMS?
-8. ¿Se versionan los artefactos generados de Paraglide o se generan en CI?
-9. ¿Qué formatos de fecha, zona horaria, número, lista, moneda y unidades necesita realmente la primera superficie?
-10. ¿Qué estrategia futura de SSR se quiere preservar? La primera fase se valida exclusivamente como CSR.
+8. ¿Qué formatos de fecha, zona horaria, número, lista, moneda y unidades necesita realmente la primera superficie?
+9. ¿Qué estrategia futura de SSR se quiere preservar? La primera fase se valida exclusivamente como CSR.
 
 ## Criterios de aceptación de la primera entrega
 

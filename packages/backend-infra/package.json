@@ -5,19 +5,25 @@
   "exports": {
     "./database/pglite": "./src/database/pglite.ts",
     "./database/postgres": "./src/database/postgres.ts",
+    "./feature-flags/pglite": "./src/modules/feature-flags/repository.pglite.layer.ts",
+    "./feature-flags/postgres": "./src/modules/feature-flags/repository.postgres.layer.ts",
     "./study-catalog/pglite": "./src/modules/study-catalog/repository.pglite.layer.ts",
-    "./study-catalog/postgres": "./src/modules/study-catalog/repository.postgres.layer.ts"
+    "./study-catalog/postgres": "./src/modules/study-catalog/repository.postgres.layer.ts",
+    "./product-analytics/memory": "./src/modules/product-analytics/repository.memory.ts",
+    "./product-analytics/bigquery": "./src/modules/product-analytics/repository.bigquery.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --exclude 'src/postgres/**' --no-file-parallelism --maxWorkers=1",
+    "test:postgres": "node -e \"if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required for test:postgres')\" && vitest run src/postgres --no-file-parallelism --maxWorkers=1",
     "db:generate": "drizzle-kit generate --config drizzle.config.ts",
     "db:check": "drizzle-kit check --config drizzle.config.ts",
     "db:check:postgres": "tsx src/database/check.postgres.ts",
     "db:migrate": "tsx src/database/migrate.ts",
     "db:migrate:pglite": "tsx src/database/migrate.ts",
     "db:migrate:postgres": "tsx src/database/migrate.postgres.ts",
+    "db:publish-feature-flags": "tsx src/database/publish-feature-flags.postgres.ts",
     "db:seed:pglite": "tsx src/database/seed.pglite.ts",
     "db:reset:pglite": "tsx src/database/reset.pglite.ts"
   },
@@ -25,6 +31,7 @@
     "@effect/sql-pg": "4.0.0-beta.98",
     "@effect/sql-pglite": "4.0.0-beta.98",
     "@electric-sql/pglite": "0.5.4",
+    "@google-cloud/bigquery": "8.3.1",
     "@proxus/backend-domain": "workspace:*",
     "@proxus/shared": "workspace:*",
     "drizzle-orm": "1.0.0-rc.4",

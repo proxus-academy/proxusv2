@@ -57,24 +57,25 @@ Usar un **servicio Effect con Layer** cuando hay operaciones asíncronas, fallos
 
 Cuando hay ambas necesidades, el servicio ejecuta las operaciones y los atoms modelan su estado y transiciones.
 
+Los adapters de almacenamiento web deben tratar el acceso como una capacidad que puede fallar incluso al leer `window.localStorage`. Una identidad funcional puede degradar a una única identidad en memoria estable durante el lifecycle del adapter; analytics y cualquier capacidad condicionada por consentimiento deben fallar cerradas si no pueden leer o escribir el estado requerido. Los valores persistidos se validan y codifican con `Schema`, no con assertions sobre strings recuperados.
+
 ## Ejemplo normativo: path de registro
 
-`frontend-core` define las transiciones y recibe un atom escribible:
+El estado navegable del registro forma parte del destino tipado del router. `frontend-core` define las transiciones y recibe una lectura junto a la operación Effect que confirma el reemplazo:
 
 ```ts
-export type RegistrationPathAtom = Atom.Writable<
-  RegistrationPath,
-  RegistrationPath
->
-
-export const makeRegistrationAtoms = (
-  registrationPathAtom: RegistrationPathAtom,
-) => ({
-  // queries y operaciones nombradas construidas sobre el port
-})
+export interface RegistrationPathNavigation<E> {
+  readonly registrationPathAtom: Atom.Atom<RegistrationPath>
+  readonly replaceRegistrationPath: (
+    path: RegistrationPath,
+    get: Atom.FnContext,
+  ) => Effect.Effect<void, E>
+}
 ```
 
-Web compone la factory con `makeWebRegistrationPathAtom()`, que sincroniza `?path=`. Un cliente React Native podrá proporcionar un atom respaldado por router, memoria o AsyncStorage sin cambiar las reglas ni las pantallas consumidoras.
+Web proyecta la lectura desde el destino actual y ejecuta la escritura mediante `Router.replace`; no existe un segundo adapter que escriba History ni un fiber fire-and-forget. `RegistrationPathParam` acepta solo los prefijos publicados `[]`, país, país→tipo, →universidad, →grado y →asignatura. Un lifecycle scoped elimina `path` cuando su valor no cumple ese Schema, tanto al inicio como tras `popstate`, preservando el resto de la query y aplicando solo la canonicalización más reciente. Seleccionar, volver, reiniciar y canonicalizar son atoms Effect nombrados. La composition root les inyecta el único runner de comandos de navegación: conserva el último comando fallido como Effect reejecutable y expone `failedAtom`/`retryAtom`, sin que la app inspeccione ni correlacione los `AsyncResult`. Un token impide que el éxito tardío de otro comando elimine un fallo más reciente. Los hitos analíticos de una selección se ejecutan únicamente después de que `replace` confirme el nuevo path. Un cliente React Native puede proporcionar una operación respaldada por navegación nativa o memoria sin cambiar las reglas ni las pantallas consumidoras.
+
+El locale es siempre el primer segmento (`/:locale/...`) y usa el codec `Locale` del árbol compilado. La canonicalización prioriza el path explícito, después el parámetro legado `lang`, y finalmente preferencia/dispositivo; elimina solo `lang` y conserva el resto de query y el hash. Persistencia y atributos de `document` se actualizan después de un `Router.replace` exitoso. El locale tampoco mantiene un escritor URL independiente.
 
 ## Composition roots
 

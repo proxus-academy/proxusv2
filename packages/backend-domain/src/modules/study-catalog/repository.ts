@@ -6,15 +6,10 @@ import type {
   StudyEdgeEndpointKindMismatch,
   StudyEdgeId,
   StudyEdgeNotFound,
-  StudyEdgesFromId,
-  StudyEdgesToId,
   StudyNode,
   StudyNodeNotFound,
   StudyNodeKind,
-  StudyNodeOfId,
   StudyNodeStatus,
-  StudyNodeSourcesOfId,
-  StudyNodeTargetsOfId,
 } from "@proxus/shared/study-catalog"
 import { Context, Effect, Option, Schema } from "effect"
 
@@ -43,10 +38,11 @@ export class StudyCatalogRepository extends Context.Service<
       StudyCatalogRepositoryError
     >
 
-    readonly findNodeById: <Id extends StudyNodeId>(
-      nodeId: Id,
+    /** The persisted discriminator, not the caller's branded ID, determines the node variant. */
+    readonly findNodeById: (
+      nodeId: StudyNodeId,
     ) => Effect.Effect<
-      Option.Option<StudyNodeOfId<Id>>,
+      Option.Option<StudyNode>,
       StudyCatalogRepositoryError
     >
 
@@ -57,15 +53,15 @@ export class StudyCatalogRepository extends Context.Service<
       StudyCatalogRepositoryError
     >
 
-    readonly createNode: <Node extends StudyNode>(
-      node: Node,
-    ) => Effect.Effect<Node, StudyCatalogRepositoryError>
+    readonly createNode: (
+      node: StudyNode,
+    ) => Effect.Effect<StudyNode, StudyCatalogRepositoryError>
 
-    readonly createEdge: <Edge extends StudyEdge>(
-      edge: Edge,
+    readonly createEdge: (
+      edge: StudyEdge,
       requestedPosition?: number,
     ) => Effect.Effect<
-      Edge,
+      StudyEdge,
       | StudyNodeNotFound
       | StudyEdgeEndpointKindMismatch
       | StudyEdgeAlreadyExists
@@ -74,7 +70,11 @@ export class StudyCatalogRepository extends Context.Service<
 
     readonly updateEdge: (
       edgeId: StudyEdgeId,
-      input: { readonly from: StudyNodeId; readonly to: StudyNodeId; readonly position: number },
+      input: {
+        readonly from: StudyNodeId
+        readonly to: StudyNodeId
+        readonly position: number
+      },
     ) => Effect.Effect<
       StudyEdge,
       | StudyEdgeNotFound
@@ -91,59 +91,57 @@ export class StudyCatalogRepository extends Context.Service<
       StudyEdgeNotFound | StudyCatalogRepositoryError
     >
 
-    readonly renameNode: <Id extends StudyNodeId>(
-      nodeId: Id,
+    readonly renameNode: (
+      nodeId: StudyNodeId,
       name: string,
       updatedAt: StudyNode["updatedAt"],
     ) => Effect.Effect<
-      StudyNodeOfId<Id>,
+      StudyNode,
       StudyNodeNotFound | StudyCatalogRepositoryError
     >
 
-    readonly updateNodeStatus: <Id extends StudyNodeId>(
-      nodeId: Id,
+    readonly updateNodeStatus: (
+      nodeId: StudyNodeId,
       status: StudyNodeStatus,
       updatedAt: StudyNode["updatedAt"],
     ) => Effect.Effect<
-      StudyNodeOfId<Id>,
+      StudyNode,
       StudyNodeNotFound | StudyCatalogRepositoryError
     >
 
-    readonly listOutgoingEdges: <Id extends StudyNodeId>(
-      sourceNodeId: Id,
+    readonly listOutgoingEdges: (
+      sourceNodeId: StudyNodeId,
     ) => Effect.Effect<
-      ReadonlyArray<StudyEdgesFromId<Id>>,
+      ReadonlyArray<StudyEdge>,
       StudyNodeNotFound | StudyCatalogRepositoryError
     >
 
-    readonly listIncomingEdges: <Id extends StudyNodeId>(
-      targetNodeId: Id,
+    readonly listIncomingEdges: (
+      targetNodeId: StudyNodeId,
     ) => Effect.Effect<
-      ReadonlyArray<StudyEdgesToId<Id>>,
+      ReadonlyArray<StudyEdge>,
       StudyNodeNotFound | StudyCatalogRepositoryError
     >
 
-    readonly listTargets: <Id extends StudyNodeId>(
-      sourceNodeId: Id,
+    readonly listTargets: (
+      sourceNodeId: StudyNodeId,
     ) => Effect.Effect<
-      ReadonlyArray<StudyNodeTargetsOfId<Id>>,
+      ReadonlyArray<StudyNode>,
       StudyNodeNotFound | StudyCatalogRepositoryError
     >
 
-    readonly listChildren: <Id extends StudyNodeId>(
-      input: {
-        readonly parentId: Id
-        readonly relationshipKinds: ReadonlyArray<StudyEdge["_tag"]>
-      },
-    ) => Effect.Effect<
-      ReadonlyArray<StudyNodeTargetsOfId<Id>>,
+    readonly listChildren: (input: {
+      readonly parentId: StudyNodeId
+      readonly relationshipKinds: ReadonlyArray<StudyEdge["_tag"]>
+    }) => Effect.Effect<
+      ReadonlyArray<StudyNode>,
       StudyCatalogRepositoryError
     >
 
-    readonly listSources: <Id extends StudyNodeId>(
-      targetNodeId: Id,
+    readonly listSources: (
+      targetNodeId: StudyNodeId,
     ) => Effect.Effect<
-      ReadonlyArray<StudyNodeSourcesOfId<Id>>,
+      ReadonlyArray<StudyNode>,
       StudyNodeNotFound | StudyCatalogRepositoryError
     >
   }

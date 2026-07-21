@@ -12,7 +12,7 @@ export class StudyAsset extends Schema.Class<StudyAsset>("StudyAsset")({
   createdAt: Schema.DateTimeUtcFromString,
 }) {}
 
-export type StudyRelationshipKind = StudyEdge["_tag"]
+type StudyRelationshipKind = StudyEdge["_tag"]
 
 /** Relationships exposed as children for each parent node kind. */
 export const childRelationshipsFor = (

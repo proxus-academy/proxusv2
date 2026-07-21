@@ -3,7 +3,10 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./feature-flags": "./src/feature-flags/index.ts",
+    "./product-locale": "./src/product-locale/index.ts",
     "./registration": "./src/registration/index.ts",
+    "./routing": "./src/routing/index.ts",
     "./study-catalog": "./src/study-catalog/index.ts"
   },
   "scripts": {
@@ -12,11 +15,12 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@proxus/shared": "workspace:*",
     "@proxus/frontend-core": "workspace:*",
+    "@proxus/product-messages": "workspace:*",
     "effect": "4.0.0-beta.98"
   },
   "devDependencies": {
-    "@proxus/shared": "workspace:*",
     "happy-dom": "^18.0.1",
     "typescript": "^5.8.3",
     "vitest": "3.2.7"

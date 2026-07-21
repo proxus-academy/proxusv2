@@ -1,14 +1,15 @@
 export {
+  RegistrationPath,
   RegistrationPathParam,
   expectedTargetKinds,
   stepFromPath,
-  type RegistrationPath,
   type RegistrationStep,
 } from "./model.js"
 export {
   makeRegistrationAtoms,
   type RegistrationAtoms,
-  type RegistrationPathAtom,
+  type RegistrationMilestones,
+  type RegistrationPathNavigation,
 } from "./atoms.js"
 export {
   appendRegistrationNode,

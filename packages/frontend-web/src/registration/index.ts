@@ -1,1 +1,4 @@
-export { makeWebRegistrationPathAtom } from "./path-url.js"
+export {
+  makeWebRegistrationPathNavigation,
+  type WebRegistrationPathNavigation,
+} from "./path-url.js"

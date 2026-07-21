@@ -6,7 +6,6 @@ import {
   DegreeSubjectEdge,
   StudyEdge,
   StudyNode,
-  SubjectNode,
   UniversityNode,
   UniversitySubjectEdge,
   makeCountryNodeId,
@@ -19,9 +18,6 @@ import {
   type CountryNodeId,
   type DegreeNodeId,
   type StudyAssetId,
-  type StudyNodeSourcesOfId,
-  type StudyNodeTargetsOfId,
-  type SubjectNodeId,
   type UniversityNodeId,
 } from "./schema.js"
 
@@ -135,7 +131,7 @@ describe("StudyEdge", () => {
     expect(edge._tag).toBe("CountryTypeEdge")
   })
 
-  it("derives university and degree paths to a shared subject", () => {
+  it("constructs university and degree paths to a shared subject", () => {
     const universitySubject = new UniversitySubjectEdge({
       id: edgeId,
       from: universityId,
@@ -151,12 +147,6 @@ describe("StudyEdge", () => {
 
     expect(universitySubject.to).toBe(subjectIdValue)
     expect(degreeSubject.to).toBe(subjectIdValue)
-    expectTypeOf<StudyNodeTargetsOfId<UniversityNodeId>>().toEqualTypeOf<
-      DegreeNode | SubjectNode
-    >()
-    expectTypeOf<StudyNodeSourcesOfId<SubjectNodeId>>().toEqualTypeOf<
-      UniversityNode | DegreeNode
-    >()
     expectTypeOf(degreeSubject.from).toEqualTypeOf<DegreeNodeId>()
   })
 

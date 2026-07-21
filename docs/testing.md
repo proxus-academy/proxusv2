@@ -71,11 +71,17 @@ One reusable contract must eventually run against:
 
 Contract cases are independent tests for create/read/update (including every
 node status), missing records, uniqueness, endpoint invariants, ordering and
-error preservation.
+error preservation. Ordered Study Catalog edge mutations additionally exercise
+concurrent create/move/remove on PGlite. The explicit real-PostgreSQL smoke suite
+proves the production driver, global source(s)-before-edge locking, deterministic
+concurrent append positions `[0, 1]`, concurrent update/remove completion and a
+fresh-key retry when an edge source changes while a writer waits; it does not yet
+replace running the complete reusable repository contract against PostgreSQL.
 Adapter-specific corruption and constraint tests remain beside the adapter.
 
 PGlite is the fast PostgreSQL-compatible integration engine, not proof of
-production concurrency or driver parity.
+production concurrency or driver parity. PostgreSQL 17 is the definitive gate
+for the lock behavior covered by the explicit smoke suite.
 
 ### Migrations and seeds
 
@@ -85,8 +91,13 @@ Location:
 packages/backend-infra/src/database/*.test.ts
 ```
 
-Cover migration from an empty database, pending-migration detection, deterministic
-and idempotent seeds, canonical reconciliation and destructive PGlite reset.
+Cover migration from an empty database and populated upgrades, pending-migration
+detection, deterministic and idempotent seeds, canonical reconciliation and
+destructive PGlite reset. The Feature Flags rev0 upgrade fixture applies the
+historical migration prefix, inserts legacy object rows plus an already-normalized
+array row, then runs the real remaining migrator and verifies revision relocation,
+object-to-array normalization, an unchanged array, successful repository/reader
+access, the restored immutable trigger and the stricter constraint.
 Production migrations are applied manually; startup must fail while any are
 pending.
 
@@ -105,9 +116,12 @@ web handler without opening TCP:
 typed client → HttpApi handlers → StudyCatalogLive → PGlite
 ```
 
-Malformed transport input is a 400 decoding failure. Expected domain errors keep
-the statuses declared in the shared contract. Repository failures become a safe
-bodyless 500 and never expose causes.
+Malformed transport input is a 400 decoding failure. The public and admin
+composition-root suites also prove that their 256 KiB raw-body middleware runs
+before decoding: a normal mutation/analytics body succeeds and an oversized one
+returns a bodyless 413. Expected domain errors keep the statuses declared in the
+shared contract. Repository failures become a safe bodyless 500 and never expose
+causes.
 
 ### React and Effect Atom
 
@@ -120,44 +134,153 @@ contract, serialization and lifecycle tests. Components test accessible
 rendering and dispatch; they do not duplicate atom or service behavior.
 
 Browser tests are reserved for navigation, focus, drag-and-drop, uploads and a
-few critical public/admin journeys.
+few critical public/admin journeys. `apps/web` y `apps/mobile-web` ejecutan
+Vitest real con render estático de sus vistas públicas, estados remotos y copy
+accesible localizado; el test de stories web comprueba además que importar la
+story pura no modifica History. El build de Storybook con addon a11y sigue
+siendo una comprobación estática, no un runner de navegador/a11y. Ningún paquete
+de frontend declara un `test` que salga con éxito mediante `--passWithNoTests` o
+un proceso vacío.
 
 ## Isolation
 
 - No test uses development or production data.
 - Mutable Layers are fresh per test unless reset is explicit.
 - PGlite databases are in-memory or use test-owned temporary directories.
-- PostgreSQL suites use a database/schema isolated per worker.
+- `@proxus/backend-infra` serializes normal Vitest files in one worker because
+  concurrent PGlite/Wasm initialization caused resource contention; each test
+  still owns a fresh database and no timeout increase is used as the isolation
+  mechanism.
+- The explicit PostgreSQL suite is also serial. CI gives it a fresh dedicated
+  database in a fresh service container; the suite migrates idempotently and
+  truncates every product table before and after each case. The populated-upgrade
+  case rebuilds the migration-owned schema and ledger from the historical prefix,
+  then leaves it fully migrated for subsequent cases. A local `DATABASE_URL` must
+  identify an equally disposable, test-owned database.
 - Seeds are used only in seed tests and selected e2e journeys, never globally.
 - Builders return valid deterministic domain values; fixtures perform Effectful
   arrangement through public interfaces.
 
-## CI stages
+## Current CI gates and pending suites
 
-1. **Static:** frozen install, Effect diagnostics, typecheck and architecture
-   boundaries.
-2. **Fast:** shared schemas/contracts, services and frontend atom/component tests.
-3. **PGlite:** migrations, seeds, repository contracts and in-process HTTP e2e.
-4. **PostgreSQL:** migrations, repository contract, transaction/concurrency and
-   production composition smoke tests.
-5. **Build/browser smoke:** workspace build and the minimal browser journeys.
+The current `.github/workflows/validate.yml` has two independent required jobs.
+After a frozen install, `validate` runs `pnpm validate:pr`, which performs:
 
-The PostgreSQL stage is required before merge once CI infrastructure exists.
-Nightly jobs may add repeated race tests and additional PostgreSQL versions.
+1. validator self-tests;
+2. static validation;
+3. the implemented normal Vitest suites in serial workspace order, including
+   PGlite but excluding `packages/backend-infra/src/postgres`;
+4. every workspace build, including the static Storybook build.
+
+`postgres` provisions `postgres:17.7-bookworm` with a `pg_isready` healthcheck
+and a fresh `proxus_postgres_test` database. It explicitly runs the production
+migration command and then:
+
+```bash
+DATABASE_URL=postgresql://... \
+pnpm --filter @proxus/backend-infra test:postgres
+```
+
+`test:postgres` fails before Vitest starts when `DATABASE_URL` is absent; there
+is no skip inside the suite. It covers real migration execution and a successful
+no-pending-migrations check, the populated Feature Flags rev0/object upgrade read
+through repository and HTTP-facing reader ports, Feature Flags publish/read of
+revision 1, Study Catalog create/read, two concurrent edge appends, concurrent
+update/remove and a source-change retry. A Deferred-held source-row lock and PostgreSQL lock-state
+observation form each concurrency barrier; the tests use no sleeps, assert that
+writers are blocked on sources before release, and verify the final contiguous
+edge order.
+Normal local `test`, `static` and `validate:pr` do not invoke this suite and do
+not require Docker or PostgreSQL.
+
+CI still does **not** invoke a real browser runner. Real-browser journeys and the
+complete repository contract against PostgreSQL remain pending; neither is
+implied by the minimal PostgreSQL smoke gate. DOM/component tests and a
+Storybook build do not count as browser journeys. Nightly jobs may later add
+repeated race tests and additional PostgreSQL versions.
+
+## Deterministic static validation
+
+The checks have no generated allowlist or accepted-violation baseline:
+
+- `effect:diagnostics` obtains the workspace inventory from `pnpm list -r`, sorts
+  every discovered `tsconfig.json`, and checks all 15 projects. The wrapper also
+  accepts `--root` and a JSON `--inventory` for isolated probes. It passes the
+  root Effect Language Service configuration explicitly, so a leaf `plugins`
+  override cannot silently reduce coverage. Workspace tsconfigs include their
+  Vite, Drizzle and Storybook TypeScript configuration files.
+- `lint` is type-aware and deliberately has no formatting rules. Its workspace
+  globs include source, Storybook and root `*.config.ts` files while excluding
+  generated trees. It enforces only unsafe Promise use (`await-thenable`,
+  `no-floating-promises`, `no-misused-promises`) and dangerous assertions
+  (`no-non-null-assertion`, `no-unsafe-type-assertion`).
+- `boundaries` ignores generated `dist`, `coverage` and `storybook-static`
+  trees and enforces the documented DDD direction: shared is runtime-neutral;
+  Domain cannot reach adapters/transports/apps; Infra cannot reach
+  transports/apps; and transports cannot reach Infra. Public/admin separation
+  applies at composition roots, transport packages and shared API roots.
+  Shared and Domain external imports are restricted to the normative `effect`
+  runtime and `vitest` test allowlist; Node built-ins are not allowed there.
+  Backend/frontend implementation layers also cannot cross. On the frontend,
+  `frontend-core` cannot reach web/UI/app code and generic UI cannot reach
+  product contracts, feature logic, adapters, or apps. These are package/layer
+  rules; collaboration between bounded contexts still requires domain review.
+- `knip` scopes its root project to root tooling and discovers only `apps/*` and
+  `packages/*` workspaces. `.repos` is not a project or workspace and is never
+  analyzed.
+- `workspace:contracts` deterministically sorts workspace manifests and source
+  files, validates exact and wildcard export targets, rejects imports of
+  unexported workspace subpaths, requires direct dependency declarations, and
+  rejects the same dependency in multiple manifest sections. Relative imports
+  and TypeScript path aliases that cross a package boundary receive the same
+  checks. Node built-ins are identified with Node's `isBuiltin` and are not
+  package dependencies.
+
+`validate:self-test` creates defective fixtures under the operating system's
+temporary directory and invokes the real Effect wrapper and package scripts.
+Its probes cover config-file typecheck/diagnostics/lint globs, generated-directory
+exclusions, every public/admin boundary, Shared/Domain external allowlists,
+workspace aliases/relative crossings, Node built-ins and wildcard exports. It
+removes fixtures in `finally` and never mutates repository `apps/*` or
+`packages/*`.
+
+`static` runs all static checks in fail-fast order. `validate:pr` first runs the
+self-test, then `static`, the normal implemented tests, and all builds; it does
+not add PostgreSQL or browser coverage. The separate CI `postgres` job is the
+real-PostgreSQL gate. CI pins the action commits, Node 22.22.2, Corepack 0.35.0
+and the repository's `pnpm@10.32.1`, and installs with `--frozen-lockfile`.
+
+### Current validation baseline (2026-07-20)
+
+`pnpm static` has no accepted-finding baseline: every finding must be fixed.
+The 15 Effect projects include current TypeScript configs; the same configs are
+covered by typecheck and type-aware ESLint. A green static run says nothing about
+the separate PostgreSQL gate or pending browser suites. Knip's dependency ignores are limited
+to dependencies loaded indirectly by Vite/Storybook builds, shared CSS or inline
+`index.html` development bootstraps; each exception is documented in
+`knip.json`.
 
 ## Current commands
 
 ```bash
+pnpm validate:self-test
 pnpm effect:diagnostics
+pnpm typecheck
+pnpm lint
+pnpm boundaries
+pnpm knip
+pnpm workspace:contracts
+pnpm static
+pnpm validate:pr
 pnpm --filter @proxus/shared test
 pnpm --filter @proxus/backend-domain test
 pnpm --filter @proxus/backend-infra test
+DATABASE_URL=postgresql://... pnpm --filter @proxus/backend-infra test:postgres
 pnpm --filter @proxus/backend-transport test
 pnpm --filter @proxus/backend-admin-transport test
 pnpm --filter @proxus/server test
 pnpm --filter @proxus/admin-server test
 pnpm --filter @proxus/backend-infra db:check
-pnpm typecheck
 pnpm test
 pnpm build
 ```

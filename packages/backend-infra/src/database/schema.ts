@@ -1,6 +1,11 @@
+import { sql } from "drizzle-orm"
 import {
+  bigint,
+  boolean,
+  check,
   index,
   integer,
+  jsonb,
   pgTable,
   text,
   timestamp,
@@ -73,6 +78,23 @@ export const studyEdges = pgTable(
   ],
 )
 
+export const featureFlagSnapshots = pgTable(
+  "feature_flag_snapshots",
+  {
+    configurationRevision: bigint("configuration_revision", { mode: "bigint" }).primaryKey(),
+    configuration: jsonb("configuration").notNull(),
+    active: boolean("active").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("feature_flag_snapshots_single_active_uidx")
+      .on(table.active)
+      .where(sql`${table.active} = true`),
+    check("feature_flag_snapshots_revision_wire_range_check", sql`${table.configurationRevision} between 1 and 9007199254740991`),
+  ],
+)
+
+export type FeatureFlagSnapshotRow = typeof featureFlagSnapshots.$inferSelect
 export type StudyAssetRow = typeof studyAssets.$inferSelect
 export type StudyNodeRow = typeof studyNodes.$inferSelect
 export type StudyEdgeRow = typeof studyEdges.$inferSelect

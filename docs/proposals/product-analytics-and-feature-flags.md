@@ -2,7 +2,7 @@
 
 ## Estado
 
-Propuesta en revisión. Define un primer vertical slice y sus invariantes; no convierte en requisito infraestructura o metodología que el piloto todavía no necesita.
+Implementada parcialmente y superada para feature flags por la decisión de snapshots frontend-only descrita al final. La sección histórica de cookie/verificación servidor no es normativa.
 
 ## Objetivo y límites
 
@@ -56,14 +56,14 @@ packages/frontend-web/src/feature-flags/
 El piloto puede expresarse con una definición concreta y readonly:
 
 ```ts
-export const RegistrationCta = {
-  key: "registration.cta",
+export const RegistrationLanding = {
+  key: "registration.landing",
   allocationVersion: 1,
   assignmentUnit: "installation",
-  default: "control",
+  default: "short",
   variants: [
-    ["control", 5_000],
-    ["benefitCopy", 5_000],
+    ["short", 5_000],
+    ["long", 5_000],
   ],
 } as const
 ```
@@ -88,6 +88,8 @@ Entrada canónica:
 proxus-ff:v1:<flag-key>:<allocation-version>:<subject-id>
 ```
 
+Para que este framing sea inequívoco, `flag-key` se valida como segmentos ASCII lowercase separados por puntos (`registration.cta`) y `subject-id` como UUID v4, normalizado a lowercase. Las definiciones solo se obtienen mediante un constructor que valida y copia de forma inmutable sus variantes; el evaluador no acepta definiciones estructurales sin validar.
+
 El algoritmo concreto se decide antes de implementar y fija UTF-8, bytes de salida, endianness y reducción al bucket `0..9_999`. No se usa `Math.random`, serialización de objetos ni conversión insegura de enteros mayores de 53 bits. Golden vectors compartidos prueban igualdad entre browser y Node, Unicode y límites de intervalos. No se añadirá rejection sampling salvo que la elección del hash muestre un sesgo relevante para el piloto.
 
 Durante una revisión activa se congelan key, versión, unidad, algoritmo, población y pesos. Cambiarlos crea una revisión nueva; `allocationVersion` permite una reasignación deliberada.
@@ -110,9 +112,9 @@ El bucket puede permanecer como detalle del evaluador y de sus tests; se añadir
 ## Integración Atom-first
 
 ```text
-bootstrap inicial + definición pública + override dev
+snapshot distribuido + identidad de instalación
                       ↓
-            registrationCtaDecisionAtom
+       registrationLandingAssignmentAtom
                       ↓
                     vista
 ```
@@ -169,7 +171,7 @@ Conceptualmente, con `Context.Service`, identificador global estable y métodos 
 ```ts
 interface ProductAnalytics {
   readonly recordBatch: (
-    events: ReadonlyArray<ProductAnalyticsEvent>,
+    events: ReadonlyArray<PublicProductAnalyticsEvent>,
     context: ProductAnalyticsContext,
   ) => Effect.Effect<ProductAnalyticsRecordResult, ProductAnalyticsError>
 }
@@ -329,3 +331,78 @@ Antes de ejecutar se comprobarán los scripts reales. No se presentarán `bounda
 4. Valores medidos de capacidad, batch, flush, timeout y retry.
 5. Evento outcome del piloto y si existe una fuente válida de asignación/elegibilidad.
 6. Requisitos operativos mínimos de BigQuery (tabla, permisos, readiness y borrado).
+
+## Decisión implementada: distribución frontend-only por snapshots (2026-07-16)
+
+La identidad de instalación se genera en el navegador y se conserva mediante el
+port `FeatureFlagInstallationIdentity`; el adapter web es el único módulo que
+conoce `localStorage` y Web Crypto. El backend no emite cookie, no conoce esa
+identidad y no recalcula variantes. Las flags siguen sin ser autoridad.
+
+PostgreSQL guarda revisiones inmutables con la configuración pública completa;
+PGlite cubre el mismo adapter solo dentro de un proceso de desarrollo/test. Un
+índice parcial garantiza una sola revisión activa y el cambio de revisión se
+realiza como una activación atómica, nunca por actualización parcial de flags.
+Ausencia de fila activa produce el snapshot vacío de revisión `0`, reservado
+exclusivamente para ese valor sintético. Schema y SQL exigen publicaciones y
+filas persistidas con revisión `>= 1`.
+`GET /feature-flags/snapshot` distribuye el snapshot completo con ETag derivado de
+la revisión y cache pública revalidable. La publicación operativa valida un JSON
+completo y ejecuta `pnpm --filter @proxus/backend-infra db:publish-feature-flags
+<snapshot.json>` con `DATABASE_URL`; inserción y activación ocurren en una única
+transacción serializada después de comprobar migraciones pendientes. Un trigger
+impide modificar configuración, revisión o fecha de revisiones existentes. El
+rango persistido queda limitado al rango entero sin pérdida del wire
+(`1..Number.MAX_SAFE_INTEGER`) y el adapter lee `bigint` antes de convertirlo.
+No se ofrece publisher PGlite entre procesos: servidor y comando simultáneos no
+deben abrir el mismo `PGLITE_DATA_DIR`; para ese flujo se usa PostgreSQL local.
+
+Frontend-core conserva loading/error/success en el query atom y deriva decisiones
+sin copiar estado a React. Una key ausente usa su definición local. Si el snapshot
+contiene una variante desconocida para el bundle, o una configuración inválida,
+la decisión usa el fallback local seguro en vez de intentar renderizarla. Los
+eventos de exposición/click incluyen `configurationRevision`; analytics acepta el
+reporte como telemetría no autoritativa y ya no intenta verificarlo en backend.
+
+## Nota de implementación product analytics (2026-07-16)
+
+La composición productiva usa BigQuery de forma estricta y falla al arrancar si faltan
+`PRODUCT_ANALYTICS_BIGQUERY_PROJECT`, `PRODUCT_ANALYTICS_BIGQUERY_DATASET` o
+`PRODUCT_ANALYTICS_BIGQUERY_TABLE`; no existe fallback a memoria. La dependencia
+`@google-cloud/bigquery` está fijada y cada fila usa el `eventId` estable como `insertId`,
+sin prometer exactly-once.
+
+La activación productiva permanece **bloqueada**: todavía no existe middleware aprobado
+que resuelva consentimiento e identidad analítica ni están aprobadas retención, ubicación,
+acceso y borrado. Por ello la composition root productiva instala deliberadamente un
+contexto fail-closed (`consent: unknown`) y rechaza toda ingestión como `no-consent`, aunque
+el adapter BigQuery esté configurado. Desarrollo permite opt-in únicamente mediante el
+header explícitamente dev `x-proxus-dev-analytics-consent: granted` y evidencia browser
+same-origin (`Origin`/`Host` coincidentes y `Sec-Fetch-Site: same-origin`). El contrato
+HTTP incluye `registration_completed` únicamente como señal UI no autoritativa: no
+representa éxito del caso de uso backend. En revisión `0` se acepta solo el default local
+`short`, sin rehash; timestamps fuera del skew configurado se rechazan.
+
+El cierre serializa el cambio a estado cerrado con la admisión. Un único
+`shutdownTimeout` limita interrupción, repository in-flight, drain y backoff de retries;
+no promete entrega. Los fallos parciales de BigQuery se correlacionan por `insertId`, el
+SDK se invoca con `partialRetries: 0` y solo se reintenta el subset único/acotado de filas
+fallidas con motivos transitorios. Memoria no
+evicta filas silenciosamente. El SDK Node de
+BigQuery no expone una operación de cierre; el cliente se construye una vez por Layer,
+pero no se finge un finalizer inexistente.
+
+## Decisión implementada: distribución pull-based entre procesos (2026-07-20)
+
+El publisher operativo y el servidor HTTP son procesos distintos. La revisión se
+valida y activa atómicamente en PostgreSQL; el servidor público observa el cambio
+leyendo esa persistencia compartida. Un dispatcher o canal push en memoria no
+puede transportar la publicación real entre esos procesos y por tanto fue
+retirado en lugar de presentarlo como una invalidación fiable.
+
+`GET /feature-flags/snapshot` declara `If-None-Match` y las respuestas `200`,
+`304` y `500`. Los clientes usan una única lectura atom-first a través de
+`FeatureFlagDistribution`; el adapter web aprovecha `ETag`, `Cache-Control` y la
+revalidación condicional del navegador. No se implementan stream, heartbeat,
+replay ni aliases de compatibilidad para una superficie que aún no se había
+publicado.

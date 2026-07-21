@@ -6,7 +6,7 @@ import {
   PublicStudyCatalogClient,
 } from "./client.js"
 
-export const studyCatalogRuntime = Atom.runtime(
+const studyCatalogRuntime = Atom.runtime(
   makeWebPublicStudyCatalogClientLayer("/api"),
 )
 

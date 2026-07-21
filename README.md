@@ -133,7 +133,7 @@ DATABASE_MIGRATIONS_DIR=/ruta/migraciones \
 pnpm --filter @proxus/backend-infra db:seed:pglite
 ```
 
-No ejecutes dos servidores o comandos de datos simultáneamente contra el mismo `PGLITE_DATA_DIR`.
+No ejecutes dos servidores o comandos de datos simultáneamente contra el mismo `PGLITE_DATA_DIR`. Por ese motivo no existe un publisher Feature Flags PGlite entre procesos; usa PostgreSQL local cuando publisher y servidor deban convivir.
 
 ## Motel y observabilidad local
 
@@ -189,19 +189,24 @@ pnpm typecheck
 pnpm build
 pnpm test
 pnpm effect:diagnostics
+pnpm validate:self-test
+pnpm static
 pnpm check
+pnpm validate:pr
 ```
 
-`pnpm check` ejecuta typecheck y build. Tests y diagnósticos Effect se ejecutan por separado.
+`pnpm check` ejecuta únicamente `typecheck` y `build`. `pnpm static` ejecuta diagnostics de Effect, typecheck, ESLint type-aware, dependency-cruiser, Knip y contratos de packages. `pnpm validate:pr` añade primero el self-test de esos validadores y después los tests Vitest/PGlite implementados y todos los builds.
 
 Validación normativa del proyecto:
 
 ```bash
-pnpm effect:diagnostics
-pnpm --filter @proxus/shared test
-pnpm --filter @proxus/server test
-pnpm check
+pnpm validate:self-test
+pnpm static
+pnpm test:ci
+pnpm build
 ```
+
+El job principal del workflow de CI invoca esa secuencia mediante `pnpm validate:pr`. Un job independiente levanta PostgreSQL 17, aplica las migraciones y ejecuta la suite real mínima de Infra; `validate:pr` local sigue sin requerir PostgreSQL ni Docker. CI todavía no ejecuta un runner de browser. Los tests DOM/componentes no equivalen a journeys en un navegador real.
 
 ## PostgreSQL y ejecución de producción
 
@@ -211,11 +216,22 @@ El script de producción usa PostgreSQL, no PGlite. Primero aplica las migracion
 DATABASE_URL=postgresql://user:pass@host/database \
 pnpm --filter @proxus/backend-infra db:migrate:postgres
 
+# Solo contra una base desechable propiedad del test; falla si falta DATABASE_URL.
+DATABASE_URL=postgresql://user:pass@host/test_database \
+pnpm --filter @proxus/backend-infra test:postgres
+
 DATABASE_URL=postgresql://user:pass@host/database \
 pnpm --filter @proxus/server start
 ```
 
-El arranque comprueba que no haya migraciones pendientes, pero no las aplica. Variables disponibles:
+El arranque comprueba que no haya migraciones pendientes, pero no las aplica. El publisher de Feature Flags hace la misma comprobación antes de validar/publicar una revisión `>= 1`:
+
+```bash
+DATABASE_URL=postgresql://user:pass@host/database \
+pnpm --filter @proxus/backend-infra db:publish-feature-flags ./snapshot.json
+```
+
+Variables disponibles:
 
 ```text
 DATABASE_URL                  obligatoria en producción

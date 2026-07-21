@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react"
+import type { ReactNode } from "react"
 import {
   Sidebar,
   SidebarContent,
@@ -19,7 +19,7 @@ import { adminNavigation } from "./navigation.js"
 export function AdminLayout({ children }: { readonly children: ReactNode }) {
   return (
     <TooltipProvider>
-      <SidebarProvider className="admin-shell" style={{ "--sidebar-width": "18rem" } as CSSProperties}>
+      <SidebarProvider className="admin-shell [--sidebar-width:18rem]">
         <Sidebar collapsible="offcanvas">
           <SidebarHeader className="h-20 justify-center border-b px-5">
             <div className="flex items-center gap-3">

@@ -125,11 +125,6 @@ export const StudyNode = Schema.Union([
 ])
 export type StudyNode = typeof StudyNode.Type
 
-export type StudyNodeOfId<Id> = Extract<
-  StudyNode,
-  { readonly id: Id }
->
-
 export const StudyEdgeId = Schema.String.pipe(
   Schema.check(Schema.isUUID(4)),
   Schema.brand("StudyEdgeId"),
@@ -243,7 +238,10 @@ export const findStudyEdgeEndpointKindMismatch = (
 ): StudyEdgeEndpoint | undefined => {
   const definition = StudyEdgeDefinitions.find(
     ({ tag }) => tag === edge._tag,
-  )!
+  )
+  if (definition === undefined) {
+    throw new TypeError(`Unknown study edge tag: ${edge._tag}`)
+  }
 
   if (!Schema.is(definition.fromNode)(fromNode)) {
     return "from"
@@ -253,24 +251,6 @@ export const findStudyEdgeEndpointKindMismatch = (
   }
   return undefined
 }
-
-export type StudyEdgesFromId<Id> = Extract<
-  StudyEdge,
-  { readonly from: Id }
->
-
-export type StudyEdgesToId<Id> = Extract<
-  StudyEdge,
-  { readonly to: Id }
->
-
-export type StudyNodeTargetsOfId<Id> = StudyNodeOfId<
-  StudyEdgesFromId<Id>["to"]
->
-
-export type StudyNodeSourcesOfId<Id> = StudyNodeOfId<
-  StudyEdgesToId<Id>["from"]
->
 
 export class CreateCountryInput extends Schema.TaggedClass<CreateCountryInput>()(
   "CreateCountry",
@@ -305,19 +285,6 @@ export const CreateStudyNodeInput = Schema.Union([
   CreateSubjectInput,
 ])
 export type CreateStudyNodeInput = typeof CreateStudyNodeInput.Type
-
-export type CreatedStudyNode<Input extends CreateStudyNodeInput> =
-  Input extends CreateCountryInput
-    ? CountryNode
-    : Input extends CreateStudyTypeInput
-      ? StudyTypeNode
-      : Input extends CreateUniversityInput
-        ? UniversityNode
-        : Input extends CreateDegreeInput
-          ? DegreeNode
-          : Input extends CreateSubjectInput
-            ? SubjectNode
-            : never
 
 export class CreateCountryTypeEdgeInput extends Schema.TaggedClass<CreateCountryTypeEdgeInput>()(
   "CountryTypeEdge",
@@ -372,8 +339,3 @@ export const CreateStudyEdgeInput = Schema.Union([
   CreateDegreeSubjectEdgeInput,
 ])
 export type CreateStudyEdgeInput = typeof CreateStudyEdgeInput.Type
-
-export type CreatedStudyEdge<Input extends CreateStudyEdgeInput> = Extract<
-  StudyEdge,
-  { readonly _tag: Input["_tag"] }
->

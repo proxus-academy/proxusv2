@@ -1,5 +1,6 @@
 import {
   CountryNode,
+  CountryTypeEdge,
   CreateCountryInput,
   CreateCountryTypeEdgeInput,
   CreateDegreeInput,
@@ -29,10 +30,12 @@ import {
   makeUniversityNodeId,
   type StudyEdge,
   type StudyNode,
+  type StudyNodeId,
 } from "@proxus/shared/study-catalog"
 import { describe, expect, test } from "vitest"
 import {
   Clock,
+  Context,
   DateTime,
   Effect,
   Layer,
@@ -135,6 +138,9 @@ const universityId = makeUniversityNodeId(
 )
 const degreeId = makeDegreeNodeId("00000000-0000-4000-8000-000000000004")
 const subjectId = makeSubjectNodeId("00000000-0000-4000-8000-000000000005")
+const publishedTypeId = makeStudyTypeNodeId(
+  "00000000-0000-4000-8000-000000000006",
+)
 
 describe("StudyCatalogLive", () => {
   test("constructs every node variant with application defaults", () =>
@@ -247,4 +253,131 @@ describe("StudyCatalogLive", () => {
       ),
     ),
   )
+
+  test("filters every public graph read while admin reads remain unfiltered", () => {
+    const publishedCountry = new CountryNode({
+      id: countryId,
+      kind: "country",
+      name: "Spain",
+      imageAssetId: null,
+      status: "published",
+      createdAt: fixedDateTime,
+      updatedAt: fixedDateTime,
+    })
+    const draftType = new StudyTypeNode({
+      id: typeId,
+      kind: "type",
+      name: "Draft studies",
+      imageAssetId: null,
+      status: "draft",
+      createdAt: fixedDateTime,
+      updatedAt: fixedDateTime,
+    })
+    const publishedType = new StudyTypeNode({
+      ...draftType,
+      id: publishedTypeId,
+      name: "Published studies",
+      status: "published",
+    })
+    const hiddenEdge = new CountryTypeEdge({
+      id: makeStudyEdgeId("00000000-0000-4000-8000-000000000010"),
+      from: countryId,
+      to: typeId,
+      position: 0,
+    })
+    const visibleEdge = new CountryTypeEdge({
+      id: makeStudyEdgeId("00000000-0000-4000-8000-000000000011"),
+      from: countryId,
+      to: publishedTypeId,
+      position: 1,
+    })
+    const nodes: ReadonlyArray<StudyNode> = [
+      publishedCountry,
+      draftType,
+      publishedType,
+    ]
+    const edges: ReadonlyArray<StudyEdge> = [hiddenEdge, visibleEdge]
+    const findNode = (nodeId: StudyNodeId) =>
+      Option.fromNullishOr(nodes.find(({ id }) => id === nodeId))
+    const repository = StudyCatalogRepository.of({
+      listNodes: ({ kind, status }) => Effect.succeed(
+        nodes.filter((node) => node.kind === kind && node.status === status),
+      ),
+      listCountries: () => Effect.succeed([publishedCountry]),
+      findNodeById: (nodeId) => Effect.succeed(findNode(nodeId)),
+      findEdgeById: (edgeId) => Effect.succeed(
+        Option.fromNullishOr(edges.find(({ id }) => id === edgeId)),
+      ),
+      createNode: Effect.succeed,
+      createEdge: (studyEdge) => Effect.succeed(studyEdge),
+      updateEdge: (studyEdgeId) => Effect.fail(
+        new StudyEdgeNotFound({ edgeId: studyEdgeId }),
+      ),
+      removeEdge: (studyEdgeId) => Effect.fail(
+        new StudyEdgeNotFound({ edgeId: studyEdgeId }),
+      ),
+      renameNode: (nodeId) => Effect.fail(new StudyNodeNotFound({ nodeId })),
+      updateNodeStatus: (nodeId) => Effect.fail(
+        new StudyNodeNotFound({ nodeId }),
+      ),
+      listOutgoingEdges: (nodeId) => Effect.succeed(
+        edges.filter(({ from }) => from === nodeId),
+      ),
+      listIncomingEdges: (nodeId) => Effect.succeed(
+        edges.filter(({ to }) => to === nodeId),
+      ),
+      listTargets: (nodeId) => Effect.succeed(
+        edges.filter(({ from }) => from === nodeId).flatMap(({ to }) =>
+          Option.toArray(findNode(to)),
+        ),
+      ),
+      listChildren: ({ parentId }) => Effect.succeed(
+        edges.filter(({ from }) => from === parentId).flatMap(({ to }) =>
+          Option.toArray(findNode(to)),
+        ),
+      ),
+      listSources: (nodeId) => Effect.succeed(
+        edges.filter(({ to }) => to === nodeId).flatMap(({ from }) =>
+          Option.toArray(findNode(from)),
+        ),
+      ),
+    })
+
+    return Effect.runPromise(Effect.scoped(Effect.gen(function*() {
+      const context = yield* Layer.build(StudyCatalogLive.pipe(Layer.provide(
+        Layer.succeed(StudyCatalogRepository, repository),
+      )))
+      const catalog = Context.get(context, StudyCatalog)
+
+      expect(yield* catalog.getNode(typeId)).toEqual(draftType)
+      expect((yield* catalog.getPublishedNode(typeId).pipe(Effect.flip))._tag)
+        .toBe("StudyNodeNotFound")
+      expect(yield* catalog.getEdge(hiddenEdge.id)).toEqual(hiddenEdge)
+      expect((yield* catalog.getPublishedEdge(hiddenEdge.id).pipe(Effect.flip))._tag)
+        .toBe("StudyEdgeNotFound")
+      expect(yield* catalog.getPublishedEdge(visibleEdge.id)).toEqual(visibleEdge)
+
+      expect(yield* catalog.listOutgoingEdges(countryId)).toEqual(edges)
+      expect(yield* catalog.listTargets(countryId)).toEqual([
+        draftType,
+        publishedType,
+      ])
+      expect(yield* catalog.listPublishedOutgoingEdges(countryId)).toEqual([
+        visibleEdge,
+      ])
+      expect(yield* catalog.listPublishedTargets(countryId)).toEqual([
+        publishedType,
+      ])
+      expect(yield* catalog.listPublishedIncomingEdges(publishedTypeId))
+        .toEqual([visibleEdge])
+      expect(yield* catalog.listPublishedSources(publishedTypeId)).toEqual([
+        publishedCountry,
+      ])
+      expect(yield* catalog.listChildren(countryId)).toEqual([publishedType])
+      expect((yield* catalog.listChildren(typeId).pipe(Effect.flip))._tag)
+        .toBe("StudyNodeNotFound")
+      expect((yield* catalog.listPublishedIncomingEdges(typeId).pipe(Effect.flip))._tag)
+        .toBe("StudyNodeNotFound")
+    })))
+  })
 })

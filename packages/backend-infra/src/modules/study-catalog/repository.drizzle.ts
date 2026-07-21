@@ -1,31 +1,36 @@
 import {
   CountryNode,
+  CountryTypeEdge,
+  DegreeNode,
+  DegreeSubjectEdge,
   StudyEdge,
   StudyEdgeAlreadyExists,
   StudyEdgeEndpointKindMismatch,
   StudyEdgeNotFound,
   StudyNode,
   StudyNodeNotFound,
+  StudyTypeNode,
+  SubjectNode,
+  TypeUniversityEdge,
+  UniversityDegreeEdge,
+  UniversityNode,
+  UniversitySubjectEdge,
   findStudyEdgeEndpointKindMismatch,
   type StudyEdge as StudyEdgeType,
   type StudyEdgeId,
-  type StudyEdgesFromId,
-  type StudyEdgesToId,
   type StudyNode as StudyNodeType,
   type StudyNodeId,
   type StudyNodeKind,
-  type StudyNodeOfId,
-  type StudyNodeSourcesOfId,
   type StudyNodeStatus,
-  type StudyNodeTargetsOfId,
 } from "@proxus/shared/study-catalog"
 import { and, asc, eq, inArray } from "drizzle-orm"
 import type {
   EffectPgQueryEffectHKT,
   EffectPgQueryResultHKT,
 } from "drizzle-orm/effect-pglite"
+import { alias } from "drizzle-orm/pg-core"
 import type { PgEffectDatabase } from "drizzle-orm/pg-core/effect"
-import { DateTime, Effect, Option, Schema } from "effect"
+import { Data, DateTime, Effect, Option, Schema } from "effect"
 import {
   studyEdges,
   studyNodes,
@@ -40,24 +45,72 @@ import {
 const repositoryError = (operation: string, cause: unknown) =>
   new StudyCatalogRepositoryError({ operation, cause })
 
-const decodeNode = (row: StudyNodeRow): StudyNodeType =>
-  Schema.decodeUnknownSync(StudyNode)({
-    id: row.id,
-    kind: row.kind,
-    name: row.name,
-    imageAssetId: row.imageAssetId,
-    status: row.status,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
-  })
+const nodeRowInput = (row: StudyNodeRow) => ({
+  id: row.id,
+  kind: row.kind,
+  name: row.name,
+  imageAssetId: row.imageAssetId,
+  status: row.status,
+  createdAt: row.createdAt.toISOString(),
+  updatedAt: row.updatedAt.toISOString(),
+})
 
-const decodeEdge = (row: StudyEdgeRow): StudyEdgeType =>
-  Schema.decodeUnknownSync(StudyEdge)({
-    _tag: row.kind,
-    id: row.id,
-    from: row.fromNodeId,
-    to: row.toNodeId,
-    position: row.position,
+const edgeRowInput = (row: StudyEdgeRow) => ({
+  _tag: row.kind,
+  id: row.id,
+  from: row.fromNodeId,
+  to: row.toNodeId,
+  position: row.position,
+})
+
+const decodeNode = (row: StudyNodeRow) =>
+  Schema.decodeUnknownEffect(StudyNode)(nodeRowInput(row))
+
+const decodeCountryNode = (row: StudyNodeRow) =>
+  Schema.decodeUnknownEffect(CountryNode)(nodeRowInput(row))
+
+const decodeEdge = (row: StudyEdgeRow) =>
+  Schema.decodeUnknownEffect(StudyEdge)(edgeRowInput(row))
+
+const PersistedStudyEdge = Schema.Union([
+  Schema.Struct({
+    edge: CountryTypeEdge,
+    fromNode: CountryNode,
+    toNode: StudyTypeNode,
+  }),
+  Schema.Struct({
+    edge: TypeUniversityEdge,
+    fromNode: StudyTypeNode,
+    toNode: UniversityNode,
+  }),
+  Schema.Struct({
+    edge: UniversityDegreeEdge,
+    fromNode: UniversityNode,
+    toNode: DegreeNode,
+  }),
+  Schema.Struct({
+    edge: UniversitySubjectEdge,
+    fromNode: UniversityNode,
+    toNode: SubjectNode,
+  }),
+  Schema.Struct({
+    edge: DegreeSubjectEdge,
+    fromNode: DegreeNode,
+    toNode: SubjectNode,
+  }),
+])
+
+type PersistedStudyEdgeRow = {
+  readonly edge: StudyEdgeRow
+  readonly fromNode: StudyNodeRow
+  readonly toNode: StudyNodeRow
+}
+
+const decodePersistedStudyEdge = (row: PersistedStudyEdgeRow) =>
+  Schema.decodeUnknownEffect(PersistedStudyEdge)({
+    edge: edgeRowInput(row.edge),
+    fromNode: nodeRowInput(row.fromNode),
+    toNode: nodeRowInput(row.toNode),
   })
 
 const nodeValues = (node: StudyNodeType): typeof studyNodes.$inferInsert => ({
@@ -78,372 +131,681 @@ const edgeValues = (edge: StudyEdgeType): typeof studyEdges.$inferInsert => ({
   position: edge.position,
 })
 
+class MissingReturnedRow extends Data.TaggedError("MissingReturnedRow")<{
+  readonly operation: string
+}> {}
+
+const firstReturnedRow = <A>(operation: string, rows: ReadonlyArray<A>) =>
+  Effect.fromOption(
+    Option.fromIterable(rows),
+    () => new MissingReturnedRow({ operation }),
+  )
+
+const fromStudyNodes = alias(studyNodes, "study_edge_from_node")
+const toStudyNodes = alias(studyNodes, "study_edge_to_node")
+const persistedEdgeSelection = {
+  edge: studyEdges,
+  fromNode: fromStudyNodes,
+  toNode: toStudyNodes,
+}
+
 type StudyDatabase = PgEffectDatabase<
   EffectPgQueryEffectHKT,
   EffectPgQueryResultHKT
 >
 
 export const makeStudyCatalogRepositoryDrizzle = (db: StudyDatabase) => {
-    const failRepository = (operation: string) =>
-      Effect.mapError((cause: unknown) => repositoryError(operation, cause))
+  const failRepository = (operation: string) =>
+    Effect.mapError((cause: unknown) => repositoryError(operation, cause))
 
-    const listNodes = (filters: {
-      readonly kind: StudyNodeKind
-      readonly status: StudyNodeStatus
-    }) =>
-      db
-        .select()
-        .from(studyNodes)
-        .where(
-          and(
-            eq(studyNodes.kind, filters.kind),
-            eq(studyNodes.status, filters.status),
-          ),
-        )
-        .orderBy(asc(studyNodes.name), asc(studyNodes.id))
-        .pipe(
-          Effect.map((rows) => rows.map(decodeNode)),
-          failRepository("listNodes"),
-        )
-
-    const listCountries = () =>
-      db
-        .select()
-        .from(studyNodes)
-        .where(
-          and(
-            eq(studyNodes.kind, "country"),
-            eq(studyNodes.status, "published"),
-          ),
-        )
-        .orderBy(asc(studyNodes.name), asc(studyNodes.id))
-        .pipe(
-          Effect.map(
-            (rows) => rows.map(decodeNode) as ReadonlyArray<CountryNode>,
-          ),
-          failRepository("listCountries"),
-        )
-
-    const findNodeById = <Id extends StudyNodeId>(nodeId: Id) =>
-      db
-        .select()
-        .from(studyNodes)
-        .where(eq(studyNodes.id, nodeId))
-        .limit(1)
-        .pipe(
-          Effect.map((rows) => Option.fromUndefinedOr(rows[0]).pipe(Option.map(decodeNode))),
-          failRepository("findNodeById"),
-          Effect.map((node) => node as Option.Option<StudyNodeOfId<Id>>),
-        )
-
-    const findEdgeById = (edgeId: StudyEdgeId) =>
-      db
-        .select()
-        .from(studyEdges)
-        .where(eq(studyEdges.id, edgeId))
-        .limit(1)
-        .pipe(
-          Effect.map((rows) => Option.fromUndefinedOr(rows[0]).pipe(Option.map(decodeEdge))),
-          failRepository("findEdgeById"),
-        )
-
-    const createNode = <Node extends StudyNodeType>(node: Node) =>
-      db.insert(studyNodes).values(nodeValues(node)).returning().pipe(
-        Effect.map((rows) => decodeNode(rows[0]! ) as Node),
-        failRepository("createNode"),
+  const listNodes = (filters: {
+    readonly kind: StudyNodeKind
+    readonly status: StudyNodeStatus
+  }) =>
+    db
+      .select()
+      .from(studyNodes)
+      .where(
+        and(
+          eq(studyNodes.kind, filters.kind),
+          eq(studyNodes.status, filters.status),
+        ),
+      )
+      .orderBy(asc(studyNodes.name), asc(studyNodes.id))
+      .pipe(
+        Effect.flatMap((rows) => Effect.forEach(rows, decodeNode)),
+        failRepository("listNodes"),
       )
 
-    const createEdge = <Edge extends StudyEdgeType>(
-      edge: Edge,
-      requestedPosition?: number,
-    ) =>
-      db.transaction((tx) =>
-        Effect.gen(function*() {
-          const endpoints = yield* tx.select().from(studyNodes).where(
-            inArray(studyNodes.id, [edge.from, edge.to]),
-          )
-          const fromRow = endpoints.find(({ id }) => id === edge.from)
-          const toRow = endpoints.find(({ id }) => id === edge.to)
-          if (fromRow === undefined) return yield* new StudyNodeNotFound({ nodeId: edge.from })
-          if (toRow === undefined) return yield* new StudyNodeNotFound({ nodeId: edge.to })
+  const listCountries = () =>
+    db
+      .select()
+      .from(studyNodes)
+      .where(
+        and(
+          eq(studyNodes.kind, "country"),
+          eq(studyNodes.status, "published"),
+        ),
+      )
+      .orderBy(asc(studyNodes.name), asc(studyNodes.id))
+      .pipe(
+        Effect.flatMap((rows) => Effect.forEach(rows, decodeCountryNode)),
+        failRepository("listCountries"),
+      )
 
-          const fromNode = decodeNode(fromRow)
-          const toNode = decodeNode(toRow)
-          const mismatch = findStudyEdgeEndpointKindMismatch(edge, fromNode, toNode)
-          if (mismatch !== undefined) {
-            const node = mismatch === "from" ? fromNode : toNode
-            return yield* new StudyEdgeEndpointKindMismatch({
-              edge, endpoint: mismatch, nodeId: node.id, actualKind: node.kind,
-            })
-          }
+  const findNodeById = (nodeId: StudyNodeId) =>
+    db
+      .select()
+      .from(studyNodes)
+      .where(eq(studyNodes.id, nodeId))
+      .limit(1)
+      .pipe(
+        Effect.flatMap((rows) =>
+          Option.fromIterable(rows).pipe(
+            Option.match({
+              onNone: () => Effect.succeed(Option.none<StudyNodeType>()),
+              onSome: (row) => decodeNode(row).pipe(Effect.map(Option.some)),
+            }),
+          ),
+        ),
+        failRepository("findNodeById"),
+      )
 
-          const duplicate = yield* tx.select({ id: studyEdges.id }).from(studyEdges)
-            .where(and(eq(studyEdges.kind, edge._tag), eq(studyEdges.fromNodeId, edge.from), eq(studyEdges.toNodeId, edge.to))).limit(1)
-          if (duplicate.length > 0) return yield* new StudyEdgeAlreadyExists({ edge })
+  const findEdgeById = (edgeId: StudyEdgeId) =>
+    db
+      .select(persistedEdgeSelection)
+      .from(studyEdges)
+      .innerJoin(
+        fromStudyNodes,
+        eq(fromStudyNodes.id, studyEdges.fromNodeId),
+      )
+      .innerJoin(toStudyNodes, eq(toStudyNodes.id, studyEdges.toNodeId))
+      .where(eq(studyEdges.id, edgeId))
+      .limit(1)
+      .pipe(
+        Effect.flatMap((rows) =>
+          Option.fromIterable(rows).pipe(
+            Option.match({
+              onNone: () => Effect.succeed(Option.none<StudyEdgeType>()),
+              onSome: (row) =>
+                decodePersistedStudyEdge(row).pipe(
+                  Effect.map(({ edge }) => Option.some(edge)),
+                ),
+            }),
+          ),
+        ),
+        failRepository("findEdgeById"),
+      )
 
-          const siblings = yield* tx.select().from(studyEdges)
-            .where(and(eq(studyEdges.fromNodeId, edge.from), eq(studyEdges.kind, edge._tag)))
-            .orderBy(asc(studyEdges.position), asc(studyEdges.id))
-          const position = Math.min(requestedPosition ?? siblings.length, siblings.length)
-          for (const [index, sibling] of siblings.entries()) {
-            const next = index >= position ? index + 1 : index
-            if (sibling.position !== next) {
-              yield* tx.update(studyEdges).set({ position: next }).where(eq(studyEdges.id, sibling.id))
-            }
-          }
-          const rows = yield* tx.insert(studyEdges).values(edgeValues({ ...edge, position })).returning()
-          return decodeEdge(rows[0]!) as Edge
-        }),
-      ).pipe(Effect.mapError((error) => {
-        switch (error._tag) {
-          case "StudyNodeNotFound":
-          case "StudyEdgeEndpointKindMismatch":
-          case "StudyEdgeAlreadyExists":
-            return error
-          default:
-            return repositoryError("createEdge", error)
+  const createNode = (node: StudyNodeType) =>
+    db.insert(studyNodes).values(nodeValues(node)).returning().pipe(
+      Effect.flatMap((rows) => firstReturnedRow("createNode", rows)),
+      Effect.flatMap(decodeNode),
+      failRepository("createNode"),
+    )
+
+  const createEdge = (
+    edge: StudyEdgeType,
+    requestedPosition?: number,
+  ) =>
+    db.transaction((tx) =>
+      Effect.gen(function*() {
+        // The source node is the PostgreSQL lock key for every ordered edge
+        // group under that source, independent of the relationship tag.
+        yield* tx
+          .select({ id: studyNodes.id })
+          .from(studyNodes)
+          .where(eq(studyNodes.id, edge.from))
+          .orderBy(asc(studyNodes.id))
+          .for("update")
+        const endpoints = yield* tx
+          .select()
+          .from(studyNodes)
+          .where(inArray(studyNodes.id, [edge.from, edge.to]))
+        const fromRow = endpoints.find(({ id }) => id === edge.from)
+        const toRow = endpoints.find(({ id }) => id === edge.to)
+        if (fromRow === undefined) {
+          return yield* new StudyNodeNotFound({ nodeId: edge.from })
         }
-      }))
+        if (toRow === undefined) {
+          return yield* new StudyNodeNotFound({ nodeId: edge.to })
+        }
 
-    const updateEdge = (
-      edgeId: StudyEdgeId,
-      input: { readonly from: StudyNodeId; readonly to: StudyNodeId; readonly position: number },
-    ) => db.transaction((tx) => Effect.gen(function*() {
-      const currentRows = yield* tx.select().from(studyEdges).where(eq(studyEdges.id, edgeId)).limit(1)
-      const currentRow = currentRows[0]
-      if (currentRow === undefined) return yield* new StudyEdgeNotFound({ edgeId })
+        const fromNode = yield* decodeNode(fromRow)
+        const toNode = yield* decodeNode(toRow)
+        const mismatch = findStudyEdgeEndpointKindMismatch(
+          edge,
+          fromNode,
+          toNode,
+        )
+        if (mismatch !== undefined) {
+          const node = mismatch === "from" ? fromNode : toNode
+          return yield* new StudyEdgeEndpointKindMismatch({
+            edge,
+            endpoint: mismatch,
+            nodeId: node.id,
+            actualKind: node.kind,
+          })
+        }
 
-      const candidate = Schema.decodeUnknownSync(StudyEdge)({
-        _tag: currentRow.kind, id: edgeId, from: input.from, to: input.to, position: input.position,
-      })
-      const endpoints = yield* tx.select().from(studyNodes).where(inArray(studyNodes.id, [input.from, input.to]))
-      const fromRow = endpoints.find(({ id }) => id === input.from)
-      const toRow = endpoints.find(({ id }) => id === input.to)
-      if (fromRow === undefined) return yield* new StudyNodeNotFound({ nodeId: input.from })
-      if (toRow === undefined) return yield* new StudyNodeNotFound({ nodeId: input.to })
-      const fromNode = decodeNode(fromRow)
-      const toNode = decodeNode(toRow)
-      const mismatch = findStudyEdgeEndpointKindMismatch(candidate, fromNode, toNode)
-      if (mismatch !== undefined) {
-        const node = mismatch === "from" ? fromNode : toNode
-        return yield* new StudyEdgeEndpointKindMismatch({ edge: candidate, endpoint: mismatch, nodeId: node.id, actualKind: node.kind })
-      }
-      const duplicate = yield* tx.select({ id: studyEdges.id }).from(studyEdges)
-        .where(and(eq(studyEdges.kind, candidate._tag), eq(studyEdges.fromNodeId, candidate.from), eq(studyEdges.toNodeId, candidate.to))).limit(1)
-      if (duplicate.some(({ id }) => id !== edgeId)) return yield* new StudyEdgeAlreadyExists({ edge: candidate })
+        const duplicate = yield* tx
+          .select({ id: studyEdges.id })
+          .from(studyEdges)
+          .where(
+            and(
+              eq(studyEdges.kind, edge._tag),
+              eq(studyEdges.fromNodeId, edge.from),
+              eq(studyEdges.toNodeId, edge.to),
+            ),
+          )
+          .limit(1)
+        if (duplicate.length > 0) {
+          return yield* new StudyEdgeAlreadyExists({ edge })
+        }
 
-      const oldSiblings = yield* tx.select().from(studyEdges)
-        .where(and(eq(studyEdges.fromNodeId, currentRow.fromNodeId), eq(studyEdges.kind, currentRow.kind)))
-        .orderBy(asc(studyEdges.position), asc(studyEdges.id))
-      const newSiblings = currentRow.fromNodeId === input.from
-        ? oldSiblings.filter(({ id }) => id !== edgeId)
-        : yield* tx.select().from(studyEdges)
-          .where(and(eq(studyEdges.fromNodeId, input.from), eq(studyEdges.kind, currentRow.kind)))
+        const siblings = yield* tx
+          .select()
+          .from(studyEdges)
+          .where(
+            and(
+              eq(studyEdges.fromNodeId, edge.from),
+              eq(studyEdges.kind, edge._tag),
+            ),
+          )
           .orderBy(asc(studyEdges.position), asc(studyEdges.id))
-      for (const [index, sibling] of oldSiblings.filter(({ id }) => id !== edgeId).entries()) {
-        if (sibling.position !== index) yield* tx.update(studyEdges).set({ position: index }).where(eq(studyEdges.id, sibling.id))
-      }
-      const position = Math.min(input.position, newSiblings.length)
-      for (const [index, sibling] of newSiblings.entries()) {
-        const next = index >= position ? index + 1 : index
-        if (sibling.position !== next) yield* tx.update(studyEdges).set({ position: next }).where(eq(studyEdges.id, sibling.id))
-      }
-      const rows = yield* tx.update(studyEdges).set({ fromNodeId: input.from, toNodeId: input.to, position }).where(eq(studyEdges.id, edgeId)).returning()
-      return decodeEdge(rows[0]!)
-    })).pipe(Effect.mapError((error) => {
-      switch (error._tag) {
-        case "StudyEdgeNotFound":
-        case "StudyNodeNotFound":
-        case "StudyEdgeEndpointKindMismatch":
-        case "StudyEdgeAlreadyExists":
-          return error
-        default:
-          return repositoryError("updateEdge", error)
-      }
-    }))
+        const position = Math.min(
+          requestedPosition ?? siblings.length,
+          siblings.length,
+        )
+        for (const [index, sibling] of siblings.entries()) {
+          const next = index >= position ? index + 1 : index
+          if (sibling.position !== next) {
+            yield* tx
+              .update(studyEdges)
+              .set({ position: next })
+              .where(eq(studyEdges.id, sibling.id))
+          }
+        }
 
-    const removeEdge = (edgeId: StudyEdgeId) =>
-      db.transaction((tx) => Effect.gen(function*() {
-        const rows = yield* tx.delete(studyEdges).where(eq(studyEdges.id, edgeId)).returning()
-        const removed = rows[0]
-        if (removed === undefined) return yield* new StudyEdgeNotFound({ edgeId })
-        const siblings = yield* tx.select().from(studyEdges)
-          .where(and(eq(studyEdges.fromNodeId, removed.fromNodeId), eq(studyEdges.kind, removed.kind)))
+        const edgeAtPosition = yield* Schema.decodeUnknownEffect(StudyEdge)({
+          ...edge,
+          position,
+        })
+        const rows = yield* tx
+          .insert(studyEdges)
+          .values(edgeValues(edgeAtPosition))
+          .returning()
+        const row = yield* firstReturnedRow("createEdge", rows)
+        return yield* decodeEdge(row)
+      }),
+    ).pipe(
+      Effect.mapError((error: unknown) => {
+        if (
+          Schema.is(StudyNodeNotFound)(error) ||
+          Schema.is(StudyEdgeEndpointKindMismatch)(error) ||
+          Schema.is(StudyEdgeAlreadyExists)(error)
+        ) {
+          return error
+        }
+        return repositoryError("createEdge", error)
+      }),
+    )
+
+  const updateEdgeAttempt = (
+    edgeId: StudyEdgeId,
+    input: {
+      readonly from: StudyNodeId
+      readonly to: StudyNodeId
+      readonly position: number
+    },
+  ) =>
+    db.transaction((tx) =>
+      Effect.gen(function*() {
+        // Read only to discover the lock keys. The source may change before the
+        // locks are acquired, so it is verified again below.
+        const observedRows = yield* tx
+          .select()
+          .from(studyEdges)
+          .where(eq(studyEdges.id, edgeId))
+          .limit(1)
+        const observed = Option.fromIterable(observedRows)
+        if (Option.isNone(observed)) {
+          return yield* new StudyEdgeNotFound({ edgeId })
+        }
+
+        // Every edge writer takes all source rows first, in lexical UUID order,
+        // and only then takes an edge row lock.
+        const sourcesToLock = [
+          ...new Set([
+            observed.value.fromNodeId,
+            input.from,
+          ]),
+        ].sort()
+        yield* tx
+          .select({ id: studyNodes.id })
+          .from(studyNodes)
+          .where(inArray(studyNodes.id, sourcesToLock))
+          .orderBy(asc(studyNodes.id))
+          .for("update")
+
+        const currentRows = yield* tx
+          .select()
+          .from(studyEdges)
+          .where(eq(studyEdges.id, edgeId))
+          .limit(1)
+          .for("update")
+        const current = Option.fromIterable(currentRows)
+        if (Option.isNone(current)) {
+          return yield* new StudyEdgeNotFound({ edgeId })
+        }
+        if (current.value.fromNodeId !== observed.value.fromNodeId) {
+          // Commit this no-op attempt to release its source locks. A fresh
+          // transaction can then acquire the newly observed keys in global order.
+          return Option.none<StudyEdgeType>()
+        }
+
+        const candidate = yield* Schema.decodeUnknownEffect(StudyEdge)({
+          _tag: current.value.kind,
+          id: edgeId,
+          from: input.from,
+          to: input.to,
+          position: input.position,
+        })
+        const endpoints = yield* tx
+          .select()
+          .from(studyNodes)
+          .where(inArray(studyNodes.id, [input.from, input.to]))
+        const fromRow = endpoints.find(({ id }) => id === input.from)
+        const toRow = endpoints.find(({ id }) => id === input.to)
+        if (fromRow === undefined) {
+          return yield* new StudyNodeNotFound({ nodeId: input.from })
+        }
+        if (toRow === undefined) {
+          return yield* new StudyNodeNotFound({ nodeId: input.to })
+        }
+        const fromNode = yield* decodeNode(fromRow)
+        const toNode = yield* decodeNode(toRow)
+        const mismatch = findStudyEdgeEndpointKindMismatch(
+          candidate,
+          fromNode,
+          toNode,
+        )
+        if (mismatch !== undefined) {
+          const node = mismatch === "from" ? fromNode : toNode
+          return yield* new StudyEdgeEndpointKindMismatch({
+            edge: candidate,
+            endpoint: mismatch,
+            nodeId: node.id,
+            actualKind: node.kind,
+          })
+        }
+
+        const duplicate = yield* tx
+          .select({ id: studyEdges.id })
+          .from(studyEdges)
+          .where(
+            and(
+              eq(studyEdges.kind, candidate._tag),
+              eq(studyEdges.fromNodeId, candidate.from),
+              eq(studyEdges.toNodeId, candidate.to),
+            ),
+          )
+          .limit(1)
+        if (duplicate.some(({ id }) => id !== edgeId)) {
+          return yield* new StudyEdgeAlreadyExists({ edge: candidate })
+        }
+
+        const oldSiblings = yield* tx
+          .select()
+          .from(studyEdges)
+          .where(
+            and(
+              eq(studyEdges.fromNodeId, current.value.fromNodeId),
+              eq(studyEdges.kind, current.value.kind),
+            ),
+          )
+          .orderBy(asc(studyEdges.position), asc(studyEdges.id))
+        const newSiblings =
+          current.value.fromNodeId === input.from
+            ? oldSiblings.filter(({ id }) => id !== edgeId)
+            : yield* tx
+                .select()
+                .from(studyEdges)
+                .where(
+                  and(
+                    eq(studyEdges.fromNodeId, input.from),
+                    eq(studyEdges.kind, current.value.kind),
+                  ),
+                )
+                .orderBy(asc(studyEdges.position), asc(studyEdges.id))
+        for (const [index, sibling] of oldSiblings
+          .filter(({ id }) => id !== edgeId)
+          .entries()) {
+          if (sibling.position !== index) {
+            yield* tx
+              .update(studyEdges)
+              .set({ position: index })
+              .where(eq(studyEdges.id, sibling.id))
+          }
+        }
+        const position = Math.min(input.position, newSiblings.length)
+        for (const [index, sibling] of newSiblings.entries()) {
+          const next = index >= position ? index + 1 : index
+          if (sibling.position !== next) {
+            yield* tx
+              .update(studyEdges)
+              .set({ position: next })
+              .where(eq(studyEdges.id, sibling.id))
+          }
+        }
+        const rows = yield* tx
+          .update(studyEdges)
+          .set({
+            fromNodeId: input.from,
+            toNodeId: input.to,
+            position,
+          })
+          .where(eq(studyEdges.id, edgeId))
+          .returning()
+        const row = yield* firstReturnedRow("updateEdge", rows)
+        return Option.some(yield* decodeEdge(row))
+      }),
+    )
+
+  const updateEdge = (
+    edgeId: StudyEdgeId,
+    input: {
+      readonly from: StudyNodeId
+      readonly to: StudyNodeId
+      readonly position: number
+    },
+  ) => updateEdgeAttempt(edgeId, input).pipe(
+    Effect.repeat({ until: Option.isSome }),
+    Effect.flatMap(Option.match({
+      onNone: () => Effect.die("updateEdge retry stopped without a result"),
+      onSome: Effect.succeed,
+    })),
+    Effect.mapError((error: unknown) => {
+      if (
+        Schema.is(StudyEdgeNotFound)(error) ||
+        Schema.is(StudyNodeNotFound)(error) ||
+        Schema.is(StudyEdgeEndpointKindMismatch)(error) ||
+        Schema.is(StudyEdgeAlreadyExists)(error)
+      ) {
+        return error
+      }
+      return repositoryError("updateEdge", error)
+    }),
+  )
+
+  const removeEdgeAttempt = (edgeId: StudyEdgeId) =>
+    db.transaction((tx) =>
+      Effect.gen(function*() {
+        const observedRows = yield* tx
+          .select()
+          .from(studyEdges)
+          .where(eq(studyEdges.id, edgeId))
+          .limit(1)
+        const observed = Option.fromIterable(observedRows)
+        if (Option.isNone(observed)) {
+          return yield* new StudyEdgeNotFound({ edgeId })
+        }
+
+        yield* tx
+          .select({ id: studyNodes.id })
+          .from(studyNodes)
+          .where(eq(studyNodes.id, observed.value.fromNodeId))
+          .orderBy(asc(studyNodes.id))
+          .for("update")
+        const currentRows = yield* tx
+          .select()
+          .from(studyEdges)
+          .where(eq(studyEdges.id, edgeId))
+          .limit(1)
+          .for("update")
+        const current = Option.fromIterable(currentRows)
+        if (Option.isNone(current)) {
+          return yield* new StudyEdgeNotFound({ edgeId })
+        }
+        if (current.value.fromNodeId !== observed.value.fromNodeId) {
+          return false
+        }
+
+        yield* tx.delete(studyEdges).where(eq(studyEdges.id, edgeId))
+        const siblings = yield* tx
+          .select()
+          .from(studyEdges)
+          .where(
+            and(
+              eq(studyEdges.fromNodeId, current.value.fromNodeId),
+              eq(studyEdges.kind, current.value.kind),
+            ),
+          )
           .orderBy(asc(studyEdges.position), asc(studyEdges.id))
         for (const [index, sibling] of siblings.entries()) {
-          if (sibling.position !== index) yield* tx.update(studyEdges).set({ position: index }).where(eq(studyEdges.id, sibling.id))
+          if (sibling.position !== index) {
+            yield* tx
+              .update(studyEdges)
+              .set({ position: index })
+              .where(eq(studyEdges.id, sibling.id))
+          }
         }
-      })).pipe(
-        Effect.mapError((error) => error._tag === "StudyEdgeNotFound"
+        return true
+      }),
+    )
+
+  const removeEdge = (edgeId: StudyEdgeId) =>
+    removeEdgeAttempt(edgeId).pipe(
+      Effect.repeat({ until: (removed) => removed }),
+      Effect.mapError((error: unknown) =>
+        Schema.is(StudyEdgeNotFound)(error)
           ? error
-          : repositoryError("removeEdge", error)),
-        Effect.asVoid,
+          : repositoryError("removeEdge", error),
+      ),
+      Effect.asVoid,
+    )
+
+  const renameNode = (
+    nodeId: StudyNodeId,
+    name: string,
+    updatedAt: StudyNodeType["updatedAt"],
+  ) =>
+    db
+      .update(studyNodes)
+      .set({ name, updatedAt: DateTime.toDateUtc(updatedAt) })
+      .where(eq(studyNodes.id, nodeId))
+      .returning()
+      .pipe(
+        Effect.flatMap((rows) =>
+          Effect.fromOption(
+            Option.fromIterable(rows),
+            () => new StudyNodeNotFound({ nodeId }),
+          ).pipe(Effect.flatMap(decodeNode)),
+        ),
+        Effect.mapError((error: unknown) =>
+          Schema.is(StudyNodeNotFound)(error)
+            ? error
+            : repositoryError("renameNode", error),
+        ),
       )
 
-    const renameNode = <Id extends StudyNodeId>(
-      nodeId: Id,
-      name: string,
-      updatedAt: StudyNodeType["updatedAt"],
-    ) =>
-      db
-        .update(studyNodes)
-        .set({ name, updatedAt: DateTime.toDateUtc(updatedAt) })
-        .where(eq(studyNodes.id, nodeId))
-        .returning()
-        .pipe(
-          failRepository("renameNode"),
-          Effect.flatMap((rows) =>
-            rows[0] === undefined
-              ? Effect.fail(new StudyNodeNotFound({ nodeId }))
-              : Effect.succeed(decodeNode(rows[0]) as StudyNodeOfId<Id>),
+  const updateNodeStatus = (
+    nodeId: StudyNodeId,
+    status: StudyNodeStatus,
+    updatedAt: StudyNodeType["updatedAt"],
+  ) =>
+    db
+      .update(studyNodes)
+      .set({ status, updatedAt: DateTime.toDateUtc(updatedAt) })
+      .where(eq(studyNodes.id, nodeId))
+      .returning()
+      .pipe(
+        Effect.flatMap((rows) =>
+          Effect.fromOption(
+            Option.fromIterable(rows),
+            () => new StudyNodeNotFound({ nodeId }),
+          ).pipe(Effect.flatMap(decodeNode)),
+        ),
+        Effect.mapError((error: unknown) =>
+          Schema.is(StudyNodeNotFound)(error)
+            ? error
+            : repositoryError("updateNodeStatus", error),
+        ),
+      )
+
+  const ensureNode = (nodeId: StudyNodeId) =>
+    findNodeById(nodeId).pipe(
+      Effect.flatMap(
+        Option.match({
+          onNone: () => Effect.fail(new StudyNodeNotFound({ nodeId })),
+          onSome: Effect.succeed,
+        }),
+      ),
+    )
+
+  const listOutgoingEdges = (sourceNodeId: StudyNodeId) =>
+    ensureNode(sourceNodeId).pipe(
+      Effect.andThen(
+        db
+          .select(persistedEdgeSelection)
+          .from(studyEdges)
+          .innerJoin(
+            fromStudyNodes,
+            eq(fromStudyNodes.id, studyEdges.fromNodeId),
+          )
+          .innerJoin(toStudyNodes, eq(toStudyNodes.id, studyEdges.toNodeId))
+          .where(eq(studyEdges.fromNodeId, sourceNodeId))
+          .orderBy(asc(studyEdges.position), asc(studyEdges.id))
+          .pipe(
+            Effect.flatMap((rows) =>
+              Effect.forEach(rows, decodePersistedStudyEdge),
+            ),
+            Effect.map((rows) => rows.map(({ edge }) => edge)),
+            failRepository("listOutgoingEdges"),
           ),
-        )
+      ),
+    )
 
-    const updateNodeStatus = <Id extends StudyNodeId>(
-      nodeId: Id,
-      status: StudyNodeStatus,
-      updatedAt: StudyNodeType["updatedAt"],
-    ) =>
-      db
-        .update(studyNodes)
-        .set({ status, updatedAt: DateTime.toDateUtc(updatedAt) })
-        .where(eq(studyNodes.id, nodeId))
-        .returning()
-        .pipe(
-          failRepository("updateNodeStatus"),
-          Effect.flatMap((rows) =>
-            rows[0] === undefined
-              ? Effect.fail(new StudyNodeNotFound({ nodeId }))
-              : Effect.succeed(decodeNode(rows[0]) as StudyNodeOfId<Id>),
+  const listIncomingEdges = (targetNodeId: StudyNodeId) =>
+    ensureNode(targetNodeId).pipe(
+      Effect.andThen(
+        db
+          .select(persistedEdgeSelection)
+          .from(studyEdges)
+          .innerJoin(
+            fromStudyNodes,
+            eq(fromStudyNodes.id, studyEdges.fromNodeId),
+          )
+          .innerJoin(toStudyNodes, eq(toStudyNodes.id, studyEdges.toNodeId))
+          .where(eq(studyEdges.toNodeId, targetNodeId))
+          .orderBy(asc(studyEdges.position), asc(studyEdges.id))
+          .pipe(
+            Effect.flatMap((rows) =>
+              Effect.forEach(rows, decodePersistedStudyEdge),
+            ),
+            Effect.map((rows) => rows.map(({ edge }) => edge)),
+            failRepository("listIncomingEdges"),
           ),
-        )
+      ),
+    )
 
-    const ensureNode = (nodeId: StudyNodeId) =>
-      findNodeById(nodeId).pipe(
-        Effect.flatMap(
-          Option.match({
-            onNone: () => Effect.fail(new StudyNodeNotFound({ nodeId })),
-            onSome: Effect.succeed,
-          }),
-        ),
-      )
-
-    const listOutgoingEdges = <Id extends StudyNodeId>(
-      sourceNodeId: Id,
-    ) =>
-      ensureNode(sourceNodeId).pipe(
-        Effect.andThen(
-          db
-            .select()
-            .from(studyEdges)
-            .where(eq(studyEdges.fromNodeId, sourceNodeId))
-            .orderBy(asc(studyEdges.position), asc(studyEdges.id))
-            .pipe(failRepository("listOutgoingEdges")),
-        ),
-        Effect.map((rows) => rows.map(decodeEdge) as unknown as ReadonlyArray<StudyEdgesFromId<Id>>),
-      )
-
-    const listIncomingEdges = <Id extends StudyNodeId>(
-      targetNodeId: Id,
-    ) =>
-      ensureNode(targetNodeId).pipe(
-        Effect.andThen(
-          db
-            .select()
-            .from(studyEdges)
-            .where(eq(studyEdges.toNodeId, targetNodeId))
-            .orderBy(asc(studyEdges.position), asc(studyEdges.id))
-            .pipe(failRepository("listIncomingEdges")),
-        ),
-        Effect.map((rows) => rows.map(decodeEdge) as unknown as ReadonlyArray<StudyEdgesToId<Id>>),
-      )
-
-    const listTargets = <Id extends StudyNodeId>(sourceNodeId: Id) =>
-      ensureNode(sourceNodeId).pipe(
-        Effect.andThen(
-          db
-            .select({ node: studyNodes })
-            .from(studyEdges)
-            .innerJoin(studyNodes, eq(studyNodes.id, studyEdges.toNodeId))
-            .where(eq(studyEdges.fromNodeId, sourceNodeId))
-            .orderBy(asc(studyEdges.position), asc(studyEdges.id))
-            .pipe(failRepository("listTargets")),
-        ),
-        Effect.map(
-          (rows) =>
-            rows.map(({ node }) => decodeNode(node)) as unknown as ReadonlyArray<
-              StudyNodeTargetsOfId<Id>
-            >,
-        ),
-      )
-
-    const listChildren = <Id extends StudyNodeId>(input: {
-      readonly parentId: Id
-      readonly relationshipKinds: ReadonlyArray<StudyEdgeType["_tag"]>
-    }) => {
-      if (input.relationshipKinds.length === 0) {
-        return Effect.succeed(
-          [] as unknown as ReadonlyArray<StudyNodeTargetsOfId<Id>>,
-        )
-      }
-
-      return db
-        .select({ node: studyNodes })
-        .from(studyEdges)
-        .innerJoin(studyNodes, eq(studyNodes.id, studyEdges.toNodeId))
-        .where(
-          and(
-            eq(studyEdges.fromNodeId, input.parentId),
-            inArray(studyEdges.kind, input.relationshipKinds),
-            eq(studyNodes.status, "published"),
+  const listTargets = (sourceNodeId: StudyNodeId) =>
+    ensureNode(sourceNodeId).pipe(
+      Effect.andThen(
+        db
+          .select(persistedEdgeSelection)
+          .from(studyEdges)
+          .innerJoin(
+            fromStudyNodes,
+            eq(fromStudyNodes.id, studyEdges.fromNodeId),
+          )
+          .innerJoin(toStudyNodes, eq(toStudyNodes.id, studyEdges.toNodeId))
+          .where(eq(studyEdges.fromNodeId, sourceNodeId))
+          .orderBy(asc(studyEdges.position), asc(studyEdges.id))
+          .pipe(
+            Effect.flatMap((rows) =>
+              Effect.forEach(rows, decodePersistedStudyEdge),
+            ),
+            Effect.map((rows) => rows.map(({ toNode }) => toNode)),
+            failRepository("listTargets"),
           ),
-        )
-        .orderBy(asc(studyEdges.position), asc(studyEdges.id))
-        .pipe(
-          failRepository("listChildren"),
-          Effect.map(
-            (rows) =>
-              rows.map(({ node }) => decodeNode(node)) as unknown as ReadonlyArray<
-                StudyNodeTargetsOfId<Id>
-              >,
-          ),
-        )
+      ),
+    )
+
+  const listChildren = (input: {
+    readonly parentId: StudyNodeId
+    readonly relationshipKinds: ReadonlyArray<StudyEdgeType["_tag"]>
+  }): Effect.Effect<
+    ReadonlyArray<StudyNodeType>,
+    StudyCatalogRepositoryError
+  > => {
+    if (input.relationshipKinds.length === 0) {
+      return Effect.succeed([])
     }
 
-    const listSources = <Id extends StudyNodeId>(targetNodeId: Id) =>
-      ensureNode(targetNodeId).pipe(
-        Effect.andThen(
-          db
-            .select({ node: studyNodes })
-            .from(studyEdges)
-            .innerJoin(studyNodes, eq(studyNodes.id, studyEdges.fromNodeId))
-            .where(eq(studyEdges.toNodeId, targetNodeId))
-            .orderBy(asc(studyEdges.position), asc(studyEdges.id))
-            .pipe(failRepository("listSources")),
-        ),
-        Effect.map(
-          (rows) =>
-            rows.map(({ node }) => decodeNode(node)) as unknown as ReadonlyArray<
-              StudyNodeSourcesOfId<Id>
-            >,
+    return db
+      .select(persistedEdgeSelection)
+      .from(studyEdges)
+      .innerJoin(
+        fromStudyNodes,
+        eq(fromStudyNodes.id, studyEdges.fromNodeId),
+      )
+      .innerJoin(toStudyNodes, eq(toStudyNodes.id, studyEdges.toNodeId))
+      .where(
+        and(
+          eq(studyEdges.fromNodeId, input.parentId),
+          inArray(studyEdges.kind, input.relationshipKinds),
+          eq(toStudyNodes.status, "published"),
         ),
       )
+      .orderBy(asc(studyEdges.position), asc(studyEdges.id))
+      .pipe(
+        Effect.flatMap((rows) =>
+          Effect.forEach(rows, decodePersistedStudyEdge),
+        ),
+        Effect.map((rows) => rows.map(({ toNode }) => toNode)),
+        failRepository("listChildren"),
+      )
+  }
 
-    return StudyCatalogRepository.of({
-      listNodes,
-      listCountries,
-      findNodeById,
-      findEdgeById,
-      createNode,
-      createEdge,
-      updateEdge,
-      removeEdge,
-      renameNode,
-      updateNodeStatus,
-      listOutgoingEdges,
-      listIncomingEdges,
-      listTargets,
-      listChildren,
-      listSources,
-    })
+  const listSources = (targetNodeId: StudyNodeId) =>
+    ensureNode(targetNodeId).pipe(
+      Effect.andThen(
+        db
+          .select(persistedEdgeSelection)
+          .from(studyEdges)
+          .innerJoin(
+            fromStudyNodes,
+            eq(fromStudyNodes.id, studyEdges.fromNodeId),
+          )
+          .innerJoin(toStudyNodes, eq(toStudyNodes.id, studyEdges.toNodeId))
+          .where(eq(studyEdges.toNodeId, targetNodeId))
+          .orderBy(asc(studyEdges.position), asc(studyEdges.id))
+          .pipe(
+            Effect.flatMap((rows) =>
+              Effect.forEach(rows, decodePersistedStudyEdge),
+            ),
+            Effect.map((rows) => rows.map(({ fromNode }) => fromNode)),
+            failRepository("listSources"),
+          ),
+      ),
+    )
+
+  return StudyCatalogRepository.of({
+    listNodes,
+    listCountries,
+    findNodeById,
+    findEdgeById,
+    createNode,
+    createEdge,
+    updateEdge,
+    removeEdge,
+    renameNode,
+    updateNodeStatus,
+    listOutgoingEdges,
+    listIncomingEdges,
+    listTargets,
+    listChildren,
+    listSources,
+  })
 }

@@ -18,11 +18,22 @@ export const edgeKinds = {
   DegreeSubjectEdge: { from: "degree", to: "subject" },
 } as const satisfies Record<StudyEdge["_tag"], { readonly from: StudyNode["kind"]; readonly to: StudyNode["kind"] }>
 
+const edgeTags = [
+  "CountryTypeEdge",
+  "TypeUniversityEdge",
+  "UniversityDegreeEdge",
+  "UniversitySubjectEdge",
+  "DegreeSubjectEdge",
+] as const satisfies ReadonlyArray<StudyEdge["_tag"]>
+
+export const isStudyEdgeTag = (value: string): value is StudyEdge["_tag"] =>
+  edgeTags.some((tag) => tag === value)
+
 export const outgoingEdgeTags = (kind: StudyNode["kind"]): ReadonlyArray<StudyEdge["_tag"]> =>
-  (Object.keys(edgeKinds) as Array<StudyEdge["_tag"]>).filter((tag) => edgeKinds[tag].from === kind)
+  edgeTags.filter((tag) => edgeKinds[tag].from === kind)
 
 export const incomingEdgeTags = (kind: StudyNode["kind"]): ReadonlyArray<StudyEdge["_tag"]> =>
-  (Object.keys(edgeKinds) as Array<StudyEdge["_tag"]>).filter((tag) => edgeKinds[tag].to === kind)
+  edgeTags.filter((tag) => edgeKinds[tag].to === kind)
 
 export const selectNodeAtom = Atom.fnSync<StudyNode>()((node, get) => {
   get.set(selectedNodeIdAtom, node.id)

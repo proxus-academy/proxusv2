@@ -14,12 +14,12 @@ const config: StorybookConfig = {
     name: "@storybook/react-vite",
     options: {},
   },
-  viteFinal: async (viteConfig) => {
+  viteFinal: (viteConfig) => {
     viteConfig.plugins = [...(viteConfig.plugins ?? []), tailwindcss()]
     viteConfig.resolve = {
       ...viteConfig.resolve,
       dedupe: [
-        ...((viteConfig.resolve?.dedupe as ReadonlyArray<string> | undefined) ?? []),
+        ...(viteConfig.resolve?.dedupe ?? []),
         "react",
         "react-dom",
         "effect",

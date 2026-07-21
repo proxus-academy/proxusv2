@@ -122,6 +122,64 @@ mutation atom; an effect must not infer submission from changed form state.
 Navigation and URL state use router APIs rather than duplicated synchronization
 state.
 
+## Routing
+
+Routing is modeled in `@proxus/frontend-core/routing` as a platform-independent,
+Effect-first capability. A single nested route definition is the source of truth
+for destination types, accumulated path parameters, URL encoding, URL decoding,
+and the chain of matched layouts. Both destinations and matches are discriminated
+unions, so narrowing a route ID also narrows its parameter types. Route parameters
+use Effect Schema codecs whose encoded representation is a URL segment string.
+
+Only terminal `path`, `param`, and `index` nodes are navigation destinations.
+`root`, `layout`, and parent nodes participate in the match chain but cannot be
+navigated to directly. Application code navigates with opaque destinations made
+by the compiled definition; it must not construct path strings or destination
+objects manually.
+
+The `Router` Effect service owns navigation commands and exposes the current
+opaque destination as an Effect Atom. Platform adapters own history:
+
+```text
+frontend-core routing definition + Router service
+  → frontend-web browser History API adapter
+  → future native in-memory/native-navigation adapter
+```
+
+The browser adapter is the sole owner of `pushState`, `replaceState`, and
+`popstate`. One internal state cell owns `RouterLocation` plus the latest typed
+error; `current`, `location`, and `error` are pure projections of that cell. Each
+transition captures one URL and updates the cell coherently. Path encoding
+failures remain `SchemaError`/`RouteEncodingError` rather than being erased into
+a generic history error; failed `back` and `forward` calls are observable too.
+The scoped `popstate` lifecycle applies only the latest overlapping decode,
+unsubscribes before shutdown, and waits for active cleanup.
+
+The adapter preserves unrelated search parameters, hashes, and history state.
+Its platform-neutral `RouterLocation` carries the encoded query so feature atoms
+can project query state and submit it back through router commands without a
+second History owner; the memory adapter stores the complete location in each
+history entry so back/forward restore its query. Query codecs must canonicalize
+invalid values through a scoped router lifecycle (including after `popstate`),
+not merely project them to a local fallback. Every product path starts with
+the validated locale segment (`/:locale/...`); composition roots safely replace
+missing, legacy, or invalid forms with a canonical locale-prefixed destination.
+Components consume route atoms and command adapters; they do not read `window`,
+parse URLs, create Layers, or run Effects during render. URL-backed product
+transitions are named Effect function atoms, not writable projections that
+launch detached fibers. The composition root creates one navigation-command
+module with `makeRetryableCommands` from `@proxus/frontend-core/navigation`
+and injects its runner into canonical locale/path, registration, and locale
+operations. The module retains
+only the failure from the latest-started command as a re-executable Effect, so a
+late completion from older work cannot replace it; a retry becomes the latest
+command when its execution starts and is itself superseded by any later start.
+Token-checked success clears only its corresponding failure and manual retry
+re-executes that captured command. Views consume only its derived `failedAtom` and `retryAtom`; they do not
+correlate command `AsyncResult` causes with `Router.error`. Storage, `document`
+attributes, and analytics caused by a transition run only after
+`Router.replace` succeeds; a failed replacement leaves all of them unchanged.
+
 ## Legitimate effects
 
 Use `useEffect` when a mounted component owns synchronization with an external
@@ -159,7 +217,10 @@ Before approving a `useEffect`, verify:
 
 Tests should cover identity resets, external subscription cleanup, and duplicate
 mount behavior. Atom tests cover remote transitions and mutation behavior; UI
-tests cover accessible rendering and interaction.
+tests cover accessible rendering and interaction. Reusable views and stories
+receive messages and language controls as props (or a real test provider); they
+must not import an application composition root, and importing a story must not
+write History.
 
 ## Sources
 

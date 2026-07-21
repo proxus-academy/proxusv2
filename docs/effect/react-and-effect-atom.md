@@ -95,7 +95,11 @@ do not contain Effect programs or anonymous transport calls. Successful
 mutations invalidate or refresh the narrow affected query families.
 
 Product transitions should be exposed through named mutation atoms rather than
-arbitrary setters spread through components.
+arbitrary setters spread through components. Navigation mutations additionally
+run through the single `makeRetryableCommands` module composed from
+`@proxus/frontend-core/navigation`: adapters receive its runner, while views
+read `failedAtom` and dispatch `retryAtom`. Views must not inspect several
+`AsyncResult` values or compare causes to decide which command to retry.
 
 ## Forms
 
@@ -105,6 +109,42 @@ messages and dispatches field or submit events.
 
 Local React state is reserved for genuinely view-local behavior that has no
 application meaning, persistence, asynchronous work, or cross-component use.
+
+## Distribución pública de Feature Flags
+
+Cada aplicación compone el port neutral `FeatureFlagDistribution` con su adapter
+de plataforma y crea un único módulo mediante `makeFeatureFlagSnapshotModule`.
+El módulo devuelve `snapshotAtom` y `lifecycleAtom`: `App` monta únicamente el
+lifecycle, que hace la lectura inicial y revalida mediante el `Clock` de Effect y
+el `AtomRegistry` activo. El intervalo es configurable y por defecto son cinco
+minutos, coherentes con `Cache-Control: max-age=300`; al desmontarse se cierra su
+scope y se cancela el polling. `frontend-core` no usa timers ni globals del
+browser.
+
+El snapshot y el assignment conservan `AsyncResult`; durante una revalidación,
+Effect Atom mantiene el último `Success` con `waiting: true`. Si la revalidación
+falla, el estado pasa a `Failure` y conserva ese valor en `previousSuccess`. Las
+decisiones derivadas no copian el snapshot a React ni abren un segundo
+transporte. Los hitos analíticos causados por una interacción reciben `void` y
+usan el último assignment efectivamente expuesto por el lifecycle de landing:
+una revalidación mientras el path ya no está vacío no cambia esas coordenadas y,
+si nunca hubo exposición, el hito no se emite. De este modo un callback React no
+transporta una revisión obsoleta ni atribuye un hito a una variante no vista. En
+web, el cliente tipado usa
+`GET /api/feature-flags/snapshot` y analytics usa
+`POST /api/product-analytics/events`; Vite retira `/api` en desarrollo sin
+cambiar origin ni host. La caché HTTP del navegador revalida con
+`ETag`/`If-None-Match` según `Cache-Control`.
+
+La exposición se monta, separada del lifecycle del snapshot, en la superficie de
+landing únicamente mientras el path está vacío, conserva inmediatamente el
+último assignment visible durante el resto del registro y se deduplica por
+revisión y subject incluso ante el remount de Strict Mode; no pertenece a `App`.
+Las entregas analytics se ejecutan concurrentemente dentro del scope del
+lifecycle, de modo que una petición bloqueada no serializa revisiones visibles
+posteriores. No se monta un supervisor push ni SSE: PostgreSQL, el polling pull-based y el
+conditional GET son la distribución válida entre publisher, servidores y
+clientes públicos.
 
 ## Testing
 

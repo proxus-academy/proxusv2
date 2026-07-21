@@ -1,14 +1,42 @@
 import {
-  StudyNode,
-  type StudyNode as StudyNodeType,
+  CountryNode,
+  DegreeNode,
+  StudyTypeNode,
+  SubjectNode,
+  UniversityNode,
+  type StudyNode,
 } from "@proxus/shared/study-catalog"
 import { Schema } from "effect"
 
-export const RegistrationPathParam = Schema.fromJsonString(
-  Schema.Array(StudyNode),
-)
+const published = <Fields extends Schema.Struct.Fields>(fields: Fields) => Schema.Struct({
+  ...fields,
+  status: Schema.Literal("published"),
+})
 
-export type RegistrationPath = ReadonlyArray<StudyNodeType>
+const PublishedCountryNode = published(CountryNode.fields)
+const PublishedStudyTypeNode = published(StudyTypeNode.fields)
+const PublishedUniversityNode = published(UniversityNode.fields)
+const PublishedDegreeNode = published(DegreeNode.fields)
+const PublishedSubjectNode = published(SubjectNode.fields)
+
+/** Every navigable registration prefix, with published nodes in graph order. */
+export const RegistrationPath = Schema.Union([
+  Schema.Tuple([]),
+  Schema.Tuple([PublishedCountryNode]),
+  Schema.Tuple([PublishedCountryNode, PublishedStudyTypeNode]),
+  Schema.Tuple([PublishedCountryNode, PublishedStudyTypeNode, PublishedUniversityNode]),
+  Schema.Tuple([PublishedCountryNode, PublishedStudyTypeNode, PublishedUniversityNode, PublishedDegreeNode]),
+  Schema.Tuple([
+    PublishedCountryNode,
+    PublishedStudyTypeNode,
+    PublishedUniversityNode,
+    PublishedDegreeNode,
+    PublishedSubjectNode,
+  ]),
+])
+export type RegistrationPath = typeof RegistrationPath.Type
+
+export const RegistrationPathParam = Schema.fromJsonString(RegistrationPath)
 
 export type RegistrationStep =
   | "country"
@@ -33,7 +61,7 @@ export const stepFromPath = (path: RegistrationPath): RegistrationStep => {
 
 export const expectedTargetKinds = (
   step: RegistrationStep,
-): ReadonlyArray<StudyNodeType["kind"]> => {
+): ReadonlyArray<StudyNode["kind"]> => {
   switch (step) {
     case "country": return ["country"]
     case "type": return ["type"]

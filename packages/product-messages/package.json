@@ -1,0 +1,20 @@
+{
+  "name": "@proxus/product-messages",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "effect": "4.0.0-beta.98"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3",
+    "vitest": "3.2.7"
+  }
+}
