@@ -37,8 +37,8 @@ const withApplicationConfig = <A, E, R>(program: Effect.Effect<A, E, R>) => Effe
 const run = Effect.gen(function*() {
   if (command === "run") {
     if (values.input === undefined || values.input.trim() === "") return yield* Effect.fail(new Error("--input is required\n\n" + usage))
-    const database = resolve(values.database!)
-    mkdirSync(database, { recursive: true })
+    const database = values.database === ":memory:" ? ":memory:" : resolve(values.database!)
+    if (database !== ":memory:") mkdirSync(database, { recursive: true })
     const result = yield* playgroundRun({ database, input: values.input })
     console.log(result.output ?? `Run ${result.id} ended with status ${result.status}${result.failure === undefined ? "" : `: ${result.failure}`}`)
     return
