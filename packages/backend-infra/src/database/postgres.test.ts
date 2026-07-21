@@ -1,11 +1,20 @@
+// @effect-diagnostics effectSucceedWithVoid:off
 import { PgliteClient } from "@effect/sql-pglite"
 import * as PgliteDrizzle from "drizzle-orm/effect-pglite"
 import { describe, expect, test } from "vitest"
-import { Effect, Layer } from "effect"
+import { ConfigProvider, Effect, Layer } from "effect"
 import { migratePglite } from "./pglite.js"
-import { checkDatabaseMigrations } from "./postgres.js"
+import { checkDatabaseMigrations, makePostgresProductionLive } from "./postgres.js"
 
 describe("database migration check", () => {
+  test("refuses startup deterministically when DATABASE_URL is absent", () => Effect.runPromise(Effect.scoped(
+    Layer.build(makePostgresProductionLive("config-test")).pipe(
+      Effect.provideService(ConfigProvider.ConfigProvider, ConfigProvider.make(() => Effect.succeed(undefined))),
+      Effect.flip,
+      Effect.map((error) => expect(String(error)).toContain("DATABASE_URL")),
+    ),
+  )))
+
   test(
     "fails while migrations are pending and succeeds after they are applied",
     () => {
@@ -24,7 +33,7 @@ describe("database migration check", () => {
 
               expect(pending._tag).toBe("PendingDatabaseMigrations")
               if (pending._tag === "PendingDatabaseMigrations") {
-                expect(pending.pending).toHaveLength(4)
+                expect(pending.pending).toHaveLength(5)
               }
 
               yield* migratePglite("./drizzle")

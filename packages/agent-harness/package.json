@@ -1,0 +1,35 @@
+{
+  "name": "@proxus/agent-harness",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./agent": "./src/agent/index.ts",
+    "./errors": "./src/errors.ts",
+    "./dsl": "./src/dsl/index.ts",
+    "./ids": "./src/ids.ts",
+    "./skills": "./src/skills/index.ts",
+    "./ai": "./src/ai/index.ts",
+    "./ai/effect-ai": "./src/ai/effect-ai.ts",
+    "./run": "./src/run/index.ts",
+    "./session": "./src/session/index.ts",
+    "./store": "./src/store/index.ts",
+    "./sandbox": "./src/sandbox/index.ts",
+    "./delegation": "./src/delegation/index.ts",
+    "./observability": "./src/observability/index.ts",
+    "./transport": "./src/transport/index.ts",
+    "./examples/engineering": "./src/examples/engineering/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "effect": "4.0.0-beta.98"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3",
+    "vitest": "3.2.7"
+  }
+}

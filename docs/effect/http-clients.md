@@ -225,7 +225,7 @@ See [`observability.md`](./observability.md) for privacy, cardinality, and sourc
 
 ## Testing clients
 
-For first-party e2e tests, use the generated client against the in-process web handler and temporary SQLite database described in [`../testing.md`](../testing.md). Inject `FetchHttpClient.Fetch` so requests call `HttpRouter.toWebHandler(...)` without TCP; keep cookie state in a test-local `Ref`.
+For first-party e2e tests, use the generated client against the in-process web handler and temporary PGlite database described in [`../testing.md`](../testing.md). Inject `FetchHttpClient.Fetch` so requests call `HttpRouter.toWebHandler(...)` without TCP; keep cookie state in a test-local `Ref`.
 
 For third-party clients:
 

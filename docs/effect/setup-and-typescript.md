@@ -2,7 +2,7 @@
 
 > **Document status:** Draft. The repository already satisfies the runtime and strict-TypeScript requirements below, but the Effect Language Service recommendations are not yet adopted by this template.
 
-This page defines the setup policy for Effect v4 code in this workspace. It targets the versions currently pinned by the repository: `effect` and first-party Effect packages at `4.0.0-beta.58`, TypeScript `5.9.x`, Node.js 24+, and pnpm 10.
+This page defines the setup policy for Effect v4 code in this workspace. It targets the versions currently pinned by the repository: `effect` and first-party Effect packages at `4.0.0-beta.98`, TypeScript `5.9.x`, Node.js 24+, and pnpm 10.
 
 ## Policy Levels
 
@@ -24,7 +24,7 @@ Strict TypeScript and one pinned Effect version are **Required** because Effect 
 
 - Use Node.js 24+ and the repository-pinned pnpm version.
 - Install dependencies from the repository root with `pnpm install`.
-- Keep all first-party Effect packages on the same exact prerelease version. In this repository that version is `4.0.0-beta.58`.
+- Keep all first-party Effect packages on the same exact prerelease version. In this repository that version is `4.0.0-beta.98`.
 - Import stable core modules from `effect`; import v4 modules from their actual v4 paths, including `effect/unstable/*` where the installed API requires it.
 - Commit the lockfile. Do not combine an Effect upgrade with unrelated behavior changes.
 - Run checks in every affected workspace after an Effect or TypeScript upgrade.
@@ -40,7 +40,7 @@ An Effect beta upgrade is a migration, not routine version drift. Review renamed
 
 ### Anti-patterns
 
-- Mixing `effect@4.0.0-beta.58` with another beta of `@effect/*`.
+- Mixing `effect@4.0.0-beta.98` with another beta of `@effect/*`.
 - Copying Effect v2/v3 examples without checking the installed v4 declarations or the local v4 reference repository.
 - Adding npm, Bun, or Yarn commands to project documentation when pnpm is the workspace package manager.
 - Using floating `latest`, `beta`, or caret ranges for first-party Effect beta packages.
@@ -139,7 +139,7 @@ Effect Solutions recommends `@effect/language-service` for Effect-specific edito
 }
 ```
 
-Before adoption, verify compatibility with TypeScript 5.9 and Effect `4.0.0-beta.58`. Do not copy the upstream Bun commands into this pnpm workspace unchanged. A future implementation should use the package's pnpm-compatible executable invocation and should document any `prepare` script it adds.
+Before adoption, verify compatibility with TypeScript 5.9 and Effect `4.0.0-beta.98`. Do not copy the upstream Bun commands into this pnpm workspace unchanged. A future implementation should use the package's pnpm-compatible executable invocation and should document any `prepare` script it adds.
 
 ### Editor requirement after adoption
 
@@ -164,7 +164,7 @@ The optional `effect-solutions` CLI can list or display the website topics (`lis
 
 ### Recommended
 
-Use `.repos/effect-smol` as a read-only v4 reference. It is pinned in this checkout at commit `b559d68845f848a10153395778f035682d399075` and contains executable examples under `ai-docs/src`.
+Use `.repos/effect-smol` as a read-only v4 reference. It is pinned in this checkout at commit `3e4abbcb0d0e9a5e82b6b88c7ef7ab69900105ec` and contains executable examples under `ai-docs/src`.
 
 Reference code is evidence for the pinned snapshot, not a substitute for this template's architecture. In particular:
 
@@ -195,7 +195,7 @@ Do not edit the reference repository to make project checks pass.
 ### Required
 
 - [ ] Node.js and pnpm satisfy the repository requirements.
-- [ ] All first-party Effect packages use exactly `4.0.0-beta.58` or one deliberately upgraded version.
+- [ ] All first-party Effect packages use exactly `4.0.0-beta.98` or one deliberately upgraded version.
 - [ ] Workspace TypeScript configs extend `tsconfig.base.json`.
 - [ ] `strict`, `verbatimModuleSyntax`, `isolatedModules`, and `noEmit` remain enabled.
 - [ ] Runtime-specific globals and aliases stay local to their workspace.
@@ -228,7 +228,7 @@ Do not edit the reference repository to make project checks pass.
 - Effect Solutions, Quick Start: https://www.effect.solutions/quick-start
 - Effect Solutions, Project Setup: https://www.effect.solutions/project-setup
 - Effect Solutions, TypeScript Configuration: https://www.effect.solutions/tsconfig
-- Effect v4 reference repository: https://github.com/Effect-TS/effect-smol/tree/b559d68845f848a10153395778f035682d399075
+- Effect v4 reference repository: https://github.com/Effect-TS/effect-smol/tree/3e4abbcb0d0e9a5e82b6b88c7ef7ab69900105ec
 - Effect Language Service schema: https://raw.githubusercontent.com/Effect-TS/language-service/refs/heads/main/schema.json
 
 Effect Solutions is a prescriptive community guide. Its recommendations are identified as such above; repository-specific requirements are template policy.

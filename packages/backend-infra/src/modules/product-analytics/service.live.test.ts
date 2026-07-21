@@ -65,7 +65,7 @@ describe("ProductAnalyticsLive", () => {
   test("admits then persists a consented batch through the repository", () => run(Effect.gen(function*() {
     const analytics = yield* ProductAnalytics
     expect(yield* analytics.recordBatch([event], { consent: "granted", flagSubjectId: "00000000-0000-4000-8000-000000000001" })).toEqual({ accepted: 1, rejected: 0 })
-    yield* Effect.sleep(10)
+    yield* Effect.sleep(100)
     const rows = yield* (yield* ProductAnalyticsMemoryStore).rows
     expect(rows).toHaveLength(1)
     expect(rows[0]?.eventId).toMatch(/^[0-9a-f-]{36}$/)

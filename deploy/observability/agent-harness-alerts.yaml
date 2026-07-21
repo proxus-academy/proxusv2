@@ -1,0 +1,29 @@
+groups:
+  - name: proxus-agent-harness
+    interval: 1m
+    rules:
+      - alert: AgentRunFailureRateHigh
+        expr: sum(rate(agent_runs_total{outcome=~"failed|timed_out|budget_exhausted"}[10m])) / clamp_min(sum(rate(agent_runs_total[10m])), 1) > 0.10
+        for: 15m
+        labels: { severity: page, service: proxus-agent-worker }
+        annotations: { summary: "Agent terminal failure rate exceeds 10%" }
+      - alert: AgentRunQueueStalled
+        expr: max(agent_run_queue_oldest_age_seconds) > 300
+        for: 10m
+        labels: { severity: page, service: proxus-agent-worker }
+        annotations: { summary: "Oldest queued agent run exceeds five minutes" }
+      - alert: AgentPermissionDenialsSpike
+        expr: sum(rate(agent_dsl_operations_total{outcome="denied"}[10m])) > 0.5
+        for: 15m
+        labels: { severity: ticket, service: proxus-agent-worker }
+        annotations: { summary: "DSL permission denials are elevated" }
+      - alert: AgentSandboxFailuresHigh
+        expr: sum(rate(agent_sandbox_processes_total{outcome="failed"}[10m])) > 0.1
+        for: 10m
+        labels: { severity: page, service: proxus-agent-worker }
+        annotations: { summary: "Sandbox process failure rate is elevated" }
+      - alert: AgentTelemetryExporterDropping
+        expr: sum(rate(otelcol_exporter_send_failed_spans[5m])) > 0
+        for: 10m
+        labels: { severity: ticket, service: otel-collector }
+        annotations: { summary: "OTel collector is failing to export agent spans" }

@@ -1,6 +1,6 @@
 # Effect Resources, Runtime, and Integration
 
-This document defines how this template should acquire resources, compose them into Layers, run long-lived programs, and cross imperative framework seams. It targets Effect v4 (`4.0.0-beta.58` in this repository).
+This document defines how this template should acquire resources, compose them into Layers, run long-lived programs, and cross imperative framework seams. It targets Effect v4 (`4.0.0-beta.98` in this repository).
 
 Normative terms such as **MUST**, **SHOULD**, and **MAY** describe required, recommended, and optional practice.
 
@@ -141,7 +141,7 @@ The fork MUST be scoped. When the Layer scope closes, the fiber is interrupted a
 ### Composition
 
 - Use `Layer.provide` to satisfy a Layer's dependencies locally.
-- Keep variants at real seams: for example memory, SQLite, and Postgres adapters implement the same repository interface.
+- Keep variants at real seams: for example memory, PGlite, and Postgres adapters implement the same repository interface.
 - Do not introduce a Layer that only forwards another Layer without hiding configuration, lifecycle, policy, or composition complexity.
 - Share the same Layer instance in a composition graph when callers must share one resource. Do not reconstruct equivalent Layers at each call site.
 

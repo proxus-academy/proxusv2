@@ -1,6 +1,6 @@
 # Effect adoption and project structure
 
-> **Version:** Effect v4 beta. This repository currently pins `effect@4.0.0-beta.58`. Pin one exact beta across workspace packages and validate every upgrade; beta APIs can change before v4 stable.
+> **Version:** Effect v4 beta. This repository currently pins `effect@4.0.0-beta.98`. Pin one exact beta across workspace packages and validate every upgrade; beta APIs can change before v4 stable.
 >
 > **Source maturity warning:** [effect.solutions/project-structure](https://www.effect.solutions/project-structure) is a `TODO` page, and [effect.solutions/incremental-adoption](https://www.effect.solutions/incremental-adoption) is only a `Proposed Outline`. They are drafts/schemes, not completed normative guidance. This document preserves their topics but completes them **only with repository rules**, each explicitly labeled **Project rule**. It does not attribute those completions to Effect Solutions.
 
@@ -309,7 +309,7 @@ The draft mentions an Inato migration story and Effect documentation but contain
 - [ ] Pure logic is tested directly without unnecessary layers.
 - [ ] Application modules are tested with memory/fake adapters.
 - [ ] Resource tests cover acquisition, release, interruption, and startup failure.
-- [ ] SQL integration uses temporary SQLite and the real migration runner.
+- [ ] SQL integration uses temporary PGlite and the real migration runner.
 - [ ] Canonical e2e tests use the typed client against a fetchable app.
 - [ ] External providers/processes have focused adapter contract tests; live tests are opt-in.
 - [ ] Architecture checks reject forbidden dependency direction.
@@ -380,6 +380,6 @@ For full-stack changes, prefer `pnpm check`, `pnpm build`, `pnpm lint`, relevant
 | Concrete repository layout, dependency flow, persistence, errors, and module policy | `AGENTS.md` and `docs/architecture.md` — **Project rule** |
 | Typed service-local config and startup strictness | `.agents/skills/effect-service-config/SKILL.md` and `references/config-rules.md` — **Project rule** |
 | Module depth, seam, adapter, deletion test, locality, leverage | `~/.agents/skills/improve-codebase-architecture/SKILL.md` — **Project rule vocabulary applied here** |
-| v4 beta implementation reference | `.repos/effect-smol/` at `b559d68845f848a10153395778f035682d399075` |
+| v4 beta implementation reference | `.repos/effect-smol/` at `3e4abbcb0d0e9a5e82b6b88c7ef7ab69900105ec` |
 
 No folder layout, framework choice, migration sequence, lifecycle policy, error policy, test strategy, or security policy above is presented as completed Effect Solutions guidance. Every such completion is explicitly a **Project rule**.

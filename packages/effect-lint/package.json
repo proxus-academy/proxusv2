@@ -1,0 +1,22 @@
+{
+  "name": "@proxus/effect-lint",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "proxus-effect-lint": "./src/cli.ts"
+  },
+  "scripts": {
+    "lint": "tsx src/cli.ts ../..",
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "typescript": "^5.8.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.0",
+    "tsx": "^4.21.0",
+    "vitest": "3.2.7"
+  }
+}

@@ -8,8 +8,8 @@ This registry proves the handbook's source coverage and prevents unversioned web
 
 | Source | Pin/status | Use |
 | --- | --- | --- |
-| Application packages | `effect@4.0.0-beta.58` and aligned `@effect/*` packages | Compile-time authority |
-| Local reference | `effect-smol` commit `b559d68845f848a10153395778f035682d399075`; package `4.0.0-beta.66` | Upstream design/source reference; signatures require backport verification |
+| Application packages | `effect@4.0.0-beta.98` and aligned `@effect/*` packages | Compile-time authority |
+| Local reference | `effect-smol` commit `3e4abbcb0d0e9a5e82b6b88c7ef7ab69900105ec`; package `4.0.0-beta.98` | Upstream design/source reference; signatures require backport verification |
 | Effect Solutions | Retrieved 2026-07-10; web content is not commit-pinned here | Secondary prescriptive guidance |
 
 `effect-smol/ai-docs/src` and source under `effect-smol/packages` are authoritative only for that snapshot. They must not override installed package types or project architecture.
@@ -79,12 +79,12 @@ The upstream inventories do not fully specify this template's SQL, contract evol
 
 | Area | Authority |
 | --- | --- |
-| Handler/service/repository/adapter flow | [`../architecture.md`](../architecture.md) and `AGENTS.md` |
-| Effect SQL repositories and migrations | [`../database.md`](../database.md) and `effect-sql-repository-architecture` skill |
+| Handler/service/repository/adapter flow | [`../architecture/domain-driven-architecture.md`](../architecture/domain-driven-architecture.md) and `AGENTS.md` |
+| Effect SQL repositories and migrations | [`../testing.md`](../testing.md), migration tooling, and `AGENTS.md` |
 | Shared API evolution | [`../api.md`](../api.md) and `api-contract-evolution` skill |
 | Auth, membership, scope and cross-scope isolation | `saas-auth-scope-architecture` skill |
 | Temporary SQL and typed-client e2e | [`../testing.md`](../testing.md) and `effect-layered-testing` skill |
-| Safe telemetry and local operations | [`../observability.md`](../observability.md) and `effect-observability-patterns` skill |
+| Safe telemetry and local operations | [`observability.md`](./observability.md) and [`../architecture/agent-harness.md`](../architecture/agent-harness.md) |
 | React atoms and UI architecture | [`../webapp-architecture.md`](../webapp-architecture.md) and webapp skills |
 
 ## Upgrade procedure

@@ -1,6 +1,6 @@
 # Effect CLI and child processes
 
-> **Version:** Effect v4 beta. The repository currently pins `effect@4.0.0-beta.58`; the source snapshot used for this guide is `4.0.0-beta.66` (`b559d68845f848a10153395778f035682d399075`). Re-check signatures before upgrading.
+> **Version:** Effect v4 beta. The repository currently pins `effect@4.0.0-beta.98`; the source snapshot used for this guide is `4.0.0-beta.98` (`3e4abbcb0d0e9a5e82b6b88c7ef7ab69900105ec`). Re-check signatures before upgrading.
 >
 > **API status:** every API imported from `effect/unstable/cli` or `effect/unstable/process` is **unstable**. It may change during the v4 beta without a stable-major-version break. Keep these imports behind application-owned modules.
 
@@ -9,7 +9,7 @@ This guide treats a CLI command as a transport adapter and process execution as 
 ## Packages and imports
 
 ```bash
-pnpm add effect@4.0.0-beta.58 @effect/platform-node@4.0.0-beta.58
+pnpm add effect@4.0.0-beta.98 @effect/platform-node@4.0.0-beta.98
 ```
 
 ```ts
@@ -293,4 +293,4 @@ Test the interface through layers rather than invoking real tools in every unit 
 | Concrete CLI semantics and errors | `packages/effect/src/unstable/cli/*`, especially `SEMANTICS.md`, `Command.ts`, `CliError.ts` |
 | Service-local typed configuration | `.agents/skills/effect-service-config/references/config-rules.md` |
 
-The local `effect-smol` paths above are under `.repos/effect-smol/` at source commit `b559d68845f848a10153395778f035682d399075`. Security policy, exit-code conventions, architecture seams, and the review checklist are synthesis for this project rather than claims that the unstable API guarantees them.
+The local `effect-smol` paths above are under `.repos/effect-smol/` at source commit `3e4abbcb0d0e9a5e82b6b88c7ef7ab69900105ec`. Security policy, exit-code conventions, architecture seams, and the review checklist are synthesis for this project rather than claims that the unstable API guarantees them.

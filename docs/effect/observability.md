@@ -1,6 +1,6 @@
 # Effect Observability
 
-Effect has first-class structured logging and tracing. This guide explains reusable instrumentation, privacy, cardinality, and source-map rules. For this repository's concrete OTLP environment variables, local Jaeger/Collector commands, service names, current spans, expected trace shape, and troubleshooting, see [`../observability.md`](../observability.md).
+Effect has first-class structured logging and tracing. This guide explains reusable instrumentation, privacy, cardinality, and source-map rules. Agent-specific OTLP ownership, privacy, retention, dashboards, and shutdown behavior are documented in [`../architecture/agent-harness.md`](../architecture/agent-harness.md).
 
 > **API stability:** current Effect Smol guidance prefers the lightweight `effect/unstable/observability` OTLP modules for new projects; `@effect/opentelemetry` remains relevant when integrating an existing OpenTelemetry SDK. Verify APIs when upgrading Effect.
 >
@@ -249,7 +249,7 @@ Do not snapshot full spans with nondeterministic IDs/timestamps. Do not make dom
 
 ## Local verification
 
-Use [`../observability.md`](../observability.md) for commands and current service names. A complete verification should establish:
+Use the deployment documentation for commands and current service names. A complete verification should establish:
 
 1. collector/backend starts and its UI is reachable;
 2. endpoint configuration enables server and/or browser export;
@@ -274,11 +274,11 @@ When spans are missing, check application traffic, endpoint path/protocol (`/v1/
 - Export queues, shutdown flush, sampling, and failure isolation are configured.
 - Trace propagation and any split-trace limitation are documented.
 - Source maps match the release, are privately accessible, and expose no secrets.
-- Local workflow and expected trace shape remain current in [`../observability.md`](../observability.md).
+- Local workflow and expected trace shape remain current in the owning deployment documentation.
 
 ## Sources and precedence
 
-1. Project rules: [`../observability.md`](../observability.md), [`../api.md`](../api.md), and `AGENTS.md`.
+1. Project rules: [`../architecture/agent-harness.md`](../architecture/agent-harness.md), [`../api.md`](../api.md), and `AGENTS.md`.
 2. Effect Smol AI docs: `ai-docs/src/08_observability` (structured logging and lightweight OTLP tracer/logger layers).
 3. Local Effect observability skill (layer naming, safe annotations, and workflow shape).
 4. **Draft reference:** Effect Solutions, “Observability & OpenTelemetry” (`https://www.effect.solutions/observability`), retrieved 2026-07-10.

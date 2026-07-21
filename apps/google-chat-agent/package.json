@@ -1,0 +1,8 @@
+{
+  "name": "@proxus/google-chat-agent",
+  "private": true,
+  "type": "module",
+  "scripts": { "start": "tsx src/main.ts", "dev": "tsx watch src/main.ts", "typecheck": "tsc --noEmit", "test": "vitest run", "build": "tsc --noEmit" },
+  "dependencies": { "@proxus/agent-harness": "workspace:*" },
+  "devDependencies": { "@types/node": "^25.0.0", "tsx": "^4.21.0", "typescript": "^5.8.3", "vitest": "3.2.7" }
+}

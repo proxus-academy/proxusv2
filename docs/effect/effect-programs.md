@@ -2,7 +2,7 @@
 
 > **Document status:** Required.
 
-This page defines how to construct, compose, instrument, and run Effect v4 programs in this template. Examples target `effect@4.0.0-beta.58`.
+This page defines how to construct, compose, instrument, and run Effect v4 programs in this template. Examples target `effect@4.0.0-beta.98`.
 
 ## Policy Levels
 

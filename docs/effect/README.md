@@ -4,15 +4,15 @@ This handbook is the normative implementation guide for Effect code in this temp
 
 It complements rather than replaces the project-specific documents in `docs/`:
 
-- [`../architecture.md`](../architecture.md): module boundaries and request flow.
+- [`../architecture/domain-driven-architecture.md`](../architecture/domain-driven-architecture.md): module boundaries and request flow.
+- [`../architecture/agent-harness.md`](../architecture/agent-harness.md): agent runtime, trust seams and deployment composition.
 - [`../api.md`](../api.md): the concrete shared HTTP contract.
-- [`../database.md`](../database.md): the concrete persistence and migration workflow.
-- [`../testing.md`](../testing.md): repository commands and current test harnesses.
-- [`../observability.md`](../observability.md): the current local telemetry stack.
+- [`../testing.md`](../testing.md): repository commands, persistence and migration test policy.
+- [`observability.md`](./observability.md): the current telemetry policy.
 
 ## Version and authority
 
-The application pins `effect@4.0.0-beta.58`. The local upstream reference is `effect-smol` commit `b559d68845f848a10153395778f035682d399075`, whose package version is `4.0.0-beta.66`. The snapshot is therefore a design reference, not proof that an API is available unchanged in the installed beta.
+The application pins `effect@4.0.0-beta.98`. The local upstream reference is `effect-smol` commit `3e4abbcb0d0e9a5e82b6b88c7ef7ab69900105ec`, whose package version is `4.0.0-beta.98`. The snapshot is therefore a design reference, not proof that an API is available unchanged in the installed beta.
 
 When sources disagree, use this order:
 
@@ -97,6 +97,6 @@ For any new Effect capability:
 3. Decide cancellation, timeout, retry, concurrency, and shutdown semantics before implementation.
 4. Decide the minimum unit, integration, and e2e evidence.
 5. Decide safe tracing/logging before adding remote or long-running work.
-6. Verify all imported APIs against `4.0.0-beta.58`.
+6. Verify all imported APIs against `4.0.0-beta.98`.
 7. Run the validation commands required by `AGENTS.md`.
 8. Update project docs and this handbook when a reusable rule changes.

@@ -94,6 +94,28 @@ export const featureFlagSnapshots = pgTable(
   ],
 )
 
+export const agentRuns = pgTable("agent_runs", {
+  id: uuid("id").primaryKey(),
+  record: jsonb("record").notNull(),
+  status: text("status").notNull().default("Queued"),
+  nextFencingToken: bigint("next_fencing_token", { mode: "number" }).notNull().default(1),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
+})
+export const agentJournal = pgTable("agent_journal", {
+  cursor: bigint("cursor", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+  runId: uuid("run_id").notNull().references(() => agentRuns.id, { onDelete: "cascade" }),
+  sequence: integer("sequence").notNull(),
+  event: jsonb("event").notNull(),
+}, (table) => [uniqueIndex("agent_journal_run_sequence_uidx").on(table.runId, table.sequence), index("agent_journal_cursor_idx").on(table.cursor)])
+export const agentCheckpoints = pgTable("agent_checkpoints", { runId: uuid("run_id").primaryKey().references(() => agentRuns.id, { onDelete: "cascade" }), checkpoint: jsonb("checkpoint").notNull() })
+export const agentRunClaims = pgTable("agent_run_claims", {
+  runId: uuid("run_id").primaryKey().references(() => agentRuns.id, { onDelete: "cascade" }), ownerId: text("owner_id").notNull(), fencingToken: bigint("fencing_token", { mode: "number" }).notNull(), leaseExpiresAt: bigint("lease_expires_at", { mode: "number" }).notNull(),
+}, (table) => [index("agent_run_claims_lease_idx").on(table.leaseExpiresAt)])
+export const agentSessions = pgTable("agent_sessions", { id: uuid("id").primaryKey(), record: jsonb("record").notNull() })
+export const agentSessionEntries = pgTable("agent_session_entries", {
+  id: uuid("id").primaryKey(), sessionId: uuid("session_id").notNull().references(() => agentSessions.id, { onDelete: "cascade" }), entry: jsonb("entry").notNull(), createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
+}, (table) => [index("agent_session_entries_session_idx").on(table.sessionId)])
+
 export type FeatureFlagSnapshotRow = typeof featureFlagSnapshots.$inferSelect
 export type StudyAssetRow = typeof studyAssets.$inferSelect
 export type StudyNodeRow = typeof studyNodes.$inferSelect

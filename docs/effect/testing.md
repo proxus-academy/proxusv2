@@ -10,7 +10,7 @@ This guide covers Effect-specific testing techniques and the template's required
 many   service/use-case + in-memory repository contracts
 some   SQL repository + isolated temporary SQL
 some   service + SQL repositories + isolated temporary SQL
-few    typed client + in-process HTTP app + temporary SQLite
+few    typed client + in-process HTTP app + temporary PGlite
 ```
 
 Choose dependencies from the unit under test, not from convenience:
@@ -22,7 +22,7 @@ Choose dependencies from the unit under test, not from convenience:
 | SQL repository | repository adapter, SQL engine, migrations | production database only | queries, constraints, row decoding, internal error mapping |
 | Service SQL integration | service, repositories, SQL | external systems as needed | cross-layer wiring and transactions |
 | HTTP handler | handler/contract; usually real service | lower dependencies according to test goal | transport adaptation, auth context, statuses, decoding |
-| E2E API | shared contract, handlers, services, SQLite adapters | TCP and external systems | black-box public behavior |
+| E2E API | shared contract, handlers, services, PGlite adapters | TCP and external systems | black-box public behavior |
 
 Do not mock the layer being tested. Do not use a development/production database. Do not leak SQL row shapes into service tests or make services depend on `SqlClient` just to simplify tests.
 
@@ -141,12 +141,12 @@ Service tests should cover ID generation/branding, normalization, product valida
 
 ## Temporary SQL and repository tests
 
-**Project rule:** persistent adapter tests use an isolated temporary SQL database, and canonical API e2e tests use temporary SQLite. Never point tests at development or production data.
+**Project rule:** persistent adapter tests use an isolated temporary SQL database, and canonical API e2e tests use temporary PGlite. Never point tests at development or production data.
 
 A test SQL layer should:
 
 1. create a scoped temporary directory/file (a file database is generally closer to app behavior than `:memory:`);
-2. construct the SQLite client;
+2. construct the PGlite client;
 3. run the same numbered Effect SQL migration runner used by production;
 4. omit demo seeds by default;
 5. release filesystem/database resources when the scope closes.
@@ -159,9 +159,9 @@ migrate: true, seed: true     only when demo seed behavior is relevant
 migrate: false                migration-runner test starting from empty DB
 ```
 
-Repository integration tests exercise each persistent operation through the actual adapter and `SqlSchema`. Assert insert/update/get/list behavior, row-to-record decoding, constraints, scoped uniqueness, read-back, missing rows, and safe `RepositoryError` mapping. SQLite and Postgres adapters need adapter-relevant coverage; do not extend legacy JSON/Drizzle persistence.
+Repository integration tests exercise each persistent operation through the actual adapter and `SqlSchema`. Assert insert/update/get/list behavior, row-to-record decoding, constraints, scoped uniqueness, read-back, missing rows, and safe `RepositoryError` mapping. PGlite and Postgres adapters need adapter-relevant coverage; do not extend legacy JSON/Drizzle persistence.
 
-Migration tests call the shared runner directly and inspect `effect_sql_migrations` plus the SQLite catalog (`PRAGMA table_info`, `PRAGMA index_list`, and similar). Schema migrations must not depend on demo data.
+Migration tests call the shared runner directly and inspect `effect_sql_migrations` plus the PGlite catalog (`PRAGMA table_info`, `PRAGMA index_list`, and similar). Schema migrations must not depend on demo data.
 
 ## Transactions
 
@@ -187,7 +187,7 @@ export class Transactions extends Context.Service<
 
 **Project rule:** e2e is Effect-native, no-network by default, and black-box through the shared typed client:
 
-1. Create a temporary SQLite database per file/suite.
+1. Create a temporary PGlite database per file/suite.
 2. Run shared migrations; do not globally seed application state.
 3. Compose canonical repository, domain, auth/session, middleware, and handler layers through project helpers.
 4. Build the real routes without opening a listener.
@@ -245,7 +245,7 @@ Source maps belong to test/runtime build configuration rather than test logic. P
 - Scope mutable state per test layer; shared `layer(...)` state must be deliberate.
 - Mock repository/gateway interfaces for service tests, not the service under test.
 - Use temporary migrated SQL for repository, rollback, and SQL integration behavior.
-- Use temporary SQLite + typed client + in-process web handler for canonical e2e.
+- Use temporary PGlite + typed client + in-process web handler for canonical e2e.
 - Create application context through public calls in e2e tests.
 - Add 401/403/404 and cross-scope isolation coverage for scoped resources.
 - Do not hide missing layers with broad casts.

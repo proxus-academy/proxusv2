@@ -2,7 +2,7 @@
 
 > **Document status:** Required.
 
-This page defines runtime data modeling, structural validation, serialization, and expected/error-channel policy for Effect v4 in this template. Examples target `effect@4.0.0-beta.58` and the current `effect/unstable/httpapi` contract.
+This page defines runtime data modeling, structural validation, serialization, and expected/error-channel policy for Effect v4 in this template. Examples target `effect@4.0.0-beta.98` and the current `effect/unstable/httpapi` contract.
 
 ## Policy Levels
 

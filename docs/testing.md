@@ -77,6 +77,39 @@ Adapter-specific corruption and constraint tests remain beside the adapter.
 PGlite is the fast PostgreSQL-compatible integration engine, not proof of
 production concurrency or driver parity.
 
+### Agent store and worker coordination
+
+El contrato reutilizable de `AgentStore` corre contra memory y PGlite en el gate determinista, y contra PostgreSQL cuando `AGENT_STORE_POSTGRES_URL` está configurado. Cubre cursor global, claims contendidos, heartbeat, expiración, fencing y recuperación de huérfanos. PGlite valida la migración canónica y semántica PostgreSQL compatible; no se usa como prueba de `SKIP LOCKED` o concurrencia entre procesos. El worker se prueba con clock/store deterministas y finalización scoped; el smoke PostgreSQL real es opt-in.
+
+### Agent harness executable
+
+`apps/agent-cli` composes persistent PGlite using the canonical PostgreSQL migrations, an in-memory deterministic skill, a scripted
+model, console/JSON reporting, and either a scoped temporary sandbox (local) or
+the explicitly selected current workspace (CI). Its vertical fixture proves
+issue inspection, same-workspace delegated analysis, a prepared file change,
+validation, PGlite reopen, and scoped cleanup without a provider or GitHub
+credential. This fixture is a composition test, not the production engineering
+DSL or a live integration test.
+
+```bash
+pnpm --filter @proxus/agent-cli test
+pnpm --filter @proxus/agent-cli start -- --json --database .proxus/agent-runs
+# trusted disposable CI checkout only:
+pnpm --filter @proxus/agent-cli start -- --json --workspace "$PWD"
+```
+
+### Google Chat agent
+
+`apps/google-chat-agent` se prueba sin Google ni GitHub live. Fixtures firmadas y fakes deterministas cubren binding `tenant + space + thread`, restart desde snapshot durable, delivery duplicada, cola en turn boundaries, progreso hijo por cursor, card/resolución de approval autenticada e idempotencia del post final.
+
+```bash
+pnpm --filter @proxus/google-chat-agent test
+```
+
+### GitHub App adapters
+
+Los adapters reader/writer se prueban contra `GitHubHttpClient` y `GitHubPushBroker` falsos host-side, sin red ni secretos reales. El contrato determinista cubre separación de repositorio/permisos, refresh de installation token, redacción, mapping seguro de errores, conflictos de SHA, invalidación de approval y deduplicación de PR/comentario mediante evidencia aprobada. Los smokes live son opt-in y nunca forman parte del gate normal.
+
 ### Migrations and seeds
 
 Location:

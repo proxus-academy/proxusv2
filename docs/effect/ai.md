@@ -1,6 +1,6 @@
 # Effect AI
 
-> **Version:** Effect v4 beta. This repository pins `effect@4.0.0-beta.58`; the source snapshot used here is `4.0.0-beta.66` (`b559d68845f848a10153395778f035682d399075`). Pin compatible provider packages and re-check signatures on every beta upgrade.
+> **Version:** Effect v4 beta. This repository pins `effect@4.0.0-beta.98`; the source snapshot used here is `4.0.0-beta.98` (`3e4abbcb0d0e9a5e82b6b88c7ef7ab69900105ec`). Pin compatible provider packages and re-check signatures on every beta upgrade.
 >
 > **API status:** `effect/unstable/ai` and `effect/unstable/http` are **unstable**. Provider packages such as `@effect/ai-openai` and `@effect/ai-anthropic` integrate with those unstable interfaces. Localize them behind an application-owned module.
 
@@ -8,7 +8,7 @@ An AI model is an unreliable external dependency, not a domain authority. The ap
 
 ## Installation and provider configuration
 
-Keep the repository's exact `effect@4.0.0-beta.58` pin. Add provider packages only at exact versions proven compatible with that beta; never use a floating `@beta` range. Record those versions in this guide when AI is adopted.
+Keep the repository's exact `effect@4.0.0-beta.98` pin. Add provider packages only at exact versions proven compatible with that beta; never use a floating `@beta` range. Record those versions in this guide when AI is adopted.
 
 Use typed, service-local configuration and redact secrets:
 
@@ -329,4 +329,4 @@ Test tool handlers directly through their typed interface: authorization, cross-
 | Provider behavior and fixtures | `packages/ai/openai/test/*`, `packages/ai/anthropic/test/*`, `packages/ai/openai-compat/test/*` |
 | Service-local configuration rules | `.agents/skills/effect-service-config/references/config-rules.md` |
 
-The local source paths are under `.repos/effect-smol/` at commit `b559d68845f848a10153395778f035682d399075`. Production lifecycle limits, security controls, privacy rules, testing tiers, and review checklist are project-oriented synthesis; the unstable library does not automatically enforce all of them.
+The local source paths are under `.repos/effect-smol/` at commit `3e4abbcb0d0e9a5e82b6b88c7ef7ab69900105ec`. Production lifecycle limits, security controls, privacy rules, testing tiers, and review checklist are project-oriented synthesis; the unstable library does not automatically enforce all of them.

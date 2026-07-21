@@ -1,6 +1,6 @@
 # Effect Cluster
 
-> **Version:** Effect v4 beta. This repository pins `effect@4.0.0-beta.58`; this guide is based on the `4.0.0-beta.66` source snapshot (`b559d68845f848a10153395778f035682d399075`). Re-validate code and storage compatibility before every beta upgrade.
+> **Version:** Effect v4 beta. This repository pins `effect@4.0.0-beta.98`; this guide is based on the `4.0.0-beta.98` source snapshot (`3e4abbcb0d0e9a5e82b6b88c7ef7ab69900105ec`). Re-validate code and storage compatibility before every beta upgrade.
 >
 > **API status:** all APIs imported from `effect/unstable/cluster`, `effect/unstable/rpc`, and `effect/unstable/sql` are **unstable**. Node cluster transports are correspondingly beta integrations. Do not make them part of a public product contract; isolate them behind an application-owned module and an operational rollout flag.
 
@@ -264,4 +264,4 @@ Traces may carry a hashed/redacted entity correlation value if policy permits. L
 | Node transport integration | `packages/platform-node/src/NodeClusterSocket.ts` and related Node cluster modules |
 | Service-local startup configuration | `.agents/skills/effect-service-config/references/config-rules.md` |
 
-The local paths above are under `.repos/effect-smol/` at commit `b559d68845f848a10153395778f035682d399075`. Delivery caveats, security controls, lifecycle procedure, failure testing, and production checklist are project-oriented distributed-systems rules; they are not automatic guarantees of the unstable API.
+The local paths above are under `.repos/effect-smol/` at commit `3e4abbcb0d0e9a5e82b6b88c7ef7ab69900105ec`. Delivery caveats, security controls, lifecycle procedure, failure testing, and production checklist are project-oriented distributed-systems rules; they are not automatic guarantees of the unstable API.

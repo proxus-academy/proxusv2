@@ -2,7 +2,7 @@
 
 > **Document status:** Required.
 
-This page defines dependency injection, layer composition, resource ownership, and configuration policy for Effect v4 modules in this template. Examples target `effect@4.0.0-beta.58`.
+This page defines dependency injection, layer composition, resource ownership, and configuration policy for Effect v4 modules in this template. Examples target `effect@4.0.0-beta.98`.
 
 ## Policy Levels
 
@@ -97,7 +97,7 @@ Do not use a reference to make required credentials, endpoints, tenant identity,
 - Use `Layer.sync` for synchronous construction.
 - Use `Layer.effect` for effectful construction and scoped acquisition.
 - Use `Effect.acquireRelease` inside layer construction for resources that must close.
-- Name variants by role: `layer`, `layerNoDeps`, `testLayer`, `memoryLayer`, `sqliteLayer`, `postgresLayer`.
+- Name variants by role: `layer`, `layerNoDeps`, `testLayer`, `memoryLayer`, `pgliteLayer`, `postgresLayer`.
 - Keep application graph composition in the canonical composition root, currently `apps/server/src/layers/ServerLayers.ts`.
 
 ```ts
