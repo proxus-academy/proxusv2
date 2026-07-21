@@ -11,6 +11,7 @@
     "./study-catalog/postgres": "./src/modules/study-catalog/repository.postgres.layer.ts",
     "./product-analytics/memory": "./src/modules/product-analytics/repository.memory.ts",
     "./product-analytics/bigquery": "./src/modules/product-analytics/repository.bigquery.ts",
+    "./agent-harness/models/gemini": "./src/modules/agent-harness/models/gemini/layer.ts",
     "./agent-harness/store/memory": "./src/modules/agent-harness/store/memory/layer.ts",
     "./agent-harness/store/pglite": "./src/modules/agent-harness/store/pglite/layer.ts",
     "./agent-harness/store/postgres": "./src/modules/agent-harness/store/postgres/layer.ts",
@@ -37,6 +38,7 @@
     "db:reset:pglite": "tsx src/database/reset.pglite.ts"
   },
   "dependencies": {
+    "@effect/ai-openai-compat": "4.0.0-beta.98",
     "@effect/sql-pg": "4.0.0-beta.98",
     "@effect/sql-pglite": "4.0.0-beta.98",
     "@electric-sql/pglite": "0.5.4",

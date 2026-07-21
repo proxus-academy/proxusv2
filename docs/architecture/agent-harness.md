@@ -227,6 +227,24 @@ La proyección de inspector es pura y recibe únicamente facts seguros. No lee `
 
 `deploy/observability/agent-harness-otel-collector.yaml` es una configuración desplegable del Collector con OTLP/HTTP, memory limiter, batch, redacción secundaria, colas/retry y generación de métricas de baja cardinalidad desde spans. `agent-harness-dashboard.json` se importa en Grafana y `agent-harness-alerts.yaml` en Prometheus-compatible rulers. El composition root de producto debe proporcionar `agentOtlpLayer`; tests y CLI usan console/no-op. `PROXUS_OTLP_BACKEND_ENDPOINT` y `PROXUS_OTLP_BACKEND_TOKEN` pertenecen al Collector, no al proceso agente. El Scope exterior posee exporter y garantiza flush con timeout en shutdown; una caída del exporter no cambia el resultado del run.
 
+## Playground local con Gemini
+
+`apps/agent-cli` permite comprobar un proveedor real sin conceder todavía skills, DSL, sandbox, delegación o permisos de producto al modelo:
+
+```bash
+pnpm agent run --input "Resume este procedimiento interno"
+pnpm agent chat
+```
+
+La configuración se carga desde el entorno y, para desarrollo local, desde el `.env` raíz mediante `ConfigProvider.fromDotEnv`. La API key siempre se mantiene como `Redacted`:
+
+```dotenv
+GOOGLE_GENERATIVE_AI_API_KEY=...
+GOOGLE_GENERATIVE_AI_MODEL=gemini-2.5-flash
+```
+
+El adapter host-side usa el endpoint OpenAI-compatible de Google Generative AI. `run` crea un run durable en PGlite bajo `.proxus/agent-runs`; `--database :memory:` permite un smoke test efímero. `chat` conserva contexto únicamente durante el proceso interactivo y no habilita tools.
+
 ## Composición por deployment
 
 ```text

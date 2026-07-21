@@ -5,6 +5,7 @@
   "packageManager": "pnpm@10.32.1",
   "scripts": {
     "dev": "pnpm -r --parallel --filter @proxus/server --filter @proxus/admin-server --filter @proxus/web --filter @proxus/mobile-web --filter @proxus/admin dev",
+    "agent": "pnpm --filter @proxus/agent-cli start",
     "dev:admin": "pnpm -r --parallel --filter @proxus/server --filter @proxus/admin-server --filter @proxus/admin dev",
     "dev:web": "pnpm -r --parallel --filter @proxus/server --filter @proxus/web dev",
     "dev:mobile-web": "pnpm -r --parallel --filter @proxus/server --filter @proxus/mobile-web dev",

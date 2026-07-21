@@ -2,7 +2,7 @@
 import { AgentStore } from "@proxus/agent-harness/store"
 import { emptyUsage, type RunRecord } from "@proxus/agent-harness/run"
 import { makeRunId, makeSessionEntryId, makeSessionId } from "@proxus/agent-harness/ids"
-import { Effect, Layer } from "effect"
+import { Effect, Fiber, Layer } from "effect"
 import { describe, expect, test } from "vitest"
 
 const runId = makeRunId("00000000-0000-4000-8000-000000000001")
@@ -23,8 +23,10 @@ export const agentStoreContract = <E>(name: string, layer: () => Layer.Layer<Age
     expect((yield* store.checkpoint(runId))?.throughSequence).toBe(2)
     expect((yield* store.sessionAncestry(sessionId)).map((entry) => entry.id)).toEqual([entryId])
     expect((yield* store.commit(runId, { expectedVersion: 0, events: [] }).pipe(Effect.flip))._tag).toBe("VersionConflict")
+    const cancellationWait = yield* Effect.forkChild(store.awaitCancellation(runId))
+    yield* Effect.sleep("120 millis")
     yield* store.requestCancellation(runId, 3)
-    yield* store.awaitCancellation(runId)
+    yield* Fiber.join(cancellationWait)
     expect((yield* store.getRun(runId)).cancellationRequested).toBe(true)
     expect((yield* store.replay(0)).map(({ cursor }) => cursor)).toEqual([1, 2, 3])
   }).pipe(Effect.provide(layer())))), 10_000)
