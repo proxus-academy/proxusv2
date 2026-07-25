@@ -22,6 +22,7 @@ export function Input({ className, icon, iconPosition = "left", ref, ...props }:
           className={cn(
             "flex h-10 w-full rounded-md border border-input bg-background py-2 text-sm text-foreground",
             "placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            "aria-invalid:border-destructive aria-invalid:ring-destructive/20",
             "disabled:cursor-not-allowed disabled:opacity-50 transition-colors",
             iconPosition === "left" ? "pl-10 pr-3" : "pl-3 pr-10",
             className
@@ -43,6 +44,7 @@ export function Input({ className, icon, iconPosition = "left", ref, ...props }:
       className={cn(
         "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground",
         "placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "aria-invalid:border-destructive aria-invalid:ring-destructive/20",
         "disabled:cursor-not-allowed disabled:opacity-50 transition-colors",
         className
       )}

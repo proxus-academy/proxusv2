@@ -5,6 +5,14 @@
   "exports": {
     "./database/pglite": "./src/database/pglite.ts",
     "./database/postgres": "./src/database/postgres.ts",
+    "./auth": "./src/modules/auth/index.ts",
+    "./auth/authentication-live": "./src/modules/auth/authentication.live.ts",
+    "./auth/google-fake": "./src/modules/auth/google.fake.ts",
+    "./auth/google-security-live": "./src/modules/auth/google.security.live.ts",
+    "./auth/google-session-live": "./src/modules/auth/google.session.live.ts",
+    "./auth-qa": "./src/auth-qa/fixtures.ts",
+    "./access-control/pglite": "./src/modules/access-control/repository.pglite.layer.ts",
+    "./access-control/postgres": "./src/modules/access-control/repository.postgres.layer.ts",
     "./feature-flags/pglite": "./src/modules/feature-flags/repository.pglite.layer.ts",
     "./feature-flags/postgres": "./src/modules/feature-flags/repository.postgres.layer.ts",
     "./study-catalog/pglite": "./src/modules/study-catalog/repository.pglite.layer.ts",
@@ -25,7 +33,9 @@
     "db:migrate:postgres": "tsx src/database/migrate.postgres.ts",
     "db:publish-feature-flags": "tsx src/database/publish-feature-flags.postgres.ts",
     "db:seed:pglite": "tsx src/database/seed.pglite.ts",
-    "db:reset:pglite": "tsx src/database/reset.pglite.ts"
+    "db:reset:pglite": "tsx src/database/reset.pglite.ts",
+    "auth:qa:seed": "tsx src/auth-qa/command.ts seed",
+    "auth:qa:list": "tsx src/auth-qa/command.ts list"
   },
   "dependencies": {
     "@effect/sql-pg": "4.0.0-beta.98",

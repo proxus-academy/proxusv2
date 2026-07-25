@@ -8,7 +8,7 @@ const OpenApiDocumentJson = Schema.fromJsonString(Schema.Struct({
 }))
 
 describe("admin server surface", () => {
-  test("limits raw request bodies before decoding and accepts a normal mutation", () =>
+  test("limits raw request bodies before decoding and rejects an anonymous normal mutation", () =>
     Effect.runPromise(Effect.scoped(Effect.gen(function*() {
       const web = yield* makeEmbeddedAdminWeb
       const normalBody = "{\"_tag\":\"CreateCountry\",\"name\":\"España\"}"
@@ -23,7 +23,7 @@ describe("admin server surface", () => {
           body: normalBody,
         },
       )))
-      expect(normal.status).toBe(201)
+      expect(normal.status).toBe(401)
 
       const largeBody = `{\"padding\":\"${"x".repeat(MaximumRequestBodySizeBytes)}\"}`
       const tooLarge = yield* Effect.promise(() => web.handler(new Request(

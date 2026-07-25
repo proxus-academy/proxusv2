@@ -7,7 +7,7 @@ Required React architecture for `apps/web`, `apps/mobile-web`, the future
 
 This document defines React rendering and synchronization rules. Application
 state, remote state, mutations, forms, and Effect runtime integration follow
-[`effect/react-and-effect-atom.md`](effect/react-and-effect-atom.md). Browser and
+[`effect/90_react_and_effect_atom.md`](effect/90_react_and_effect_atom.md). Browser and
 device capabilities additionally follow
 [`architecture/client-platform-ports-and-adapters.md`](architecture/client-platform-ports-and-adapters.md).
 
@@ -114,7 +114,7 @@ for requests, cancellation, caching policy, loading and failure states,
 invalidation, and retries. Follow the required flow:
 
 ```text
-view → atom → application client → transport
+view → atom → typed HTTP client → Effect HttpClient
 ```
 
 A form submission is a user event. The submit handler dispatches a schema-backed
@@ -239,6 +239,6 @@ come from:
 - React, [You Might Not Need an Effect](https://react.dev/learn/you-might-not-need-an-effect)
 - React, [Synchronizing with Effects](https://react.dev/learn/synchronizing-with-effects)
 - React, [Lifecycle of Reactive Effects](https://react.dev/learn/lifecycle-of-reactive-effects)
-- Local Effect Atom rules: [`effect/react-and-effect-atom.md`](effect/react-and-effect-atom.md)
+- Local Effect Atom rules: [`effect/90_react_and_effect_atom.md`](effect/90_react_and_effect_atom.md)
 
 Upstream React material last reviewed on 2026-07-15.

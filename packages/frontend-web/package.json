@@ -3,7 +3,10 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./auth": "./src/auth/index.ts",
+    "./http": "./src/http/index.ts",
     "./feature-flags": "./src/feature-flags/index.ts",
+    "./form": "./src/form/index.ts",
     "./product-locale": "./src/product-locale/index.ts",
     "./public-product": "./src/public-product/index.ts",
     "./registration": "./src/registration/index.ts",
@@ -16,13 +19,22 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@proxus/effect-form": "workspace:*",
+    "@proxus/ui": "workspace:*",
     "@proxus/shared": "workspace:*",
     "@proxus/frontend-core": "workspace:*",
     "@proxus/product-messages": "workspace:*",
     "effect": "4.0.0-beta.98"
   },
+  "peerDependencies": {
+    "react": "^19.0.0"
+  },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/react": "^19.2.7",
     "happy-dom": "^18.0.1",
+    "react": "^19.2.3",
     "typescript": "^5.8.3",
     "vitest": "3.2.7"
   }

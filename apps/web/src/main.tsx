@@ -1,8 +1,10 @@
-import { RegistryProvider } from "@effect/atom-react"
+import { RegistryProvider, useAtomValue } from "@effect/atom-react"
+import { FormMessagesProvider } from "@proxus/frontend-web/form"
 import { StrictMode } from "react"
 import { createRoot } from "react-dom/client"
 import { App } from "./App.js"
 import { composition } from "./composition.js"
+import { webRuntimeInitialValues } from "./runtime-layers.js"
 import "./app.css"
 
 const root = document.getElementById("root")
@@ -10,11 +12,16 @@ if (root === null) {
   throw new Error("missing #root")
 }
 
+function LocalizedApp() {
+  const messages = useAtomValue(composition.locale.messagesCatalogAtom)
+  return <FormMessagesProvider value={messages}><App /></FormMessagesProvider>
+}
+
 const reactRoot = createRoot(root)
 reactRoot.render(
   <StrictMode>
-    <RegistryProvider>
-      <App />
+    <RegistryProvider initialValues={webRuntimeInitialValues}>
+      <LocalizedApp />
     </RegistryProvider>
   </StrictMode>,
 )

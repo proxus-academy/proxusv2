@@ -21,6 +21,7 @@ export function RadioGroupItem({
       className={cn(
         "aspect-square h-5 w-5 rounded-full border-2 border-gray-300 text-primary transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/20",
         "disabled:cursor-not-allowed disabled:opacity-50",
         "data-[state=checked]:border-primary",
         className

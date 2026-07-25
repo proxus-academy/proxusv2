@@ -2,7 +2,7 @@
 
 > **Estado:** normativa de arquitectura
 > **Alcance:** backend Effect, contratos compartidos y procesos ejecutables  
-> **Última revisión:** 2026-07-20
+> **Última revisión:** 2026-07-21
 
 ## Organización
 
@@ -24,6 +24,26 @@ aplica caché HTTP. La identidad de instalación y la evaluación
 son frontend-only y no cruzan al backend.
 
 No todos los contexts necesitan todas las capas. No se crean packages, directorios ni wrappers vacíos para anticipar necesidades.
+
+Identity & Access incorpora tres límites colaboradores:
+
+- **Identity** posee cuentas, password/Google, challenges y sesiones; `RegistrationService` coordina altas y `AuthenticationService` acceso posterior.
+- **Learner Profile/Onboarding** define username, año, necesidad y referencia al path validado; Study Catalog conserva la autoridad sobre el grafo y sus nombres.
+- **Access Control** posee roles, scopes, capabilities y autorización; autenticarse no concede permisos administrativos.
+
+```mermaid
+flowchart LR
+  HTTP[transport] --> Reg[RegistrationService]
+  HTTP --> Auth[AuthenticationService]
+  Admin[admin transport] --> Access[AccessControlService]
+  Reg --> Identity[(Identity ports)]
+  Reg --> Catalog[Study Catalog service]
+  Auth --> Identity
+  Access --> Roles[(Role assignments port)]
+  Access -. protege .-> Catalog
+```
+
+Los contexts colaboran mediante servicios/ports públicos. Auth no importa Drizzle ni internals de catálogo, y Access Control recibe un subject verificado en lugar de confiar en IDs del request. Detalles de seguridad y adapters se documentan en [`identity-and-authentication.md`](./identity-and-authentication.md) y [`access-control.md`](./access-control.md).
 
 ### Lesson Plugins
 
@@ -107,13 +127,13 @@ Restricciones:
 
 `packages/shared` contiene únicamente lo que cruza el límite proceso/cliente: IDs y modelos públicos, requests, responses, errores estables y contratos HttpApi. No contiene filas SQL, configuración del servidor ni implementación de repositories.
 
-Los handlers adaptan transporte, invocan servicios y convierten errores internos a respuestas públicas seguras. La autorización de producto pertenece al servicio; el transporte obtendrá una identidad verificada cuando se implemente el control de acceso. No se anticipan canales privados ni scopes de conexión mientras no existan autenticación y un caso de uso reales.
+Los handlers adaptan transporte, invocan servicios y convierten errores internos a respuestas públicas seguras. El transporte resuelve la cookie opaca a una identidad verificada; la autorización de producto permanece en el servicio. Identity, onboarding y Access Control ya son casos reales: sus wire contracts viven en Shared, sus policies/ports en Domain y sus adapters Drizzle/crypto/proveedor en Infra.
 
 ## Infraestructura y persistencia
 
 `backend-infra` es el propietario único de database, schema Drizzle, migraciones, checks y seeds. Los adapters implementan ports de Domain sin introducir decisiones de producto. PGlite cubre desarrollo y tests rápidos dentro de un único proceso; PostgreSQL cubre producción y cualquier desarrollo con dos procesos que deban compartir datos. No se ejecutan servidor y publisher simultáneamente contra un mismo `PGLITE_DATA_DIR`.
 
-Object storage permanece local al ejecutable mientras no implemente un port requerido por Domain. No se extrae una abstracción sin un consumidor real.
+Email y Google son puertos requeridos por Domain. Desarrollo usa adapters consola/fake; producción los rechaza y falla cerrada hasta que existan adapters reales, según [`identity-and-authentication.md`](./identity-and-authentication.md). Object storage permanece local al ejecutable mientras no implemente un port requerido por Domain. No se extrae una abstracción sin un consumidor real.
 
 ## Frontend
 
@@ -123,7 +143,7 @@ Los clientes públicos se generan desde `PublicApi`. Admin compone un cliente `A
 view → atom → application client o platform port → adapter
 ```
 
-La lógica neutral vive en `frontend-core`, los adapters web en `frontend-web` y las apps componen runtimes, pantallas y rutas. El contrato de rutas del producto público vive en `@proxus/frontend-core/public-product`: web, mobile-web y futuros clientes nativos comparten destinos y flujo salvo una diferencia de producto explícita. `@proxus/frontend-web/public-product` compone ese producto con History, almacenamiento, documento y HTTP del navegador para sus dos consumidores reales. Cada app conserva una composition root mínima con una identidad de Router propia y mantiene sus pantallas independientes; compartir el flujo no obliga a compartir presentación web, mobile-web o nativa. Consulta `docs/webapp-architecture.md` y `docs/effect/react-and-effect-atom.md`.
+La lógica neutral vive en `frontend-core`, los adapters web en `frontend-web` y las apps componen runtimes, pantallas y rutas. El contrato de rutas del producto público vive en `@proxus/frontend-core/public-product`: web, mobile-web y futuros clientes nativos comparten destinos y flujo salvo una diferencia de producto explícita. `@proxus/frontend-web/public-product` compone ese producto con History, almacenamiento, documento y HTTP del navegador para sus dos consumidores reales. Cada app conserva una composition root mínima con una identidad de Router propia y mantiene sus pantallas independientes; compartir el flujo no obliga a compartir presentación web, mobile-web o nativa. Consulta `docs/webapp-architecture.md` y `docs/effect/90_react_and_effect_atom.md`.
 
 ## Testing
 

@@ -44,10 +44,14 @@ import {
 } from "../database/postgres.js"
 import { defaultMigrationsFolder } from "../database/paths.js"
 import {
+  authChallenges,
+  authSessions,
   featureFlagSnapshots,
+  roleAssignments,
   studyAssets,
   studyEdges,
   studyNodes,
+  users,
 } from "../database/schema.js"
 import {
   FeatureFlagSnapshotRepositoryPostgresLive,
@@ -91,6 +95,10 @@ const cleanProductTables = Effect.gen(function*() {
   const db = yield* PostgresDrizzle.makeWithDefaults()
   yield* db.execute(sql`
     truncate table
+      ${roleAssignments},
+      ${authChallenges},
+      ${authSessions},
+      ${users},
       ${featureFlagSnapshots},
       ${studyEdges},
       ${studyNodes},
@@ -155,6 +163,7 @@ const migrationResultSchema = Schema.Struct({
     migrationCount: Schema.Number,
     studyEdgesTable: Schema.NullOr(Schema.String),
     studyNodesTable: Schema.NullOr(Schema.String),
+    usersTable: Schema.NullOr(Schema.String),
   })),
 })
 
@@ -198,26 +207,62 @@ describe("real PostgreSQL 17", () => {
         readonly migrationCount: number
         readonly studyEdgesTable: string | null
         readonly studyNodesTable: string | null
+        readonly usersTable: string | null
       }>(sql`
         select
           count(*)::int as "migrationCount",
           to_regclass('public.study_edges')::text as "studyEdgesTable",
-          to_regclass('public.study_nodes')::text as "studyNodesTable"
+          to_regclass('public.study_nodes')::text as "studyNodesTable",
+          to_regclass('public.users')::text as "usersTable"
         from drizzle.__drizzle_migrations
       `)
       const decoded = yield* Schema.decodeUnknownEffect(
         migrationResultSchema,
       )(result)
       expect(decoded.rows[0]).toMatchObject({
-        migrationCount: 5,
+        migrationCount: 6,
         studyEdgesTable: "study_edges",
         studyNodesTable: "study_nodes",
+        usersTable: "users",
       })
+    })), 20_000)
+
+  test("enforces auth normalization, purpose and scope constraints", () =>
+    runPostgres(Effect.gen(function*() {
+      const db = yield* PostgresDrizzle.makeWithDefaults()
+      const subject = "00000000-0000-4000-8000-000000000451"
+      const user = "00000000-0000-4000-8000-000000000452"
+      yield* db.execute(sql`insert into study_nodes (id, kind, name, status, created_at, updated_at)
+        values (${subject}::uuid, 'subject', 'Auth subject', 'published', now(), now())`)
+      yield* db.execute(sql`insert into users
+        (id, email_normalized, status, password_hash, google_subject, username_normalized,
+         birth_year, problem_kind, subject_id, validated_node_ids, created_at, updated_at)
+        values (${user}::uuid, 'valid@example.com', 'active', 'hash', 'google-valid', 'valid_user',
+          2001, 'prepare-exams', ${subject}::uuid,
+          '["00000000-0000-4000-8000-000000000451","00000000-0000-4000-8000-000000000451","00000000-0000-4000-8000-000000000451","00000000-0000-4000-8000-000000000451","00000000-0000-4000-8000-000000000451"]'::jsonb, now(), now())`)
+
+      const invalidStatements = [
+        sql`update users set email_normalized = 'Not-Normalized@example.com' where id = ${user}::uuid`,
+        sql`update users set username_normalized = 'Invalid-Name' where id = ${user}::uuid`,
+        sql`update users set google_subject = '   ' where id = ${user}::uuid`,
+        sql`insert into auth_challenges (id, user_id, purpose, code_hash, expires_at, maximum_attempts, created_at)
+          values (gen_random_uuid(), ${user}::uuid, 'login', 'hash', now(), 5, now())`,
+        sql`insert into role_assignments (user_id, role, scope_type, scope_id, granted_by, granted_at)
+          values (${user}::uuid, 'student', 'organization', 'global', ${user}::uuid, now())`,
+      ]
+      for (const statement of invalidStatements) {
+        const result = yield* Effect.exit(db.execute(statement))
+        expect(result._tag).toBe("Failure")
+      }
     })), 20_000)
 
   test("upgrades legacy Feature Flags rows for repository and HTTP-facing reader access", () =>
     runPostgres(Effect.gen(function*() {
       const db = yield* PostgresDrizzle.makeWithDefaults()
+      yield* db.execute(sql`drop table if exists ${roleAssignments} cascade`)
+      yield* db.execute(sql`drop table if exists ${authChallenges} cascade`)
+      yield* db.execute(sql`drop table if exists ${authSessions} cascade`)
+      yield* db.execute(sql`drop table if exists ${users} cascade`)
       yield* db.execute(sql`drop table if exists ${featureFlagSnapshots} cascade`)
       yield* db.execute(sql`drop table if exists ${studyEdges} cascade`)
       yield* db.execute(sql`drop table if exists ${studyNodes} cascade`)

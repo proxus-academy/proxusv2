@@ -15,6 +15,8 @@ import type {
   UpdateStudyEdgePayload,
 } from "@proxus/shared/study-catalog"
 import { Context, Effect } from "effect"
+import type { Forbidden, RoleStoreError } from "../access-control/index.js"
+import { Access } from "../access-control/index.js"
 import type { StudyCatalogRepositoryError } from "./repository.js"
 
 export type ReadStudyNodeError =
@@ -25,13 +27,18 @@ export type ReadStudyEdgeError =
   | StudyEdgeNotFound
   | StudyCatalogRepositoryError
 
-export type CreateStudyNodeError = StudyCatalogRepositoryError
+export type StudyCatalogAuthorizationError = Forbidden | RoleStoreError
+
+export type CreateStudyNodeError =
+  | StudyCatalogRepositoryError
+  | StudyCatalogAuthorizationError
 
 export type ConnectStudyNodesError =
   | StudyNodeNotFound
   | StudyEdgeEndpointKindMismatch
   | StudyEdgeAlreadyExists
   | StudyCatalogRepositoryError
+  | StudyCatalogAuthorizationError
 
 export type UpdateStudyEdgeError =
   | StudyEdgeNotFound
@@ -39,14 +46,19 @@ export type UpdateStudyEdgeError =
   | StudyEdgeEndpointKindMismatch
   | StudyEdgeAlreadyExists
   | StudyCatalogRepositoryError
+  | StudyCatalogAuthorizationError
 
 export type DisconnectStudyNodesError =
   | StudyEdgeNotFound
   | StudyCatalogRepositoryError
+  | StudyCatalogAuthorizationError
 
 export type UpdateStudyNodeError =
   | StudyNodeNotFound
   | StudyCatalogRepositoryError
+  | StudyCatalogAuthorizationError
+
+type CurrentSubject = typeof Access.CurrentSubject.Identifier
 
 /** Application API for nodes and typed directed edges in the study graph. */
 export class StudyCatalog extends Context.Service<
@@ -76,7 +88,7 @@ export class StudyCatalog extends Context.Service<
 
     readonly createNode: (
       input: CreateStudyNodeInput,
-    ) => Effect.Effect<StudyNode, CreateStudyNodeError>
+    ) => Effect.Effect<StudyNode, CreateStudyNodeError, CurrentSubject>
 
     /** Administrative read: returns every persisted publication status. */
     readonly getNode: (
@@ -91,25 +103,25 @@ export class StudyCatalog extends Context.Service<
     readonly renameNode: (
       nodeId: StudyNodeId,
       name: string,
-    ) => Effect.Effect<StudyNode, UpdateStudyNodeError>
+    ) => Effect.Effect<StudyNode, UpdateStudyNodeError, CurrentSubject>
 
     readonly updateNodeStatus: (
       nodeId: StudyNodeId,
       status: StudyNodeStatus,
-    ) => Effect.Effect<StudyNode, UpdateStudyNodeError>
+    ) => Effect.Effect<StudyNode, UpdateStudyNodeError, CurrentSubject>
 
     readonly connect: (
       input: CreateStudyEdgeInput,
-    ) => Effect.Effect<StudyEdge, ConnectStudyNodesError>
+    ) => Effect.Effect<StudyEdge, ConnectStudyNodesError, CurrentSubject>
 
     readonly updateEdge: (
       edgeId: StudyEdgeId,
       input: UpdateStudyEdgePayload,
-    ) => Effect.Effect<StudyEdge, UpdateStudyEdgeError>
+    ) => Effect.Effect<StudyEdge, UpdateStudyEdgeError, CurrentSubject>
 
     readonly disconnect: (
       edgeId: StudyEdgeId,
-    ) => Effect.Effect<void, DisconnectStudyNodesError>
+    ) => Effect.Effect<void, DisconnectStudyNodesError, CurrentSubject>
 
     /** Administrative read: does not apply publication filtering. */
     readonly getEdge: (

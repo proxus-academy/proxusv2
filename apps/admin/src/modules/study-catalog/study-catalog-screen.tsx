@@ -16,7 +16,7 @@ import {
   Settings2,
   Trash2,
 } from "lucide-react"
-import { useState } from "react"
+import { createContext, type ReactNode, useContext, useState } from "react"
 import { Schema } from "effect"
 import * as AsyncResult from "effect/unstable/reactivity/AsyncResult"
 
@@ -134,6 +134,11 @@ const isStudyNodeId = Schema.is(StudyNodeId)
 const isStudyNodeKind = Schema.is(StudyNodeKind)
 const isStudyNodeStatus = Schema.is(StudyNodeStatus)
 const waiting = AsyncResult.isWaiting
+const PermissionContext = createContext<ReadonlySet<string>>(new Set())
+const usePermission = (permission: string) => useContext(PermissionContext).has(permission)
+function PermissionControl({ permission, children }: { readonly permission: string; readonly children: ReactNode }) {
+  return usePermission(permission) ? <>{children}</> : null
+}
 
 function LoadingRows({ count = 4 }: { readonly count?: number }) {
   return (
@@ -155,6 +160,7 @@ function ErrorAlert({ title }: { readonly title: string }) {
 }
 
 function ConnectDialog({ node }: { readonly node: StudyNode }) {
+  const permitted = usePermission("studyCatalog:connect")
   const tags = outgoingEdgeTags(node.kind)
   const [tag, setTag] = useState<StudyEdge["_tag"] | null>(tags[0] ?? null)
   const [targetId, setTargetId] = useState<StudyNodeId | null>(null)
@@ -165,7 +171,7 @@ function ConnectDialog({ node }: { readonly node: StudyNode }) {
   const connect = useAtomSet(mutationAtom)
   const mutation = useAtomValue(mutationAtom)
 
-  if (tags.length === 0) {
+  if (!permitted || tags.length === 0) {
     return null
   }
 
@@ -530,15 +536,15 @@ function RelationList({
                   </ItemContent>
                   <div className="flex gap-1">
                     {direction === "outgoing" ? (
-                      <ReorderButtons
+                      <PermissionControl permission="studyCatalog:connect"><ReorderButtons
                         edge={relation.edge}
                         nodeName={relation.node.name}
                         position={siblingIndex(relation.edge)}
                         lastPosition={orderedSiblings(relation.edge).length - 1}
-                      />
+                      /></PermissionControl>
                     ) : null}
-                    <EditRelationDialog relation={relation} />
-                    <DisconnectButton relation={relation} />
+                    <PermissionControl permission="studyCatalog:connect"><EditRelationDialog relation={relation} /></PermissionControl>
+                    <PermissionControl permission="studyEdge:disconnect"><DisconnectButton relation={relation} /></PermissionControl>
                   </div>
                 </Item>
               </motion.div>
@@ -575,6 +581,8 @@ function NodeDetail({
   }
 
   const node = detail.value
+  const mayRename = usePermission("studyNode:rename")
+  const mayArchive = usePermission("studyNode:archive")
   const selectStatus = (value: string) => {
     if (isStudyNodeStatus(value)) {
       updateStatus({
@@ -600,7 +608,7 @@ function NodeDetail({
           <div className="flex items-center gap-2">
             <Select
               value={node.status}
-              disabled={waiting(statusMutation)}
+              disabled={!mayArchive || waiting(statusMutation)}
               onValueChange={selectStatus}
             >
               <SelectTrigger aria-label="Estado del nodo" className="w-full">
@@ -619,7 +627,7 @@ function NodeDetail({
             : null}
         </Field>
       </div>
-      <form
+      {mayRename ? <form
         className="space-y-3"
         onSubmit={(event) => {
           event.preventDefault()
@@ -648,7 +656,7 @@ function NodeDetail({
           {waiting(mutation) ? <Spinner /> : null}
           Guardar nombre
         </Button>
-      </form>
+      </form> : null}
       <Separator />
       <section className="space-y-4">
         <div>
@@ -674,7 +682,7 @@ function NodeDetail({
   )
 }
 
-export function StudyCatalogScreen() {
+export function StudyCatalogScreen({ permissions }: { readonly permissions: ReadonlySet<string> }) {
   const kind = useAtomValue(nodeKindFilterAtom)
   const status = useAtomValue(nodeStatusFilterAtom)
   const setKind = useAtomSet(nodeKindFilterAtom)
@@ -695,6 +703,7 @@ export function StudyCatalogScreen() {
   }
 
   return (
+    <PermissionContext.Provider value={permissions}>
     <main id="nodes" className="flex min-h-0 flex-1 p-4 md:p-6">
       <div className="mx-auto flex min-h-0 w-full max-w-[90rem] flex-1 flex-col gap-6">
         <header className="flex items-center gap-3">
@@ -797,5 +806,6 @@ export function StudyCatalogScreen() {
         </div>
       </div>
     </main>
+    </PermissionContext.Provider>
   )
 }

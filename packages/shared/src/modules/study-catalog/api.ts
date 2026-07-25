@@ -1,4 +1,6 @@
 import { Schema } from "effect"
+import { Forbidden } from "../access-control/api.js"
+import { SessionAuthorization } from "../auth/middleware.js"
 import {
   HttpApiEndpoint,
   HttpApiError,
@@ -36,6 +38,8 @@ const edgeReadErrors = [
   StudyEdgeNotFound,
   HttpApiError.InternalServerErrorNoContent,
 ] as const
+
+const mutationInternalErrors = [Forbidden, HttpApiError.InternalServerErrorNoContent] as const
 
 export class PublicStudyCatalogApi extends HttpApiGroup.make(
   "publicStudyCatalog",
@@ -127,19 +131,19 @@ export class AdminStudyCatalogApi extends HttpApiGroup.make(
     HttpApiEndpoint.post("createNode", "/nodes", {
       payload: CreateStudyNodePayload,
       success: StudyNode.pipe(HttpApiSchema.status("Created")),
-      error: HttpApiError.InternalServerErrorNoContent,
+      error: mutationInternalErrors,
     }),
     HttpApiEndpoint.patch("renameNode", "/nodes/:nodeId/name", {
       params: { nodeId: StudyNodeId },
       payload: RenameStudyNodePayload,
       success: StudyNode,
-      error: nodeReadErrors,
+      error: [StudyNodeNotFound, ...mutationInternalErrors],
     }),
     HttpApiEndpoint.patch("updateNodeStatus", "/nodes/:nodeId/status", {
       params: { nodeId: StudyNodeId },
       payload: StudyNodeStatus,
       success: StudyNode,
-      error: nodeReadErrors,
+      error: [StudyNodeNotFound, ...mutationInternalErrors],
     }),
     HttpApiEndpoint.post("connect", "/edges", {
       payload: CreateStudyEdgePayload,
@@ -148,6 +152,7 @@ export class AdminStudyCatalogApi extends HttpApiGroup.make(
         StudyNodeNotFound,
         StudyEdgeEndpointKindMismatch,
         StudyEdgeAlreadyExists,
+        Forbidden,
         HttpApiError.InternalServerErrorNoContent,
       ],
     }),
@@ -160,13 +165,15 @@ export class AdminStudyCatalogApi extends HttpApiGroup.make(
         StudyNodeNotFound,
         StudyEdgeEndpointKindMismatch,
         StudyEdgeAlreadyExists,
+        Forbidden,
         HttpApiError.InternalServerErrorNoContent,
       ],
     }),
     HttpApiEndpoint.delete("disconnect", "/edges/:edgeId", {
       params: { edgeId: StudyEdgeId },
       success: HttpApiSchema.NoContent,
-      error: edgeReadErrors,
+      error: [StudyEdgeNotFound, ...mutationInternalErrors],
     }),
   )
-  .prefix("/admin/study-catalog") {}
+  .prefix("/admin/study-catalog")
+  .middleware(SessionAuthorization) {}

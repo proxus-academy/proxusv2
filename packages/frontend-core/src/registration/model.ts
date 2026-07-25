@@ -38,7 +38,7 @@ export type RegistrationPath = typeof RegistrationPath.Type
 
 export const RegistrationPathParam = Schema.fromJsonString(RegistrationPath)
 
-export type RegistrationStep =
+export type CatalogRegistrationStep =
   | "country"
   | "type"
   | "university"
@@ -46,7 +46,7 @@ export type RegistrationStep =
   | "subject"
   | "complete"
 
-export const stepFromPath = (path: RegistrationPath): RegistrationStep => {
+export const stepFromPath = (path: RegistrationPath): CatalogRegistrationStep => {
   const selected = path.at(-1)
   if (selected === undefined) return "country"
 
@@ -60,7 +60,7 @@ export const stepFromPath = (path: RegistrationPath): RegistrationStep => {
 }
 
 export const expectedTargetKinds = (
-  step: RegistrationStep,
+  step: CatalogRegistrationStep,
 ): ReadonlyArray<StudyNode["kind"]> => {
   switch (step) {
     case "country": return ["country"]

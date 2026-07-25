@@ -4,7 +4,9 @@
   "type": "module",
   "exports": {
     ".": "./src/http.ts",
-    "./study-catalog": "./src/modules/study-catalog/http.ts"
+    "./session": "./src/session.ts",
+    "./study-catalog": "./src/modules/study-catalog/http.ts",
+    "./access-control": "./src/modules/access-control/http.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",

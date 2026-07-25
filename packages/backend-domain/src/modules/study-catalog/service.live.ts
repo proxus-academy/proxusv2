@@ -28,6 +28,7 @@ import {
   type UpdateStudyEdgePayload,
 } from "@proxus/shared/study-catalog"
 import { Array, Clock, DateTime, Effect, Layer, Option, Random } from "effect"
+import { Access, AccessControlService } from "../access-control/index.js"
 import { childRelationshipsFor } from "./model.js"
 import {
   StudyCatalogRepository,
@@ -67,11 +68,23 @@ const randomUUIDv4 = Effect.gen(function*() {
 export const StudyCatalogLive: Layer.Layer<
   StudyCatalog,
   never,
-  StudyCatalogRepository
+  StudyCatalogRepository | AccessControlService
 > = Layer.effect(
   StudyCatalog,
   Effect.gen(function*() {
     const repository = yield* StudyCatalogRepository
+    const accessControl = yield* AccessControlService
+    const globalResource = Access.resource("studyCatalog", "global")
+    const globalScope = Access.scope("studyCatalog", "global")
+    const authorize = (permission: Parameters<typeof accessControl.require>[1], resource: Parameters<typeof accessControl.require>[2]) =>
+      Effect.flatMap(Access.CurrentSubject, (subject) =>
+        accessControl.require(subject, permission, resource))
+    const nodeResource = (node: StudyNode) => Access.resource("studyNode", node.id, {
+      scopes: [globalScope],
+    })
+    const edgeResource = (edge: StudyEdge) => Access.resource("studyEdge", edge.id, {
+      scopes: [globalScope],
+    })
 
     const listNodes = (filters: {
       readonly kind: StudyNodeKind
@@ -83,8 +96,9 @@ export const StudyCatalogLive: Layer.Layer<
 
     const createNode = (
       input: CreateStudyNodeInput,
-    ): Effect.Effect<StudyNode, CreateStudyNodeError> =>
+    ): Effect.Effect<StudyNode, CreateStudyNodeError, typeof Access.CurrentSubject.Identifier> =>
       Effect.gen(function*() {
+        yield* authorize("studyCatalog:createNode", globalResource)
         const now = DateTime.makeUnsafe(yield* Clock.currentTimeMillis)
 
         switch (input._tag) {
@@ -153,8 +167,9 @@ export const StudyCatalogLive: Layer.Layer<
 
     const connect = (
       input: CreateStudyEdgeInput,
-    ): Effect.Effect<StudyEdge, ConnectStudyNodesError> =>
+    ): Effect.Effect<StudyEdge, ConnectStudyNodesError, typeof Access.CurrentSubject.Identifier> =>
       Effect.gen(function*() {
+        yield* authorize("studyCatalog:connect", globalResource)
         const id = makeStudyEdgeId(yield* randomUUIDv4)
 
         switch (input._tag) {
@@ -214,7 +229,11 @@ export const StudyCatalogLive: Layer.Layer<
     const updateEdge = (
       edgeId: StudyEdgeId,
       input: UpdateStudyEdgePayload,
-    ) => repository.updateEdge(edgeId, input)
+    ) => Effect.gen(function*() {
+      yield* getEdge(edgeId)
+      yield* authorize("studyCatalog:connect", globalResource)
+      return yield* repository.updateEdge(edgeId, input)
+    })
 
     const getNode = (
       nodeId: StudyNodeId,
@@ -289,33 +308,30 @@ export const StudyCatalogLive: Layer.Layer<
     const renameNode = (
       nodeId: StudyNodeId,
       name: string,
-    ): Effect.Effect<StudyNode, UpdateStudyNodeError> =>
-      Clock.currentTimeMillis.pipe(
-        Effect.flatMap((millis) =>
-          repository.renameNode(
-            nodeId,
-            name,
-            DateTime.makeUnsafe(millis),
-          ),
-        ),
-      )
+    ): Effect.Effect<StudyNode, UpdateStudyNodeError, typeof Access.CurrentSubject.Identifier> =>
+      Effect.gen(function*() {
+        const node = yield* getNode(nodeId)
+        yield* authorize("studyNode:rename", nodeResource(node))
+        const millis = yield* Clock.currentTimeMillis
+        return yield* repository.renameNode(nodeId, name, DateTime.makeUnsafe(millis))
+      })
 
     const updateNodeStatus = (
       nodeId: StudyNodeId,
       status: StudyNodeStatus,
-    ): Effect.Effect<StudyNode, UpdateStudyNodeError> =>
-      Clock.currentTimeMillis.pipe(
-        Effect.flatMap((millis) =>
-          repository.updateNodeStatus(
-            nodeId,
-            status,
-            DateTime.makeUnsafe(millis),
-          ),
-        ),
-      )
+    ): Effect.Effect<StudyNode, UpdateStudyNodeError, typeof Access.CurrentSubject.Identifier> =>
+      Effect.gen(function*() {
+        const node = yield* getNode(nodeId)
+        yield* authorize("studyNode:archive", nodeResource(node))
+        const millis = yield* Clock.currentTimeMillis
+        return yield* repository.updateNodeStatus(nodeId, status, DateTime.makeUnsafe(millis))
+      })
 
-    const disconnect = (edgeId: StudyEdgeId) =>
-      repository.removeEdge(edgeId)
+    const disconnect = (edgeId: StudyEdgeId) => Effect.gen(function*() {
+      const edge = yield* getEdge(edgeId)
+      yield* authorize("studyEdge:disconnect", edgeResource(edge))
+      yield* repository.removeEdge(edgeId)
+    })
 
     const listOutgoingEdges = (
       sourceNodeId: StudyNodeId,

@@ -62,6 +62,9 @@ describe("public server surface", () => {
       )
       expect(document.paths["/study-catalog/countries"]).toBeDefined()
       expect(document.paths["/feature-flags/snapshot"]).toBeDefined()
+      expect(document.paths["/auth/register/email"]).toBeDefined()
+      expect(document.paths["/auth/google/start"]).toBeDefined()
+      expect(document.paths["/auth/session"]).toBeDefined()
       expect(Object.keys(document.paths).some((path) => path.startsWith("/admin/"))).toBe(false)
 
       const snapshot = yield* Effect.promise(() => web.handler(new Request("http://proxus.test/feature-flags/snapshot")))

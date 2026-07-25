@@ -29,7 +29,8 @@ Antes de realizar cambios relevantes, consulta la documentación correspondiente
 - API HTTP pública y administrativa: `docs/api.md`.
 - Estrategia y convenciones de pruebas: `docs/testing.md`.
 - Arquitectura React, estado derivado y sincronización: `docs/webapp-architecture.md`.
-- Effect Atom con React: `docs/effect/react-and-effect-atom.md`.
+- Effect Atom con React: `docs/effect/90_react_and_effect_atom.md`.
+- Effect Form y convenciones de formularios: `docs/forms/README.md` y el capítulo específico aplicable de `docs/forms/*`.
 
 La referencia upstream de Effect está en `.repos/effect-smol`. Las referencias ayudan a entender APIs y patrones, pero las decisiones documentadas en este repositorio prevalecen para Proxus.
 
@@ -92,7 +93,7 @@ El frontend sigue un enfoque atom-first con Effect Atom:
 - Mantén el branching de carga, éxito y error visible y cerca de la superficie que lo presenta.
 - Las mutaciones deben invalidar o actualizar todos los atoms afectados por el cambio.
 
-Consulta `docs/webapp-architecture.md` y `docs/effect/react-and-effect-atom.md` antes de añadir estado remoto, sincronización con URL o formularios complejos.
+Consulta `docs/webapp-architecture.md` y `docs/effect/90_react_and_effect_atom.md` antes de añadir estado remoto, sincronización con URL o formularios complejos.
 
 ## UI y Storybook
 

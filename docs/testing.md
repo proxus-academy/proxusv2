@@ -1,7 +1,7 @@
 # Testing strategy
 
 This document is the project-specific testing source of truth. Effect-specific
-techniques are documented in [`effect/testing.md`](./effect/testing.md).
+techniques are documented in [`effect/09_testing.md`](./effect/09_testing.md).
 
 ## Principle
 
@@ -101,6 +101,12 @@ access, the restored immutable trigger and the stricter constraint.
 Production migrations are applied manually; startup must fail while any are
 pending.
 
+### Identity, onboarding y access-control
+
+Domain prueba normalización, path de onboarding, estados/proveedor derivado, auto-link solo de email verificado y policies RBAC con clocks/randomness deterministas. Infra ejecuta el mismo contrato de users/challenges/sessions contra memory y PGlite: unicidad, hashes, propósito/TTL/intentos/uso único, consumo/rotación atómicos y revocación global. Las pruebas de composición cubren email/Google fake, cookie opaca y la matriz admin anónimo/student/editor/admin.
+
+Los adapters consola/fake solo pertenecen a desarrollo/test. Producción tiene un gate que rechaza su selección; esto no prueba proveedores reales, que siguen pendientes. Los tests y listados QA nunca imprimen passwords, hashes, tokens ni códigos persistidos.
+
 ### HTTP
 
 Handler tests in `backend-transport` and `backend-admin-transport` build the
@@ -115,6 +121,14 @@ web handler without opening TCP:
 ```text
 typed client → HttpApi handlers → StudyCatalogLive → PGlite
 ```
+
+The Admin server additionally runs a production-shaped authorization matrix
+through its embedded web handler, real opaque sessions, persisted users and role
+assignments, and PGlite. It proves anonymous `401`, authenticated student `403`,
+allowed catalog-editor/admin mutations, exact effective capabilities, and that
+role management is forbidden to student/editor but allowed to admin. The suite
+serializes its files because file-backed PGlite cannot safely be opened by
+parallel workers.
 
 Malformed transport input is a 400 decoding failure. The public and admin
 composition-root suites also prove that their 256 KiB raw-body middleware runs
@@ -260,7 +274,7 @@ not add PostgreSQL or browser coverage. The separate CI `postgres` job is the
 real-PostgreSQL gate. CI pins the action commits, Node 22.22.2, Corepack 0.35.0
 and the repository's `pnpm@10.32.1`, and installs with `--frozen-lockfile`.
 
-### Current validation baseline (2026-07-20)
+### Current validation baseline (2026-07-21)
 
 `pnpm static` has no accepted-finding baseline: every finding must be fixed.
 The 15 Effect projects include current TypeScript configs; the same configs are
@@ -287,6 +301,8 @@ pnpm --filter @proxus/shared test
 pnpm --filter @proxus/backend-domain test
 pnpm --filter @proxus/backend-infra test
 DATABASE_URL=postgresql://... pnpm --filter @proxus/backend-infra test:postgres
+pnpm auth:qa:seed
+pnpm auth:qa:list
 pnpm --filter @proxus/backend-transport test
 pnpm --filter @proxus/backend-admin-transport test
 pnpm --filter @proxus/server test

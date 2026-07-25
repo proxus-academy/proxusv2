@@ -14,6 +14,7 @@ export function Checkbox({
       className={cn(
         "peer h-5 w-5 shrink-0 rounded-md border-2 border-gray-300 bg-white transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/20",
         "disabled:cursor-not-allowed disabled:opacity-50",
         "data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-white",
         className

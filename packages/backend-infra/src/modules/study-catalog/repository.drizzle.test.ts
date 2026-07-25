@@ -31,6 +31,10 @@ import {
   StudyCatalogLive,
   StudyCatalogRepository,
 } from "@proxus/backend-domain/study-catalog"
+import {
+  Access,
+  AccessControlService,
+} from "@proxus/backend-domain/access-control"
 import { makeStudyCatalogRepositoryDrizzle } from "./repository.drizzle.js"
 import { StudyCatalogRepositoryPgliteLive } from "./repository.pglite.layer.js"
 
@@ -498,12 +502,22 @@ describe("StudyCatalogRepository Drizzle contract", () => {
               position: 1,
             }),
           )
+          const allowAllAccess = Layer.succeed(
+            AccessControlService,
+            AccessControlService.of({
+              capabilities: () => Effect.succeed(Access.permissions.all),
+              require: () => Effect.void,
+              grantRole: () => Effect.void,
+              revokeRole: () => Effect.void,
+            }),
+          )
           const catalog = yield* Effect.scoped(
             Layer.build(StudyCatalogLive.pipe(
               Layer.provide(Layer.succeed(
                 StudyCatalogRepository,
                 repository,
               )),
+              Layer.provide(allowAllAccess),
             )).pipe(Effect.map((service) =>
               Context.get(service, StudyCatalog),
             )),

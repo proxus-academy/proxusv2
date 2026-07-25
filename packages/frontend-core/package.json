@@ -3,6 +3,9 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./runtime": "./src/runtime.ts",
+    "./public-api": "./src/public-api/index.ts",
+    "./auth": "./src/auth/index.ts",
     "./navigation": "./src/navigation/index.ts",
     "./public-product": "./src/public-product/index.ts",
     "./product-locale": "./src/product-locale/index.ts",
@@ -18,6 +21,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@proxus/effect-form": "workspace:*",
     "@proxus/product-messages": "workspace:*",
     "@proxus/shared": "workspace:*",
     "effect": "4.0.0-beta.98"

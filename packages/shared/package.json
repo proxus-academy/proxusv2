@@ -9,7 +9,9 @@
     "./study-catalog": "./src/modules/study-catalog/index.ts",
     "./lesson-plugins": "./src/modules/lesson-plugins/index.ts",
     "./feature-flags": "./src/modules/feature-flags/index.ts",
-    "./product-analytics": "./src/modules/product-analytics/index.ts"
+    "./product-analytics": "./src/modules/product-analytics/index.ts",
+    "./auth": "./src/modules/auth/index.ts",
+    "./access-control": "./src/modules/access-control/index.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",

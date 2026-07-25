@@ -20,6 +20,28 @@ Shared contracts contain paths, methods, transport schemas, public models,
 expected errors and statuses. They never expose repositories, Drizzle rows,
 database errors or server configuration.
 
+## Autenticación pública
+
+Prefijo: `/auth`. Las respuestas de sesión instalan una cookie opaca `HttpOnly`; el token, los códigos y los hashes nunca forman parte del wire.
+
+| Method | Path | Operation |
+| --- | --- | --- |
+| POST | `/register/email` | Crear alta pendiente y enviar código (`202`) |
+| POST | `/verify-email` | Consumir código, activar cuenta y crear sesión |
+| POST | `/verify-email/resend` | Reemitir de forma no enumerable (`202`) |
+| POST | `/login` | Login email/password y sesión |
+| POST | `/password-reset/request` | Solicitud no enumerable (`202`) |
+| POST | `/password-reset/confirm` | Cambiar password y revocar sesiones |
+| GET | `/google/start` | Crear redirect/state/nonce |
+| GET | `/google/callback` | Resolver login, auto-link o draft Google |
+| POST | `/google/register` | Completar onboarding de identidad Google nueva |
+| GET | `/session` | Leer sesión activa; requiere cookie |
+| POST | `/logout` | Revocar sesión activa; requiere cookie |
+
+Registro recibe el onboarding completo y un path publicado y contiguo de Study Catalog. El servidor no confía en nombres ni perfiles Google enviados por el navegador. Verificación y reset usan challenges hasheados, con propósito, expiración, intentos y uso único. Login devuelve errores genéricos; reset y reenvío no revelan si existe una cuenta. Google usa authorization-code/callback: una identidad existente entra directamente, un email activo y verificado puede auto-vincularse de forma transaccional y una identidad nueva recibe un draft pendiente antes del alta.
+
+Los endpoints protegidos por `SessionAuthorization` responden `401` si la cookie falta o no resuelve una cuenta activa. La renovación deslizante puede rotar la cookie en cualquier respuesta autenticada; no existe endpoint de refresh.
+
 ## Public study catalog
 
 Prefix: `/study-catalog`
@@ -65,11 +87,14 @@ Prefix: `/admin/study-catalog`
 | PATCH | `/edges/:edgeId` | Edit edge endpoints and position while preserving `id` and `_tag` |
 | DELETE | `/edges/:edgeId` | Disconnect two nodes and compact their ordered group |
 
-During the current development phase these handlers are intentionally exposed
-without authentication or authorization. This is an explicit temporary product
-decision and does not block admin development. They run in the separate
-`apps/admin-server` process (development port `3001`), which must not be exposed
-publicly until administrative identity is added at the transport boundary.
+These handlers run in the separate `apps/admin-server` process (development
+port `3001`) and use the same opaque sessions as the public authentication
+surface. Administrative reads require an active authenticated account. Catalog
+mutations additionally require their resource capability: `student` receives
+`403`, while global `catalog-editor` and `admin` assignments permit the current
+catalog operations. `/admin/access-control/capabilities` returns the effective
+permissions for the authenticated subject; only global administrators may grant
+or revoke role assignments. Missing or invalid sessions return `401`.
 
 The admin UI performs both reads and mutations through this administrative
 surface so they use the same persistence adapter. This is required in local
@@ -165,6 +190,16 @@ in each server, including analytics.
 
 Analytics is intentionally best-effort: it must not affect product behavior and
 is not suitable for audit, authorization, billing, or exactly-once workflows.
+
+## Control de acceso administrativo
+
+| Method | Path | Operation |
+| --- | --- | --- |
+| GET | `/admin/access-control/capabilities` | Permisos efectivos del subject autenticado |
+| POST | `/admin/access-control/roles` | Conceder una asignación (solo admin global) |
+| DELETE | `/admin/access-control/roles` | Revocar una asignación (solo admin global) |
+
+Toda `AdminApi` requiere sesión. Las mutaciones de catálogo se autorizan además dentro del service contra el recurso persistido: ausencia de identidad produce `401`, falta de permiso `403` y fallo del role store un `500` seguro. Capabilities son una ayuda de presentación, no evidencia que el cliente pueda reenviar.
 
 ## Status policy
 

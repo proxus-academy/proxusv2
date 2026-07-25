@@ -3,11 +3,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/dev.ts",
+    "dev": "tsx src/dev.ts",
+    "dev:watch": "tsx watch src/dev.ts",
     "start": "tsx src/prod.ts",
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run --no-file-parallelism --maxWorkers=1"
   },
   "dependencies": {
     "@effect/platform-node": "4.0.0-beta.98",

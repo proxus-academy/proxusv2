@@ -43,6 +43,12 @@ import {
   Random,
   Ref,
 } from "effect"
+import {
+  Access,
+  AccessControlService,
+  Forbidden,
+  RoleStoreError,
+} from "../access-control/index.js"
 import { StudyCatalogRepository } from "./repository.js"
 import { StudyCatalogLive } from "./service.live.js"
 import { StudyCatalog } from "./service.js"
@@ -65,6 +71,14 @@ const fixedRandom: ContextRandom = {
 
 type ContextRandom = typeof Random.Random.Service
 
+const testSubject = Access.subject("user", "catalog-test-user")
+const allowAccess = Layer.succeed(AccessControlService, AccessControlService.of({
+  capabilities: () => Effect.succeed(Access.permissions.all),
+  require: () => Effect.void,
+  grantRole: () => Effect.void,
+  revokeRole: () => Effect.void,
+}))
+
 type Recorded = {
   readonly nodes: ReadonlyArray<StudyNode>
   readonly edges: ReadonlyArray<StudyEdge>
@@ -74,8 +88,12 @@ const withCatalog = <A, E>(
   use: (
     catalog: typeof StudyCatalog.Service,
     recorded: Ref.Ref<Recorded>,
-  ) => Effect.Effect<A, E>,
-  options?: { readonly failEdges?: boolean },
+  ) => Effect.Effect<A, E, typeof Access.CurrentSubject.Identifier>,
+  options?: {
+    readonly failEdges?: boolean
+    readonly authorization?: "allow" | "forbidden" | "store-failure"
+    readonly expectedPermission?: string
+  },
 ) =>
   Effect.scoped(
     Effect.gen(function*() {
@@ -118,9 +136,34 @@ const withCatalog = <A, E>(
         listChildren: () => Effect.succeed([]),
         listSources: () => Effect.succeed([]),
       })
+      const access = Layer.succeed(AccessControlService, AccessControlService.of({
+        capabilities: () => Effect.succeed(Access.permissions.all),
+        require: (subject, permission, resource) => {
+          if (options?.expectedPermission !== undefined) {
+            expect(permission).toBe(options.expectedPermission)
+            expect(resource.type).toBe("studyCatalog")
+            expect(resource.id).toBe("global")
+          }
+          return options?.authorization === "forbidden"
+            ? Effect.fail(new Forbidden({
+                subject,
+                permission,
+                resource,
+                message: "denied by test policy",
+              }))
+            : options?.authorization === "store-failure"
+              ? Effect.fail(new RoleStoreError({ message: "store unavailable" }))
+              : Effect.void
+        },
+        grantRole: () => Effect.void,
+        revokeRole: () => Effect.void,
+      }))
       const context = yield* Layer.build(
         StudyCatalogLive.pipe(
-          Layer.provide(Layer.succeed(StudyCatalogRepository, repository)),
+          Layer.provide(Layer.merge(
+            Layer.succeed(StudyCatalogRepository, repository),
+            access,
+          )),
         ),
       )
       const catalog = yield* StudyCatalog.pipe(Effect.provide(context))
@@ -129,6 +172,7 @@ const withCatalog = <A, E>(
   ).pipe(
     Effect.provideService(Clock.Clock, fixedClock),
     Effect.provideService(Random.Random, fixedRandom),
+    Effect.provideService(Access.CurrentSubject, testSubject),
   )
 
 const countryId = makeCountryNodeId("00000000-0000-4000-8000-000000000001")
@@ -178,6 +222,29 @@ describe("StudyCatalogLive", () => {
         }),
       ),
     ),
+  )
+
+  test("requires create permission at global catalog scope and never writes on denial", () =>
+    Effect.runPromise(Effect.gen(function*() {
+      const input = new CreateCountryInput({ name: "Spain" })
+      yield* withCatalog((catalog, recorded) => Effect.gen(function*() {
+        const failure = yield* catalog.createNode(input).pipe(Effect.flip)
+        expect(failure).toBeInstanceOf(Forbidden)
+        expect((yield* Ref.get(recorded)).nodes).toEqual([])
+      }), {
+        authorization: "forbidden",
+        expectedPermission: "studyCatalog:createNode",
+      })
+
+      yield* withCatalog((catalog, recorded) => Effect.gen(function*() {
+        const failure = yield* catalog.createNode(input).pipe(Effect.flip)
+        expect(failure).toBeInstanceOf(RoleStoreError)
+        expect((yield* Ref.get(recorded)).nodes).toEqual([])
+      }), {
+        authorization: "store-failure",
+        expectedPermission: "studyCatalog:createNode",
+      })
+    })),
   )
 
   test("constructs every edge variant and applies the default position", () =>
@@ -345,7 +412,7 @@ describe("StudyCatalogLive", () => {
 
     return Effect.runPromise(Effect.scoped(Effect.gen(function*() {
       const context = yield* Layer.build(StudyCatalogLive.pipe(Layer.provide(
-        Layer.succeed(StudyCatalogRepository, repository),
+        Layer.merge(Layer.succeed(StudyCatalogRepository, repository), allowAccess),
       )))
       const catalog = Context.get(context, StudyCatalog)
 
@@ -378,6 +445,6 @@ describe("StudyCatalogLive", () => {
         .toBe("StudyNodeNotFound")
       expect((yield* catalog.listPublishedIncomingEdges(typeId).pipe(Effect.flip))._tag)
         .toBe("StudyNodeNotFound")
-    })))
+    }).pipe(Effect.provideService(Access.CurrentSubject, testSubject))))
   })
 })

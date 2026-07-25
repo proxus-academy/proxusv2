@@ -1,0 +1,21 @@
+// @vitest-environment happy-dom
+import { RegistryProvider, useAtomSet } from "@effect/atom-react"
+import { act } from "react"
+import { createRoot } from "react-dom/client"
+import { describe, expect, it } from "vitest"
+import { LoginForm, loginForm } from "./modules/auth/forms.js"
+
+function ContractProbe() {
+  useAtomSet(loginForm.submit)
+  return <LoginForm.Provider defaultValues={{ email: "", password: "" }}><LoginForm.KeepAlive /><span>registry-ready</span></LoginForm.Provider>
+}
+
+describe("Effect Form runtime contract", () => {
+  it("mounts Proxus forms in the canonical RegistryProvider", () => {
+    const host = document.createElement("div")
+    const root = createRoot(host)
+    act(() => { root.render(<RegistryProvider><ContractProbe /></RegistryProvider>) })
+    expect(host.textContent).toContain("registry-ready")
+    act(() => root.unmount())
+  })
+})

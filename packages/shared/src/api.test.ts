@@ -10,7 +10,10 @@ describe("API roots", () => {
     const adminDocument = OpenApi.fromApi(AdminApi)
 
     expect(publicDocument.paths["/study-catalog/countries"]?.get).toBeDefined()
+    expect(publicDocument.paths["/auth/login"]?.post).toBeDefined()
+    expect(publicDocument.paths["/auth/session"]?.get).toBeDefined()
     expect(publicDocument.paths["/admin/study-catalog/nodes"]).toBeUndefined()
+    expect(publicDocument.paths["/admin/auth"]).toBeUndefined()
     const listNodes = adminDocument.paths["/admin/study-catalog/nodes"]?.get
     expect(listNodes).toBeDefined()
     expect(listNodes?.parameters).toEqual(expect.arrayContaining([
@@ -20,6 +23,30 @@ describe("API roots", () => {
     expect(adminDocument.paths["/admin/study-catalog/nodes/{nodeId}/status"]?.patch).toBeDefined()
     expect(adminDocument.paths["/admin/study-catalog/nodes/{nodeId}/archive"]).toBeUndefined()
     expect(adminDocument.paths["/study-catalog/countries"]).toBeUndefined()
+  })
+
+  it("snapshots the public auth surface without adding admin auth routes", () => {
+    const publicPaths = Object.entries(OpenApi.fromApi(PublicApi).paths)
+      .filter(([path]) => path.startsWith("/auth/"))
+      .flatMap(([path, operations]) => Object.keys(operations).map((method) => `${method.toUpperCase()} ${path}`))
+      .sort()
+
+    expect(publicPaths).toMatchInlineSnapshot(`
+      [
+        "GET /auth/google/callback",
+        "GET /auth/google/start",
+        "GET /auth/session",
+        "POST /auth/google/register",
+        "POST /auth/login",
+        "POST /auth/logout",
+        "POST /auth/password-reset/confirm",
+        "POST /auth/password-reset/request",
+        "POST /auth/register/email",
+        "POST /auth/verify-email",
+        "POST /auth/verify-email/resend",
+      ]
+    `)
+    expect(Object.keys(OpenApi.fromApi(AdminApi).paths).some((path) => path.startsWith("/auth"))).toBe(false)
   })
 
   it("derives the tooling contract from both narrow roots without duplicate groups", () => {

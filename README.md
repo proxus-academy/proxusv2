@@ -121,7 +121,14 @@ pnpm --filter @proxus/backend-infra db:seed:pglite
 pnpm --filter @proxus/backend-infra db:reset:pglite
 ```
 
-`db:seed:pglite` migra y carga el catálogo de manera idempotente.
+`db:seed:pglite` migra y carga el catálogo de manera idempotente. Las cinco cuentas de autenticación/RBAC para QA se gestionan aparte y solo en development/test:
+
+```bash
+pnpm auth:qa:seed
+pnpm auth:qa:list
+```
+
+El seed es idempotente y el listado omite passwords, hashes, códigos y tokens. Incluye `admin`, `catalog-editor`, `student-email`, `student-google` y `pending-email`. Con PGlite pertenece al directorio de Infra y no permite comprobar dos servidores contra identidad compartida; para ese smoke usa PostgreSQL.
 
 > **Atención:** `db:reset:pglite` elimina los schemas locales, vuelve a migrar y carga el seed. Es destructivo.
 
@@ -234,11 +241,28 @@ pnpm --filter @proxus/backend-infra db:publish-feature-flags ./snapshot.json
 Variables disponibles:
 
 ```text
-DATABASE_URL                  obligatoria en producción
+DATABASE_URL                  obligatoria en producción y en QA compartida/PostgreSQL
 DATABASE_MIGRATIONS_DIR       por defecto `packages/backend-infra/drizzle` (resuelto por Infra)
+PGLITE_DATA_DIR               datos del único proceso PGlite de desarrollo
 HOST                          por defecto 0.0.0.0
-PORT                          por defecto 3000
+PORT                          3000 público; 3001 admin por defecto
+NODE_ENV                      production selecciona las composition roots productivas
+AUTH_EMAIL_ADAPTER            console solo desarrollo; producción exige un adapter real
+AUTH_GOOGLE_ADAPTER           fake solo desarrollo; producción exige un adapter real
+AUTH_GOOGLE_SIGNING_SECRET    obligatorio y redacted en producción; mínimo 32 bytes
 ```
+
+La composición de desarrollo imprime únicamente los mensajes/códigos email en el sink consola y ofrece Google fake. La composición de producción rechaza explícitamente `console`/`fake` y actualmente falla cerrada para ambos proveedores porque los adapters reales aún no existen. No uses el secreto de desarrollo ni fixtures QA fuera de local/test. Consulta [`docs/architecture/identity-and-authentication.md`](./docs/architecture/identity-and-authentication.md).
+
+### Smoke QA de Identity y Admin
+
+1. Usa una PostgreSQL 17 desechable y aplica `db:migrate:postgres`.
+2. Carga/lista las cinco fixtures con los comandos QA en un entorno de desarrollo compatible.
+3. Arranca API pública, API admin, web y admin contra la misma base.
+4. Comprueba login/logout y sesión; admin puede gestionar roles/catálogo, editor solo catálogo, ambos estudiantes reciben `403` y pending no inicia sesión.
+5. Completa un registro email leyendo el código solo de la consola y el flujo Google fake; inspecciona que la cookie sea `HttpOnly` y que URL/storage no contengan secretos.
+
+Los comandos QA actuales usan PGlite; mientras no acepten `DATABASE_URL`, los pasos 2–5 con ambas APIs requieren crear fixtures equivalentes en la base PostgreSQL de QA o quedan bloqueados. No se debe apuntar dos procesos al mismo PGlite.
 
 ## Referencias locales
 

@@ -14,6 +14,13 @@ export interface MessagesCatalog {
     readonly back: string
     readonly retry: string
   }
+  readonly auth: {
+    readonly login: { readonly title: string; readonly email: string; readonly password: string; readonly submit: string; readonly submitting: string; readonly failed: string }
+    readonly forgotPassword: { readonly title: string; readonly description: string; readonly submit: string }
+    readonly recoveryCode: { readonly title: string; readonly pendingTitle: string; readonly code: string; readonly verify: string; readonly continue: string; readonly resend: string }
+    readonly newPassword: { readonly title: string; readonly description: string; readonly password: string; readonly confirmation: string; readonly submit: string }
+  }
+  readonly validation: Readonly<Record<string, string>>
   readonly registration: {
     readonly country: { readonly title: string; readonly description: string }
     readonly type: { readonly title: string; readonly description: string }
@@ -44,6 +51,24 @@ export interface MessagesCatalog {
 const esCatalog = {
   language: { label: "Idioma", spanish: "Español", english: "English", device: "Usar idioma del dispositivo" },
   common: { back: "Atrás", retry: "Reintentar" },
+  auth: {
+    login: { title: "Inicia sesión", email: "Email", password: "Contraseña", submit: "Iniciar sesión", submitting: "Iniciando sesión…", failed: "No se ha podido iniciar sesión" },
+    forgotPassword: { title: "Recupera tu contraseña", description: "Te enviaremos un código si existe una cuenta asociada. La respuesta será siempre la misma.", submit: "Enviar código" },
+    recoveryCode: { title: "Introduce el código", pendingTitle: "Tu cuenta está pendiente", code: "Código", verify: "Verificar", continue: "Continuar", resend: "Reenviar código" },
+    newPassword: { title: "Crea una contraseña nueva", description: "Introduce y vuelve a confirmar la contraseña.", password: "Contraseña nueva", confirmation: "Confirmar contraseña", submit: "Guardar contraseña" },
+  },
+  validation: {
+    "validation.email.required": "Introduce tu email",
+    "validation.email.invalid": "Introduce un email válido",
+    "validation.password.required": "Introduce tu contraseña",
+    "validation.recoveryCode.invalid": "Introduce el código de seis dígitos",
+    "validation.password.minLength": "La contraseña debe tener al menos 12 caracteres",
+    "validation.password.confirmationRequired": "Confirma tu contraseña",
+    "validation.password.mismatch": "Las contraseñas no coinciden",
+    "validation.username.invalid": "Usa entre 3 y 30 letras, números o guiones bajos",
+    "validation.birthYear.invalid": "Introduce un año de nacimiento válido",
+    "validation.terms.required": "Debes aceptar los términos y la privacidad",
+  },
   registration: {
     country: { title: "¿Dónde estudias?", description: "Selecciona tu país para comenzar" },
     type: { title: "¿Qué tipo de estudios cursas?", description: "Elige una opción disponible" },
@@ -74,6 +99,24 @@ const esCatalog = {
 const enCatalog = {
   language: { label: "Language", spanish: "Español", english: "English", device: "Use device language" },
   common: { back: "Back", retry: "Retry" },
+  auth: {
+    login: { title: "Sign in", email: "Email", password: "Password", submit: "Sign in", submitting: "Signing in…", failed: "Unable to sign in" },
+    forgotPassword: { title: "Recover your password", description: "We'll send a code if an account exists. The response is always the same.", submit: "Send code" },
+    recoveryCode: { title: "Enter the code", pendingTitle: "Your account is pending", code: "Code", verify: "Verify", continue: "Continue", resend: "Resend code" },
+    newPassword: { title: "Create a new password", description: "Enter and confirm your new password.", password: "New password", confirmation: "Confirm password", submit: "Save password" },
+  },
+  validation: {
+    "validation.email.required": "Enter your email",
+    "validation.email.invalid": "Enter a valid email",
+    "validation.password.required": "Enter your password",
+    "validation.recoveryCode.invalid": "Enter the six-digit code",
+    "validation.password.minLength": "Password must be at least 12 characters",
+    "validation.password.confirmationRequired": "Confirm your password",
+    "validation.password.mismatch": "Passwords do not match",
+    "validation.username.invalid": "Use 3 to 30 letters, numbers, or underscores",
+    "validation.birthYear.invalid": "Enter a valid birth year",
+    "validation.terms.required": "You must accept the terms and privacy policy",
+  },
   registration: {
     country: { title: "Where do you study?", description: "Select your country to get started" },
     type: { title: "What type of studies are you taking?", description: "Choose an available option" },

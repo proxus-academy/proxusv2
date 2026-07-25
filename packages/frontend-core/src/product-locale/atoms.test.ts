@@ -20,8 +20,12 @@ describe("product locale atoms", () => {
     const registry = AtomRegistry.make()
 
     expect(registry.get(messagesCatalogAtom).common.back).toBe("Atrás")
+    expect(registry.get(messagesCatalogAtom).auth.login.failed).toBe("No se ha podido iniciar sesión")
+    expect(registry.get(messagesCatalogAtom).validation["validation.email.required"]).toBe("Introduce tu email")
     registry.set(selectLocaleAtom, "en")
     expect(AsyncResult.getOrThrow(registry.get(selectLocaleAtom))).toBeUndefined()
     expect(registry.get(messagesCatalogAtom).common.back).toBe("Back")
+    expect(registry.get(messagesCatalogAtom).auth.login.failed).toBe("Unable to sign in")
+    expect(registry.get(messagesCatalogAtom).validation["validation.email.required"]).toBe("Enter your email")
   })
 })
