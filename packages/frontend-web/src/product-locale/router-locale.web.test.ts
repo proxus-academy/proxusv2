@@ -34,7 +34,7 @@ const definition = root({
 })
 const routes = compile(definition)
 type Destination = DestinationOf<typeof definition>
-const destination = (locale: LocaleType) => routes.destination("registration", { locale })
+const destination = (locale: LocaleType) => routes.destination("registration", { path: { locale } })
 
 const canonicalCases: ReadonlyArray<{
   readonly name: string
@@ -108,8 +108,10 @@ describe("browser product locale", () => {
       current: current.atom,
       location: location.atom,
       error: error.atom,
-      push: () => Effect.void,
-      replace: (next, options) => Effect.suspend(() => {
+      navigate: () => Effect.void,
+      replace: () => Effect.void,
+      pushDestination: () => Effect.void,
+      replaceDestination: (next, options) => Effect.suspend(() => {
         attempts++
         if (attempts === 1) Deferred.doneUnsafe(firstAttempt, Effect.void)
         if (replaceFailure !== undefined) {
@@ -171,8 +173,10 @@ describe("browser product locale", () => {
       current: current.atom,
       location: location.atom,
       error: error.atom,
-      push: () => Effect.void,
-      replace: (next, options) => Effect.suspend(() => {
+      navigate: () => Effect.void,
+      replace: () => Effect.void,
+      pushDestination: () => Effect.void,
+      replaceDestination: (next, options) => Effect.suspend(() => {
         const search = options?.search ?? location.get().search
         attempts.push({ destination: next, search })
         if (replaceFailure !== undefined) return Effect.fail(replaceFailure)
@@ -234,8 +238,10 @@ describe("browser product locale", () => {
       current: current.atom,
       location: location.atom,
       error: error.atom,
-      push: () => Effect.void,
-      replace: () => Effect.fail(failure).pipe(
+      navigate: () => Effect.void,
+      replace: () => Effect.void,
+      pushDestination: () => Effect.void,
+      replaceDestination: () => Effect.fail(failure).pipe(
         Effect.tapError((cause) => Effect.sync(() => error.set(cause))),
       ),
       back: Effect.void,

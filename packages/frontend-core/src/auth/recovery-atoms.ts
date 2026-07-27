@@ -2,7 +2,14 @@ import { Effect } from "effect"
 import * as Atom from "effect/unstable/reactivity/Atom"
 import { initialRecoveryState, transitionRecovery, type RecoveryEvent } from "./recovery.js"
 
-/** Observable owner for the password-recovery state machine. */
+/** Stable observable owner for the public password-recovery state machine. */
+export const recoveryStateAtom = Atom.make(initialRecoveryState)
+
+export const dispatchRecoveryAction = Atom.fn<RecoveryEvent>()((event, get) => Effect.sync(() => {
+  get.set(recoveryStateAtom, transitionRecovery(get(recoveryStateAtom), event))
+}))
+
+/** @deprecated Existing clients may migrate independently to the stable exports above. */
 export const makeRecoveryAtoms = () => {
   const stateAtom = Atom.make(initialRecoveryState)
   const dispatchAtom = Atom.fn<RecoveryEvent>()((event, get) => Effect.sync(() => {

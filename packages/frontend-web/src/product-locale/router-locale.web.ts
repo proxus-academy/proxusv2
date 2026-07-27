@@ -93,7 +93,7 @@ export const makeCanonicalLocaleAtoms = <Destination extends LocalizedDestinatio
       preferredLocale: input.preferredLocale,
     })
     if (plan.shouldReplace) {
-      yield* options.router.replace(plan.destination, { search: plan.url.search.slice(1) })
+      yield* options.router.replaceDestination(plan.destination, { search: plan.url.search.slice(1) })
     }
     options.applyDocumentLocale(plan.locale)
     return plan.locale
@@ -142,7 +142,7 @@ export const makeRouterProductLocaleAtoms = <Destination extends LocalizedDestin
     readonly location: RouterLocation<Destination>
     readonly preference: "persist" | "device"
   }): Effect.fn.Return<void, RouterCommandError> {
-    yield* options.router.replace(
+    yield* options.router.replaceDestination(
       options.destination(input.locale),
       { search: input.location.search },
     )

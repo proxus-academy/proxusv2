@@ -43,7 +43,7 @@ export const makeWebRegistrationPathNavigation = <Destination extends RouteDesti
     const search = new URLSearchParams(location.search)
     if (path.length === 0) search.delete(parameterName)
     else search.set(parameterName, yield* Schema.encodeEffect(RegistrationPathParam)(path))
-    yield* router.replace(location.destination, { search: search.toString() })
+    yield* router.replaceDestination(location.destination, { search: search.toString() })
   })
 
   const canonicalizeRegistrationPath = Effect.fn("WebRegistrationPath.canonicalize")(function*(
@@ -54,7 +54,7 @@ export const makeWebRegistrationPathNavigation = <Destination extends RouteDesti
     if (value === null || Option.isSome(Schema.decodeUnknownOption(RegistrationPathParam)(value))) return
 
     search.delete(parameterName)
-    yield* router.replace(location.destination, { search: search.toString() })
+    yield* router.replaceDestination(location.destination, { search: search.toString() })
   })
   const canonicalizeRegistrationPathAtom = Atom.fn<RouterLocation<Destination>>()((location, get) =>
     runner.run(get, canonicalizeRegistrationPath(location)))

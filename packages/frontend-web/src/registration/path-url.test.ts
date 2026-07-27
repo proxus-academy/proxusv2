@@ -36,8 +36,10 @@ const fixture = (search = "", replaceFailure?: ReplaceFailureState) => {
     current: current.atom,
     location: location.atom,
     error: error.atom,
-    push: (next, options) => Effect.sync(() => location.set({ destination: next, search: options?.search ?? location.get().search })),
-    replace: (next, options) => Effect.suspend(() => {
+    navigate: () => Effect.void,
+    replace: () => Effect.void,
+    pushDestination: (next, options) => Effect.sync(() => location.set({ destination: next, search: options?.search ?? location.get().search })),
+    replaceDestination: (next, options) => Effect.suspend(() => {
       const failure = replaceFailure?.current
       if (failure === undefined) {
         return Effect.sync(() => location.set({ destination: next, search: options?.search ?? location.get().search }))
@@ -130,8 +132,10 @@ describe("router registration query projection", () => {
       current: current.atom,
       location: location.atom,
       error: error.atom,
-      push: () => Effect.void,
-      replace: (next, options) => Effect.gen(function*() {
+      navigate: () => Effect.void,
+      replace: () => Effect.void,
+      pushDestination: () => Effect.void,
+      replaceDestination: (next, options) => Effect.gen(function*() {
         replaceAttempts++
         if (replaceAttempts === 1) {
           Deferred.doneUnsafe(firstReplaceStarted, Effect.void)

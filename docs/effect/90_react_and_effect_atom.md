@@ -91,8 +91,14 @@ do not contain Effect programs or anonymous transport calls. Successful
 mutations invalidate or refresh the narrow affected query families.
 
 Product transitions should be exposed through named mutation atoms rather than
-arbitrary setters spread through components. Navigation mutations additionally
-run through the single `makeRetryableCommands` module composed from
+arbitrary setters spread through components. Routing itself is an Effect
+service: workflows obtain it from the Layer and call its fully typed `navigate`
+or `replace` methods directly. Do not model each destination as a separate
+action atom. React may use one generic binding to that service for plain links
+or buttons.
+
+Navigation workflows that promise explicit retry additionally run the Effect
+through the single `makeRetryableCommands` module composed from
 `@proxus/frontend-core/navigation`: adapters receive its runner, while views
 read `failedAtom` and dispatch `retryAtom`. Views must not inspect several
 `AsyncResult` values or compare causes to decide which command to retry.

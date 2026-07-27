@@ -5,6 +5,8 @@ import {
   type NavigationOptions,
   type RouteDestination,
   type RouteEncodingError,
+  type RouteParams,
+  type RouteQuery,
   type RouteNotFound,
   type RouterCommandError,
   type RouterIdentifier,
@@ -12,6 +14,7 @@ import {
   type RouterObservableError,
   type RouterService,
   type RouterTag,
+  type RouterLayerOptions,
 } from "@proxus/frontend-core/routing"
 import { Effect, Layer, Queue, type Schema, Stream } from "effect"
 import * as Atom from "effect/unstable/reactivity/Atom"
@@ -43,12 +46,23 @@ interface BrowserRoutes<Destination extends RouteDestination> {
   readonly encodeDestination: (
     destination: Destination,
   ) => Effect.Effect<string, Schema.SchemaError | RouteEncodingError>
+  readonly encodeQuery: (
+    destination: Destination,
+  ) => Effect.Effect<string, Schema.SchemaError | RouteEncodingError>
+  readonly withQuery: (
+    destination: Destination,
+    search: string,
+  ) => Effect.Effect<Destination, Schema.SchemaError | RouteEncodingError>
+  readonly makeDestination: (id: string, path: RouteParams, query: RouteQuery) => Destination
   readonly decode: (
     pathname: string,
   ) => Effect.Effect<DecodedRoute<Destination>, RouteNotFound>
 }
 
-export interface BrowserRouterOptions<Destination extends RouteDestination> {
+export interface BrowserRouterOptions<
+  Destination extends RouteDestination,
+  ContextKey extends string = never,
+> extends RouterLayerOptions<ContextKey> {
   readonly notFound: (pathname: string) => Destination
   readonly navigation?: BrowserNavigation
 }
@@ -68,30 +82,33 @@ const navigationFailure = (
     : "Browser history operation failed",
 })
 
-export const browserRouterLayer = <Destination extends RouteDestination>(
-  routerTag: RouterTag<Destination>,
+export const browserRouterLayer = <
+  Destination extends RouteDestination,
+  ContextKey extends keyof Destination["params"] & string = never,
+>(
+  routerTag: RouterTag<NoInfer<Destination>, ContextKey>,
   routes: BrowserRoutes<Destination>,
-  options: BrowserRouterOptions<Destination>,
-): Layer.Layer<RouterIdentifier<Destination>> =>
+  options: BrowserRouterOptions<Destination, ContextKey>,
+): Layer.Layer<RouterIdentifier<Destination, ContextKey>> =>
   Layer.effect(routerTag, Effect.gen(function*() {
     const navigation = options.navigation ?? browserNavigation()
-    const resolve = (url: URL): Effect.Effect<BrowserRouterState<Destination>> =>
-      routes.decode(url.pathname).pipe(
-        Effect.map((decoded): BrowserRouterState<Destination> => ({
-          location: {
-            destination: decoded.destination,
-            search: url.search.slice(1),
-          },
+    const resolve = (url: URL): Effect.Effect<BrowserRouterState<Destination>> => {
+      const search = url.search.slice(1)
+      return routes.decode(url.pathname).pipe(
+        Effect.flatMap((decoded) => routes.withQuery(decoded.destination, search)),
+        Effect.map((destination): BrowserRouterState<Destination> => ({
+          location: { destination, search },
           error: undefined,
         })),
-        Effect.catchTag("RouteNotFound", (routeError) => Effect.succeed<BrowserRouterState<Destination>>({
+        Effect.catch((routeError) => Effect.succeed<BrowserRouterState<Destination>>({
           location: {
             destination: options.notFound(url.pathname),
-            search: url.search.slice(1),
+            search,
           },
           error: routeError,
         })),
       )
+    }
 
     const state = makeObservableValue(yield* resolve(navigation.currentUrl()))
     const current = Atom.map(state.atom, ({ location }) => location.destination)
@@ -146,6 +163,24 @@ export const browserRouterLayer = <Destination extends RouteDestination>(
         Effect.tapError((failure) => setError(failure)),
       )
 
+    const changeRoute = (
+      operation: "push" | "replace",
+      id: string,
+      input?: { readonly path?: RouteParams; readonly query?: RouteQuery },
+    ) => Effect.gen(function*() {
+      const currentParams = state.get().location.destination.params
+      const context = Object.fromEntries(
+        (options.contextParameters ?? []).map((key) => [key, currentParams[key]]),
+      )
+      const destination = routes.makeDestination(
+        id,
+        { ...context, ...input?.path },
+        input?.query ?? {},
+      )
+      const search = yield* routes.encodeQuery(destination)
+      yield* change(operation, destination, { search })
+    })
+
     const historyOperation = (
       operation: "back" | "forward",
       run: () => void,
@@ -157,12 +192,14 @@ export const browserRouterLayer = <Destination extends RouteDestination>(
       Effect.tapError((failure) => setError(failure)),
     )
 
-    const service: RouterService<Destination> = {
+    const service: RouterService<Destination, ContextKey> = {
       current,
       location,
       error,
-      push: (destination, navigationOptions) => change("push", destination, navigationOptions),
-      replace: (destination, navigationOptions) => change("replace", destination, navigationOptions),
+      navigate: (id, ...input) => changeRoute("push", id, input[0]),
+      replace: (id, ...input) => changeRoute("replace", id, input[0]),
+      pushDestination: (destination, navigationOptions) => change("push", destination, navigationOptions),
+      replaceDestination: (destination, navigationOptions) => change("replace", destination, navigationOptions),
       back: historyOperation("back", navigation.back),
       forward: historyOperation("forward", navigation.forward),
     }

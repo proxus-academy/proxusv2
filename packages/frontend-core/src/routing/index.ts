@@ -2,17 +2,23 @@ import { Context, Effect, Layer, Schema } from "effect"
 import * as Atom from "effect/unstable/reactivity/Atom"
 
 export type RouteParams = Readonly<Record<string, unknown>>
+export type RouteQuery = Readonly<Record<string, unknown>>
+export type EncodedRouteQuery = Readonly<Record<string, string | ReadonlyArray<string> | undefined>>
 
 declare const RouteParamsTypeId: unique symbol
+declare const RouteQueryTypeId: unique symbol
 const DestinationTypeId = Symbol.for("@proxus/frontend-core/routing/RouteDestination")
 
 type SegmentCodec<A> = Schema.Codec<A, string, never, never>
 type AnySegmentCodec = SegmentCodec<unknown>
+type QueryCodec<A extends RouteQuery> = Schema.Codec<A, EncodedRouteQuery, never, never>
+type AnyQueryCodec = QueryCodec<RouteQuery>
 
 type RuntimeRouteNode = {
   readonly id: string
   readonly children: readonly RuntimeRouteNode[]
   readonly terminal: boolean
+  readonly query?: AnyQueryCodec
 } & (
   | { readonly kind: "root" | "layout" | "index" }
   | { readonly kind: "path"; readonly segment: string }
@@ -24,11 +30,13 @@ export type RouteNode<
   Params extends RouteParams = RouteParams,
   Children extends readonly RuntimeRouteNode[] = readonly RuntimeRouteNode[],
   Terminal extends boolean = boolean,
+  Query extends RouteQuery = {},
 > = RuntimeRouteNode & {
   readonly id: Id
   readonly children: Children
   readonly terminal: Terminal
   readonly [RouteParamsTypeId]?: Params
+  readonly [RouteQueryTypeId]?: Query
 }
 
 export type RootRouteNode<
@@ -52,6 +60,11 @@ export function path<const Id extends string>(input: {
   readonly id: Id
   readonly path: string
 }): RouteNode<Id, {}, [], true>
+export function path<const Id extends string, Query extends RouteQuery>(input: {
+  readonly id: Id
+  readonly path: string
+  readonly query: QueryCodec<Query>
+}): RouteNode<Id, {}, [], true, Query>
 export function path<const Id extends string, const Children extends readonly RuntimeRouteNode[]>(input: {
   readonly id: Id
   readonly path: string
@@ -61,20 +74,47 @@ export function path(input: {
   readonly id: string
   readonly path: string
   readonly children?: readonly RuntimeRouteNode[]
+  readonly query?: AnyQueryCodec
 }): RuntimeRouteNode {
   const children = input.children ?? []
-  return { kind: "path", id: input.id, segment: input.path, children, terminal: children.length === 0 }
+  return {
+    kind: "path",
+    id: input.id,
+    segment: input.path,
+    children,
+    terminal: children.length === 0,
+    ...(input.query === undefined ? {} : { query: input.query }),
+  }
 }
 
-export const index = <const Id extends string>(input: {
+export function index<const Id extends string>(input: {
   readonly id: Id
-}): RouteNode<Id, {}, [], true> => ({ kind: "index", id: input.id, children: [], terminal: true })
+}): RouteNode<Id, {}, [], true>
+export function index<const Id extends string, Query extends RouteQuery>(input: {
+  readonly id: Id
+  readonly query: QueryCodec<Query>
+}): RouteNode<Id, {}, [], true, Query>
+export function index(input: { readonly id: string; readonly query?: AnyQueryCodec }): RuntimeRouteNode {
+  return {
+    kind: "index",
+    id: input.id,
+    children: [],
+    terminal: true,
+    ...(input.query === undefined ? {} : { query: input.query }),
+  }
+}
 
 export function param<const Id extends string, const Name extends string, A>(input: {
   readonly id: Id
   readonly name: Name
   readonly schema: SegmentCodec<A>
 }): RouteNode<Id, { readonly [Key in Name]: A }, [], true>
+export function param<const Id extends string, const Name extends string, A, Query extends RouteQuery>(input: {
+  readonly id: Id
+  readonly name: Name
+  readonly schema: SegmentCodec<A>
+  readonly query: QueryCodec<Query>
+}): RouteNode<Id, { readonly [Key in Name]: A }, [], true, Query>
 export function param<
   const Id extends string,
   const Name extends string,
@@ -91,12 +131,22 @@ export function param(input: {
   readonly name: string
   readonly schema: AnySegmentCodec
   readonly children?: readonly RuntimeRouteNode[]
+  readonly query?: AnyQueryCodec
 }): RuntimeRouteNode {
   const children = input.children ?? []
-  return { kind: "param", id: input.id, name: input.name, schema: input.schema, children, terminal: children.length === 0 }
+  return {
+    kind: "param",
+    id: input.id,
+    name: input.name,
+    schema: input.schema,
+    children,
+    terminal: children.length === 0,
+    ...(input.query === undefined ? {} : { query: input.query }),
+  }
 }
 
 type ParamsOf<Node extends AnyRouteNode> = NonNullable<Node[typeof RouteParamsTypeId]>
+type QueryOf<Node extends AnyRouteNode> = NonNullable<Node[typeof RouteQueryTypeId]>
 type Merge<Left, Right> = Omit<Left, keyof Right> & Right
 type IsTerminal<Node extends AnyRouteNode> = Node["terminal"] extends true ? true : false
 type ChildEntries<
@@ -111,7 +161,11 @@ type Entries<
   Depth extends readonly 1[] = [],
 > = Depth["length"] extends 16 ? never
   : IsTerminal<Node> extends true
-    ? { readonly id: Node["id"]; readonly params: Merge<ParentParams, ParamsOf<Node>> }
+    ? {
+        readonly id: Node["id"]
+        readonly params: Merge<ParentParams, ParamsOf<Node>>
+        readonly query: QueryOf<Node>
+      }
     : ChildEntries<
         Node["children"][number],
         Merge<ParentParams, ParamsOf<Node>>,
@@ -142,28 +196,48 @@ type MatchEntries<
 type ValidEntry<Entry> = Entry extends {
   readonly id: string
   readonly params: RouteParams
+  readonly query: RouteQuery
 } ? Entry : never
 
 type RouteEntry<Node extends AnyRouteNode> = ValidEntry<Entries<Node>>
 type RouteId<Node extends AnyRouteNode> = RouteEntry<Node>["id"]
 type EntryFor<Node extends AnyRouteNode, Id extends RouteId<Node>> = Extract<RouteEntry<Node>, { id: Id }>
-type InputFor<Entry extends { readonly params: RouteParams }> = keyof Entry["params"] extends never
-  ? []
-  : [params: Entry["params"]]
+type RequiredKeys<Value> = {
+  [Key in keyof Value]-?: {} extends Pick<Value, Key> ? never : Key
+}[keyof Value]
+type PathSection<Path extends RouteParams> = keyof Path extends never
+  ? {}
+  : { readonly path: Path }
+type QuerySection<Query extends RouteQuery> = keyof Query extends never
+  ? {}
+  : RequiredKeys<Query> extends never
+    ? { readonly query?: Query }
+    : { readonly query: Query }
+type DestinationInput<Entry extends { readonly params: RouteParams; readonly query: RouteQuery }> =
+  PathSection<Entry["params"]> & QuerySection<Entry["query"]>
+type InputFor<Entry extends { readonly params: RouteParams; readonly query: RouteQuery }> =
+  keyof Entry["params"] extends never
+    ? RequiredKeys<Entry["query"]> extends never
+      ? [input?: DestinationInput<Entry>]
+      : [input: DestinationInput<Entry>]
+    : [input: DestinationInput<Entry>]
 
 export interface RouteDestination<
   Id extends string = string,
   Params extends RouteParams = RouteParams,
+  Query extends RouteQuery = RouteQuery,
 > {
   readonly [DestinationTypeId]: true
   readonly id: Id
   readonly params: Params
+  readonly query: Query
 }
 
 type DestinationFor<Entry> = Entry extends {
   readonly id: string
   readonly params: RouteParams
-} ? RouteDestination<Entry["id"], Entry["params"]> : never
+  readonly query: RouteQuery
+} ? RouteDestination<Entry["id"], Entry["params"], Entry["query"]> : never
 
 export type DestinationOf<Node extends AnyRouteNode> = DestinationFor<RouteEntry<Node>>
 
@@ -209,13 +283,25 @@ export interface CompiledRoutes<Node extends AnyRouteNode> {
   readonly destination: <Id extends RouteId<Node>>(
     id: Id,
     ...input: InputFor<EntryFor<Node, Id>>
-  ) => RouteDestination<Id, EntryFor<Node, Id>["params"]>
+  ) => RouteDestination<Id, EntryFor<Node, Id>["params"], EntryFor<Node, Id>["query"]>
   readonly encode: (
     destination: DestinationOf<Node>,
   ) => Effect.Effect<string, Schema.SchemaError | RouteEncodingError>
   readonly encodeDestination: (
     destination: RouteDestination,
   ) => Effect.Effect<string, Schema.SchemaError | RouteEncodingError>
+  readonly encodeQuery: (
+    destination: DestinationOf<Node>,
+  ) => Effect.Effect<string, Schema.SchemaError | RouteEncodingError>
+  readonly withQuery: (
+    destination: DestinationOf<Node>,
+    search: string,
+  ) => Effect.Effect<DestinationOf<Node>, Schema.SchemaError | RouteEncodingError>
+  readonly makeDestination: (
+    id: string,
+    path: RouteParams,
+    query: RouteQuery,
+  ) => DestinationOf<Node>
   readonly decode: (
     pathname: string,
   ) => Effect.Effect<DecodedRoute<DestinationOf<Node>, MatchOf<Node>>, RouteNotFound>
@@ -231,16 +317,41 @@ function compiledDestination<
 >(
   id: Id,
   ...input: InputFor<EntryFor<Node, Id>>
-): RouteDestination<Id, EntryFor<Node, Id>["params"]>
+): RouteDestination<Id, EntryFor<Node, Id>["params"], EntryFor<Node, Id>["query"]>
 function compiledDestination(
   id: string,
-  params?: RouteParams,
+  input?: { readonly path?: RouteParams; readonly query?: RouteQuery },
 ): RouteDestination {
   return {
     [DestinationTypeId]: true,
     id,
-    params: params ?? {},
+    params: input?.path ?? {},
+    query: input?.query ?? {},
   }
+}
+
+function navigationDestination<Node extends AnyRouteNode>(
+  id: string,
+  params: RouteParams,
+  query: RouteQuery,
+): DestinationOf<Node>
+function navigationDestination(
+  id: string,
+  params: RouteParams,
+  query: RouteQuery,
+): RouteDestination {
+  return { [DestinationTypeId]: true, id, params, query }
+}
+
+function destinationWithQuery<Destination extends RouteDestination>(
+  destination: Destination,
+  query: RouteQuery,
+): Destination
+function destinationWithQuery(
+  destination: RouteDestination,
+  query: RouteQuery,
+): RouteDestination {
+  return { ...destination, query }
 }
 
 // This overload is the single typed boundary after the decoder has matched an ID
@@ -260,6 +371,7 @@ function decodedRoute(
       [DestinationTypeId]: true,
       id,
       params,
+      query: {},
     },
     matches,
   }
@@ -295,6 +407,9 @@ export const compile = <Node extends RootRouteNode>(tree: Node): CompiledRoutes<
     }
     if (node.kind === "param" && parameterNames.has(node.name)) {
       throw new RouteConfigurationError({ message: `Duplicate nested parameter name: ${node.name}` })
+    }
+    if (node.query !== undefined && !node.terminal) {
+      throw new RouteConfigurationError({ message: `Only terminal route ${node.id} may declare a query schema` })
     }
 
     const nextChain = [...chain, node]
@@ -346,7 +461,7 @@ export const compile = <Node extends RootRouteNode>(tree: Node): CompiledRoutes<
   const destination = <Id extends RouteId<Node>>(
     id: Id,
     ...input: InputFor<EntryFor<Node, Id>>
-  ): RouteDestination<Id, EntryFor<Node, Id>["params"]> =>
+  ): RouteDestination<Id, EntryFor<Node, Id>["params"], EntryFor<Node, Id>["query"]> =>
     compiledDestination<Node, Id>(id, ...input)
 
   const encodeDestination = (route: RouteDestination) => Effect.gen(function*() {
@@ -363,6 +478,44 @@ export const compile = <Node extends RootRouteNode>(tree: Node): CompiledRoutes<
     }
     return `/${segments.join("/")}`
   })
+
+  const queryCodecOf = (routeId: string): Effect.Effect<AnyQueryCodec | undefined, RouteEncodingError> => {
+    const record = terminalRoutes.get(routeId)
+    if (record === undefined) return Effect.fail(new RouteEncodingError({ routeId }))
+    return Effect.succeed(record.chain.at(-1)?.query)
+  }
+
+  const encodeQuery = (route: DestinationOf<Node> & RouteDestination) => Effect.gen(function*() {
+    const queryCodec = yield* queryCodecOf(route.id)
+    if (queryCodec === undefined) return ""
+    const encoded = yield* Schema.encodeEffect(queryCodec)(route.query)
+    const search = new URLSearchParams()
+    for (const [key, value] of Object.entries(encoded)) {
+      if (value === undefined) continue
+      if (typeof value === "string") {
+        search.set(key, value)
+      } else {
+        for (const item of value) search.append(key, item)
+      }
+    }
+    return search.toString()
+  })
+
+  const withQuery = (route: DestinationOf<Node> & RouteDestination, searchValue: string) => Effect.gen(function*() {
+    const queryCodec = yield* queryCodecOf(route.id)
+    if (queryCodec === undefined) return destinationWithQuery(route, {})
+    const search = new URLSearchParams(searchValue)
+    const encoded: Record<string, string | ReadonlyArray<string>> = {}
+    for (const key of new Set(search.keys())) {
+      const values = search.getAll(key)
+      encoded[key] = values.length === 1 ? values[0] ?? "" : values
+    }
+    const query = yield* Schema.decodeUnknownEffect(queryCodec)(encoded)
+    return destinationWithQuery(route, query)
+  })
+
+  const makeDestination = (id: string, params: RouteParams, query: RouteQuery): DestinationOf<Node> =>
+    navigationDestination<Node>(id, params, query)
 
   const decodeParts = (pathname: string): Effect.Effect<readonly string[], RouteNotFound> =>
     Effect.try({
@@ -436,9 +589,21 @@ export const compile = <Node extends RootRouteNode>(tree: Node): CompiledRoutes<
     destination,
     encode: (route) => encodeDestination(route),
     encodeDestination,
+    encodeQuery,
+    withQuery,
+    makeDestination,
     decode,
   }
 }
+
+export class DocumentNavigationError extends Schema.TaggedErrorClass<DocumentNavigationError>()(
+  "DocumentNavigationError",
+  { message: Schema.String },
+) {}
+
+export class DocumentNavigation extends Context.Service<DocumentNavigation, {
+  readonly assign: (url: string) => Effect.Effect<void, DocumentNavigationError>
+}>()("@proxus/frontend-core/routing/index/DocumentNavigation") {}
 
 export class NavigationError extends Schema.TaggedErrorClass<NavigationError>()(
   "NavigationError",
@@ -461,31 +626,83 @@ export interface NavigationOptions {
   readonly search?: string
 }
 
-export interface RouterService<Destination extends RouteDestination> {
+type RouteIdOf<Destination extends RouteDestination> = Destination["id"]
+type DestinationForId<Destination extends RouteDestination, Id extends RouteIdOf<Destination>> =
+  Extract<Destination, { readonly id: Id }>
+type NavigationPath<
+  Destination extends RouteDestination,
+  Id extends RouteIdOf<Destination>,
+  ContextKey extends string,
+> = Omit<DestinationForId<Destination, Id>["params"], ContextKey>
+type NavigationQuery<Destination extends RouteDestination, Id extends RouteIdOf<Destination>> =
+  DestinationForId<Destination, Id>["query"]
+export type NavigationInput<
+  Destination extends RouteDestination,
+  Id extends RouteIdOf<Destination>,
+  ContextKey extends string = never,
+> = PathSection<NavigationPath<Destination, Id, ContextKey>> & QuerySection<NavigationQuery<Destination, Id>>
+export type NavigationArguments<
+  Destination extends RouteDestination,
+  Id extends RouteIdOf<Destination>,
+  ContextKey extends string = never,
+> = keyof NavigationPath<Destination, Id, ContextKey> extends never
+  ? RequiredKeys<NavigationQuery<Destination, Id>> extends never
+    ? [input?: NavigationInput<Destination, Id, ContextKey>]
+    : [input: NavigationInput<Destination, Id, ContextKey>]
+  : [input: NavigationInput<Destination, Id, ContextKey>]
+
+export interface RouterService<
+  Destination extends RouteDestination,
+  ContextKey extends string = never,
+> {
   readonly current: Atom.Atom<Destination>
   readonly location: Atom.Atom<RouterLocation<Destination>>
   /** The latest routing failure. Successful navigation clears it. */
   readonly error: Atom.Atom<RouterObservableError | undefined>
-  readonly push: (destination: Destination, options?: NavigationOptions) => Effect.Effect<void, RouterCommandError>
-  readonly replace: (destination: Destination, options?: NavigationOptions) => Effect.Effect<void, RouterCommandError>
+  readonly navigate: <Id extends RouteIdOf<Destination>>(
+    id: Id,
+    ...input: NavigationArguments<Destination, Id, ContextKey>
+  ) => Effect.Effect<void, RouterCommandError>
+  readonly replace: <Id extends RouteIdOf<Destination>>(
+    id: Id,
+    ...input: NavigationArguments<Destination, Id, ContextKey>
+  ) => Effect.Effect<void, RouterCommandError>
+  /** Low-level escape hatch for preserving or editing an already encoded query. */
+  readonly pushDestination: (
+    destination: Destination,
+    options?: NavigationOptions,
+  ) => Effect.Effect<void, RouterCommandError>
+  /** Low-level escape hatch for preserving or editing an already encoded query. */
+  readonly replaceDestination: (
+    destination: Destination,
+    options?: NavigationOptions,
+  ) => Effect.Effect<void, RouterCommandError>
   readonly back: Effect.Effect<void, NavigationError>
   readonly forward: Effect.Effect<void, NavigationError>
 }
 
-export interface RouterIdentifier<Destination extends RouteDestination> {
+export interface RouterIdentifier<
+  Destination extends RouteDestination,
+  ContextKey extends string = never,
+> {
   readonly destination: Destination
+  readonly contextKey: ContextKey
 }
 
-export type RouterTag<Destination extends RouteDestination> = Context.Service<
-  RouterIdentifier<Destination>,
-  RouterService<Destination>
+export type RouterTag<
+  Destination extends RouteDestination,
+  ContextKey extends string = never,
+> = Context.Service<
+  RouterIdentifier<Destination, ContextKey>,
+  RouterService<Destination, ContextKey>
 >
 
-export const makeRouterService = <Destination extends RouteDestination>(
-  key: string,
-): RouterTag<Destination> => Context.Service<
-  RouterIdentifier<Destination>,
-  RouterService<Destination>
+export const makeRouterService = <
+  Destination extends RouteDestination,
+  ContextKey extends string = never,
+>(key: string): RouterTag<Destination, ContextKey> => Context.Service<
+  RouterIdentifier<Destination, ContextKey>,
+  RouterService<Destination, ContextKey>
 >(key)
 
 export const makeObservableValue = <Value>(initial: Value) => {
@@ -507,10 +724,24 @@ export const makeObservableValue = <Value>(initial: Value) => {
   }
 }
 
-export const memoryRouterLayer = <Destination extends RouteDestination>(
-  routerTag: RouterTag<Destination>,
+export interface RouterRoutes<Destination extends RouteDestination> {
+  readonly makeDestination: (id: string, path: RouteParams, query: RouteQuery) => Destination
+  readonly encodeQuery: (destination: Destination) => Effect.Effect<string, Schema.SchemaError | RouteEncodingError>
+}
+
+export interface RouterLayerOptions<ContextKey extends string> {
+  readonly contextParameters?: ReadonlyArray<ContextKey>
+}
+
+export const memoryRouterLayer = <
+  Destination extends RouteDestination,
+  ContextKey extends keyof Destination["params"] & string = never,
+>(
+  routerTag: RouterTag<Destination, ContextKey>,
+  routes: RouterRoutes<Destination>,
   initial: Destination,
-): Layer.Layer<RouterIdentifier<Destination>> =>
+  options: RouterLayerOptions<ContextKey> = {},
+): Layer.Layer<RouterIdentifier<Destination, ContextKey>> =>
   Layer.sync(routerTag, () => {
     interface RouterState {
       readonly location: RouterLocation<Destination>
@@ -530,27 +761,53 @@ export const memoryRouterLayer = <Destination extends RouteDestination>(
       cursor = next
       state.set({ location: selected, error: undefined })
     })
+    const changeDestination = (
+      operation: "push" | "replace",
+      destination: Destination,
+      search: string,
+    ) => Effect.sync(() => {
+      const next: RouterLocation<Destination> = { destination, search }
+      if (operation === "push") {
+        history = [...history.slice(0, cursor + 1), next]
+        cursor++
+      } else {
+        history = history.map((item, indexValue) => indexValue === cursor ? next : item)
+      }
+      state.set({ location: next, error: undefined })
+    })
+    const changeRoute = (
+      operation: "push" | "replace",
+      id: string,
+      input?: { readonly path?: RouteParams; readonly query?: RouteQuery },
+    ) => Effect.gen(function*() {
+      const currentParams = state.get().location.destination.params
+      const context = Object.fromEntries(
+        (options.contextParameters ?? []).map((key) => [key, currentParams[key as string]]),
+      )
+      const destination = routes.makeDestination(
+        id,
+        { ...context, ...input?.path },
+        input?.query ?? {},
+      )
+      const search = yield* routes.encodeQuery(destination)
+      yield* changeDestination(operation, destination, search)
+    })
     return routerTag.of({
       current,
       location,
       error,
-      push: (destination, options) => Effect.sync(() => {
-        const next: RouterLocation<Destination> = {
-          destination,
-          search: options?.search ?? state.get().location.search,
-        }
-        history = [...history.slice(0, cursor + 1), next]
-        cursor++
-        state.set({ location: next, error: undefined })
-      }),
-      replace: (destination, options) => Effect.sync(() => {
-        const next: RouterLocation<Destination> = {
-          destination,
-          search: options?.search ?? state.get().location.search,
-        }
-        history = history.map((item, indexValue) => indexValue === cursor ? next : item)
-        state.set({ location: next, error: undefined })
-      }),
+      navigate: (id, ...input) => changeRoute("push", id, input[0]),
+      replace: (id, ...input) => changeRoute("replace", id, input[0]),
+      pushDestination: (destination, navigationOptions) => changeDestination(
+        "push",
+        destination,
+        navigationOptions?.search ?? state.get().location.search,
+      ),
+      replaceDestination: (destination, navigationOptions) => changeDestination(
+        "replace",
+        destination,
+        navigationOptions?.search ?? state.get().location.search,
+      ),
       back: Effect.suspend(() => select(cursor - 1)),
       forward: Effect.suspend(() => select(cursor + 1)),
     })

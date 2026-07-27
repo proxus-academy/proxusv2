@@ -41,7 +41,8 @@ export const makeWebRegistrationWizardNavigation = <Destination extends RouteDes
 
   const navigate = (operation: "push" | "replace", step: RegistrationStep, path: RegistrationPath, get: Atom.FnContext) => {
     const location = get(router.location)
-    return router[operation](location.destination, { search: encodeQuery(location.search, step, path) })
+    const change = operation === "push" ? router.pushDestination : router.replaceDestination
+    return change(location.destination, { search: encodeQuery(location.search, step, path) })
   }
   const push = (step: RegistrationStep, path: RegistrationPath, get: Atom.FnContext): Effect.Effect<void, RouterCommandError> => navigate("push", step, path, get)
   const replace = (step: RegistrationStep, path: RegistrationPath, get: Atom.FnContext): Effect.Effect<void, RouterCommandError> => navigate("replace", step, path, get)

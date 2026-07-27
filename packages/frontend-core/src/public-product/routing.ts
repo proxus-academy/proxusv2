@@ -41,4 +41,4 @@ export type PublicProductDestination = DestinationOf<
 
 /** Each application keeps a distinct Effect service identity while sharing the route contract. */
 export const makePublicProductRouterService = (identifier: string) =>
-  makeRouterService<PublicProductDestination>(identifier)
+  makeRouterService<PublicProductDestination, "locale">(identifier)

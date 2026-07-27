@@ -3,8 +3,6 @@ import type { RouteDestination, RouterService } from "@proxus/frontend-core/rout
 import { Schema } from "effect"
 import * as Atom from "effect/unstable/reactivity/Atom"
 
-export const assignBrowserLocation = (url: string): void => window.location.assign(url)
-
 export const AuthStepParam = Schema.Literals(["login", "forgot", "pending", "code", "new-password", "done"])
 export type AuthStep = typeof AuthStepParam.Type
 
@@ -13,7 +11,7 @@ export const makeWebAuthNavigation = <D extends RouteDestination>(router: Router
     const location = get(router.location)
     const search = new URLSearchParams(location.search)
     search.set("step", step)
-    return runner.run(get, router.push(location.destination, { search: search.toString() }))
+    return runner.run(get, router.pushDestination(location.destination, { search: search.toString() }))
   })
   return { pushAtom }
 }

@@ -5,9 +5,11 @@
 Required React architecture for `apps/web`, `apps/mobile-web`, the future
 `apps/admin`, and future React Native clients.
 
-This document defines React rendering and synchronization rules. Application
-state, remote state, mutations, forms, and Effect runtime integration follow
-[`effect/90_react_and_effect_atom.md`](effect/90_react_and_effect_atom.md). Browser and
+This document defines React rendering and synchronization rules. Frontend module
+organization and state ownership follow
+[`architecture/atom-first-frontend.md`](architecture/atom-first-frontend.md).
+Application state, remote state, mutations, forms, and Effect runtime integration
+follow [`effect/90_react_and_effect_atom.md`](effect/90_react_and_effect_atom.md). Browser and
 device capabilities additionally follow
 [`architecture/client-platform-ports-and-adapters.md`](architecture/client-platform-ports-and-adapters.md).
 
@@ -173,10 +175,12 @@ invalid values through a scoped router lifecycle (including after `popstate`),
 not merely project them to a local fallback. Every product path starts with
 the validated locale segment (`/:locale/...`); composition roots safely replace
 missing, legacy, or invalid forms with a canonical locale-prefixed destination.
-Components consume route atoms and command adapters; they do not read `window`,
-parse URLs, create Layers, or run Effects during render. URL-backed product
-transitions are named Effect function atoms, not writable projections that
-launch detached fibers. The composition root creates one navigation-command
+Components consume route atoms and, for plain navigation, one generic React
+binding to the router; they do not read `window`, parse URLs, create Layers, or
+run Effects during render. Workflows obtain the router service from the Layer
+and call its typed `navigate` or `replace` methods; there is no action per
+destination. URL-backed product transitions remain named function atoms, not
+writable projections that launch detached fibers. The composition root creates one navigation-command
 module with `makeRetryableCommands` from `@proxus/frontend-core/navigation`
 and injects its runner into canonical locale/path, registration, and locale
 operations. The module retains
@@ -187,7 +191,8 @@ Token-checked success clears only its corresponding failure and manual retry
 re-executes that captured command. Views consume only its derived `failedAtom` and `retryAtom`; they do not
 correlate command `AsyncResult` causes with `Router.error`. Storage, `document`
 attributes, and analytics caused by a transition run only after
-`Router.replace` succeeds; a failed replacement leaves all of them unchanged.
+the corresponding router operation (`replace` or the incremental
+`replaceDestination` escape hatch) succeeds; a failed replacement leaves all of them unchanged.
 
 ## Legitimate effects
 

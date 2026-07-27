@@ -7,6 +7,14 @@ import type { DestinationOf, RouteDestination, RouterService } from "./index.js"
 const definition = root({ id: "root", children: [
   layout({ id: "shell", children: [
     index({ id: "home" }),
+    path({
+      id: "search",
+      path: "search",
+      query: Schema.Struct({
+        id: Schema.String,
+        page: Schema.optional(Schema.NumberFromString),
+      }),
+    }),
     path({ id: "users", path: "users", children: [
       path({ id: "new-user", path: "new" }),
       param({ id: "user", name: "userId", schema: Schema.NumberFromString, children: [
@@ -25,7 +33,7 @@ describe("routing compiler", () => {
       compile(path({ id: "orphan", path: "orphan" }))
     }
 
-    const destination = router.destination("edit-user", { userId: 42 })
+    const destination = router.destination("edit-user", { path: { userId: 42 } })
     const encoded = Effect.runSync(router.encode(destination))
     expect(encoded).toBe("/users/42/edit")
     expect(Effect.runSync(router.decode(encoded))).toMatchObject({
@@ -61,14 +69,33 @@ describe("routing compiler", () => {
   })
 
   it("preserves destination ids and parameter types", () => {
-    const valid = router.destination("edit-user", { userId: 1 })
+    const valid = router.destination("edit-user", { path: { userId: 1 } })
     const typed: RouteDestination<"edit-user", { readonly userId: number }> = valid
     expect(typed).toBeDefined()
     // @ts-expect-error userId is decoded as a number
-    const invalid = router.destination("edit-user", { userId: "1" })
+    const invalid = router.destination("edit-user", { path: { userId: "1" } })
     // @ts-expect-error parent nodes are matches, not final destinations
     const parent = router.destination("users")
     expect([invalid, parent]).toBeDefined()
+  })
+
+  it("keeps path and query inputs separate and schema-typed", () => {
+    const destination = router.destination("search", {
+      query: { id: "effect", page: 2 },
+    })
+    expect(Effect.runSync(router.encodeQuery(destination))).toBe("id=effect&page=2")
+    expect(Effect.runSync(router.withQuery(destination, "id=router&page=3"))).toMatchObject({
+      id: "search",
+      params: {},
+      query: { id: "router", page: 3 },
+    })
+    if (false) {
+      // @ts-expect-error required query fields cannot be omitted
+      const missingQuery = router.destination("search")
+      // @ts-expect-error encoded URL strings are decoded to numbers for application code
+      const invalidQuery = router.destination("search", { query: { id: "effect", page: "2" } })
+      expect([missingQuery, invalidQuery]).toBeDefined()
+    }
   })
 
   it("round-trips Unicode and reserved characters through segment codecs", () => {
@@ -77,7 +104,7 @@ describe("routing compiler", () => {
     ] })
     const textRoutes = compile(textDefinition)
     const value = "España/日本語 ?#%"
-    const encoded = Effect.runSync(textRoutes.encode(textRoutes.destination("value", { value })))
+    const encoded = Effect.runSync(textRoutes.encode(textRoutes.destination("value", { path: { value } })))
     expect(encoded).toBe(`/${encodeURIComponent(value)}`)
     expect(Effect.runSync(textRoutes.decode(encoded)).destination.params).toEqual({ value })
   })
@@ -88,7 +115,7 @@ describe("routing compiler", () => {
         path({ id: "register", path: "register" }),
       ] }),
     ] }))
-    expect(Effect.runSync(localized.encode(localized.destination("register", { locale: "en" })))).toBe("/en/register")
+    expect(Effect.runSync(localized.encode(localized.destination("register", { path: { locale: "en" } })))).toBe("/en/register")
     expect(Effect.runSync(localized.decode("/es/register")).destination.params).toEqual({ locale: "es" })
     expect(Effect.runSyncExit(localized.decode("/fr/register"))._tag).toBe("Failure")
   })
@@ -120,7 +147,7 @@ describe("memory router", () => {
     const otherDestination = otherRoutes.destination("other-home")
     const rejectOtherRouter = (service: RouterService<TestDestination>) =>
       // @ts-expect-error router services preserve their compiled destination union
-      service.push(otherDestination)
+      service.pushDestination(otherDestination)
     expect(rejectOtherRouter).toBeDefined()
   })
 
@@ -128,25 +155,44 @@ describe("memory router", () => {
     const Router = makeRouterService<TestDestination>("@proxus/frontend-core/routing/test/Router")
     const home = router.destination("home")
     const newUser = router.destination("new-user")
-    const editUser = router.destination("edit-user", { userId: 1 })
+    const editUser = router.destination("edit-user", { path: { userId: 1 } })
     const registry = AtomRegistry.make()
     const test = Effect.scoped(Effect.gen(function*() {
-      const context = yield* Layer.build(memoryRouterLayer(Router, home))
+      const context = yield* Layer.build(memoryRouterLayer(Router, router, home))
       return yield* Effect.gen(function*() {
         const service = yield* Router
-        yield* service.push(editUser, { search: "step=country" })
-        yield* service.push(newUser, { search: "step=university" })
+        yield* service.pushDestination(editUser, { search: "step=country" })
+        yield* service.pushDestination(newUser, { search: "step=university" })
         yield* service.back
         expect(registry.get(service.current).id).toBe("edit-user")
         expect(registry.get(service.location).search).toBe("step=country")
         yield* service.forward
         expect(registry.get(service.current).id).toBe("new-user")
         expect(registry.get(service.location).search).toBe("step=university")
-        yield* service.replace(home, { search: "step=complete" })
+        yield* service.replaceDestination(home, { search: "step=complete" })
         expect(registry.get(service.location)).toMatchObject({
           destination: { id: "home" },
           search: "step=complete",
         })
+        yield* service.navigate("edit-user", { path: { userId: 7 } })
+        expect(registry.get(service.current)).toMatchObject({
+          id: "edit-user",
+          params: { userId: 7 },
+        })
+        yield* service.navigate("search", { query: { id: "effect", page: 2 } })
+        expect(registry.get(service.location)).toMatchObject({
+          destination: { id: "search", params: {}, query: { id: "effect", page: 2 } },
+          search: "id=effect&page=2",
+        })
+        if (false) {
+          // @ts-expect-error edit-user has a required path parameter
+          const missingPath = service.navigate("edit-user")
+          // @ts-expect-error search has a required query id
+          const missingQuery = service.navigate("search")
+          // @ts-expect-error page is represented as a number in application code
+          const invalidPage = service.navigate("search", { query: { id: "effect", page: "2" } })
+          expect([missingPath, missingQuery, invalidPage]).toBeDefined()
+        }
       }).pipe(Effect.provide(context))
     }))
     Effect.runSync(test)

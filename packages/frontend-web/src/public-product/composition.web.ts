@@ -3,6 +3,7 @@ import { makeRetryableCommands } from "@proxus/frontend-core/navigation"
 import {
   makePublicProductRouterService,
   publicProductRoutes,
+  type PublicProductDestination,
 } from "@proxus/frontend-core/public-product"
 import { makeRegistrationAtoms } from "@proxus/frontend-core/registration"
 import {
@@ -43,14 +44,17 @@ export const makePublicWebProductComposition = Effect.fn(
   const navigation = makeRetryableCommands()
   const AppRouter = makePublicProductRouterService(routerIdentifier)
   const fallback = () => publicProductRoutes.destination("registration", {
-    locale: preferredBrowserLocale(),
+    path: { locale: preferredBrowserLocale() },
   })
   const runtime = ManagedRuntime.make(
-    browserRouterLayer(AppRouter, publicProductRoutes, { notFound: fallback }),
+    browserRouterLayer<PublicProductDestination, "locale">(AppRouter, publicProductRoutes, {
+      notFound: fallback,
+      contextParameters: ["locale"],
+    }),
   )
   const router = yield* Effect.promise(() => runtime.runPromise(AppRouter))
   const destination = (locale: Locale) =>
-    publicProductRoutes.destination("registration", { locale })
+    publicProductRoutes.destination("registration", { path: { locale } })
   const applyDocumentLocale = (locale: Locale) => {
     document.documentElement.lang = locale
     document.documentElement.dir = "ltr"
