@@ -7,13 +7,11 @@ Este archivo define las reglas globales para agentes que trabajan en el reposito
 Proxus v2 es un workspace `pnpm` full-stack basado en TypeScript, Effect v4 y React.
 
 - `apps/server`: API HTTP tipada y backend Effect. Usa PGlite durante el desarrollo y PostgreSQL en producción, con persistencia y migraciones Drizzle.
-- `apps/web`: aplicación web principal.
-- `apps/mobile-web`: aplicación web orientada a móvil.
+- `apps/web`: aplicación web pública y propietaria de sus adapters de navegador.
 - `apps/admin`: aplicación administrativa.
 - `apps/storybook`: entorno Storybook del sistema de diseño.
 - `packages/shared`: contratos, schemas y modelos compartidos entre clientes y servidor.
 - `packages/frontend-core`: estado y lógica frontend independientes de una plataforma concreta.
-- `packages/frontend-web`: integración y adaptadores específicos de React web.
 - `packages/ui`: componentes reutilizables y sistema de diseño.
 
 Los frontends se encuentran en distintos grados de desarrollo; no deben tratarse automáticamente como shells vacíos. `study-catalog` es la principal implementación de referencia para el flujo backend completo.
@@ -70,9 +68,7 @@ Un bounded context usa el mismo nombre de módulo en las capas que realmente par
 - `packages/shared`
 - `apps/server/src/modules/<module>`
 - `packages/frontend-core`
-- `packages/frontend-web`
 - `apps/web`
-- `apps/mobile-web`
 - `apps/admin`
 
 No todos los cambios requieren presencia en todas las capas. No crees directorios o wrappers vacíos solo para mantener una simetría artificial.
@@ -87,7 +83,7 @@ El frontend sigue un enfoque atom-first con Effect Atom:
 - El estado de aplicación, estado remoto, URL reactiva, mutaciones y formularios se modelan primero con atoms cuando corresponda.
 - El estado puramente visual y local puede permanecer en el componente; no eleves estado sin necesidad.
 - La lógica compartida e independiente de plataforma pertenece a `packages/frontend-core`.
-- Los adaptadores e integración específicos de React web pertenecen a `packages/frontend-web`.
+- Los adapters e integración específicos del navegador pertenecen a `apps/web/src/platform`; Admin posee sus propios adapters.
 - Los componentes reutilizables y primitives visuales pertenecen a `packages/ui`.
 - Las aplicaciones componen rutas, pantallas y comportamiento específico del producto; no deben duplicar lógica compartible sin motivo.
 - Mantén el branching de carga, éxito y error visible y cerca de la superficie que lo presenta.
@@ -161,7 +157,7 @@ pnpm test
 pnpm build
 ```
 
-`pnpm static` incluye diagnostics de Effect para los 15 proyectos TypeScript del workspace (también sus configs TS), typecheck, ESLint type-aware, dependency-cruiser, Knip y contratos de packages. No existe baseline de hallazgos aceptados ni deben añadirse allowlists para ocultarlos. `pnpm validate:pr` ejecuta el self-test, `static`, los tests Vitest/PGlite implementados y los builds.
+`pnpm static` incluye diagnostics de Effect para los 13 proyectos TypeScript del workspace (también sus configs TS), typecheck, ESLint type-aware, dependency-cruiser, Knip y contratos de packages. No existe baseline de hallazgos aceptados ni deben añadirse allowlists para ocultarlos. `pnpm validate:pr` ejecuta el self-test, `static`, los tests Vitest/PGlite implementados y los builds.
 
 `pnpm check` conserva el atajo histórico `typecheck` + `build`; no incluye tests ni el resto de validadores estáticos. `check`, `static` y `validate:pr` no requieren PostgreSQL ni Docker; el workflow añade un job separado con PostgreSQL 17 que ejecuta migraciones y `@proxus/backend-infra test:postgres` como gate real mínimo. Los journeys de browser siguen pendientes y no son un gate. Consulta `docs/testing.md` antes de describir la cobertura real.
 

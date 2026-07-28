@@ -1,7 +1,7 @@
 # Ports y adapters de plataforma cliente
 
 > **Estado:** normativa de arquitectura frontend  
-> **Alcance:** `apps/web`, `apps/mobile-web`, `apps/admin` y futuros clientes React Native
+> **Alcance:** `apps/web`, `apps/admin` y futuros clientes React Native
 
 ## Regla central
 
@@ -40,7 +40,7 @@ packages/frontend-core/src/<module>/
   atoms.ts              # factory que recibe ports
   testing.ts            # adapters en memoria
 
-packages/frontend-web/src/<module>/
+apps/web/src/platform/<module>/
   *.web.ts              # URL, browser storage, host APIs
 
 apps/<native>/src/platform/
@@ -68,7 +68,7 @@ Cada ruta terminal separa explícitamente sus entradas:
 - parámetros contextuales heredados, como `locale`, que el router conserva sin exigirlos en cada llamada.
 
 ```ts
-const router = yield* PublicRouter
+const router = yield* Router
 
 yield* router.navigate("password-recovery-code")
 yield* router.navigate("study-search", {

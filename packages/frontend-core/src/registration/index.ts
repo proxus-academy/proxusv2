@@ -34,9 +34,7 @@ export {
   goBackRegistrationPath,
 } from "./transitions.js"
 export {
-  registrationAccountForm,
   registrationAccountFormBuilder,
-  registrationProfileForm,
   registrationProfileFormBuilder,
 } from "./forms.js"
 export {

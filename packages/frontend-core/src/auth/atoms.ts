@@ -1,4 +1,4 @@
-import type { CompleteGoogleRegistrationInput, GoogleCallbackInput, RegisterWithEmailInput, RequestPasswordResetInput, ResendVerificationInput, ResetPasswordInput, VerifyEmailInput } from "@proxus/shared/auth"
+import type { CompleteGoogleRegistrationInput, GoogleCallbackInput, LoginWithPasswordInput, RegisterWithEmailInput, RequestPasswordResetInput, ResendVerificationInput, ResetPasswordInput, VerifyEmailInput } from "@proxus/shared/auth"
 import { Cause, Effect } from "effect"
 import * as AsyncResult from "effect/unstable/reactivity/AsyncResult"
 import * as Atom from "effect/unstable/reactivity/Atom"
@@ -25,6 +25,15 @@ export const makeAuthAtoms = <R, ER = never>(runtime: Atom.AtomRuntime<import("e
           get.set(sessionAtom, AsyncResult.success(session))
         }),
       }),
+    ),
+  )
+
+  const loginAtom = runtime.fn((input: LoginWithPasswordInput, get) =>
+    publicApiClient.pipe(
+      Effect.flatMap((client) => client.auth.loginWithPassword({ payload: input })),
+      Effect.tap((session) => Effect.sync(() => {
+        get.set(sessionAtom, AsyncResult.success(session))
+      })),
     ),
   )
 
@@ -78,6 +87,7 @@ export const makeAuthAtoms = <R, ER = never>(runtime: Atom.AtomRuntime<import("e
   return {
     sessionAtom,
     restoreSessionAtom,
+    loginAtom,
     registerWithEmailAtom,
     verifyEmailAtom,
     resendVerificationAtom,

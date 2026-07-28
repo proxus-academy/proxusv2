@@ -116,20 +116,20 @@ export default {
     errorRule(
       "frontend-does-not-depend-on-backend",
       "Frontend layers and clients cannot import backend implementation packages.",
-      { path: "^(apps/(admin|mobile-web|storybook|web)(?:/|$)|packages/(frontend-(core|web)|product-messages|ui)(?:/|$))" },
+      { path: "^(apps/(admin|storybook|web)(?:/|$)|packages/(frontend-core|product-messages|ui)(?:/|$))" },
       { path: "^(apps/(admin-server|server)(?:/|$)|packages/backend-)" }
     ),
     errorRule(
       "backend-does-not-depend-on-frontend",
       "Backend layers and servers cannot import frontend implementation packages.",
       { path: "^(apps/(admin-server|server)(?:/|$)|packages/backend-)" },
-      { path: "^(apps/(admin|mobile-web|storybook|web)(?:/|$)|packages/(frontend-(core|web)|product-messages|ui)(?:/|$))" }
+      { path: "^(apps/(admin|storybook|web)(?:/|$)|packages/(frontend-core|product-messages|ui)(?:/|$))" }
     ),
     errorRule(
       "frontend-core-is-platform-neutral",
       "Frontend core owns neutral atoms and ports, not web adapters or visual components.",
       { path: "^packages/frontend-core/src" },
-      { path: "^(apps|packages/(frontend-web|ui)(?:/|$))" }
+      { path: "^(apps|packages/ui(?:/|$))" }
     ),
     errorRule(
       "ui-has-no-product-logic",

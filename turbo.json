@@ -12,11 +12,6 @@
       "env": ["PUBLIC_*", "VITE_*"],
       "outputs": ["dist/**"]
     },
-    "@proxus/mobile-web#build": {
-      "dependsOn": ["^build"],
-      "env": ["PUBLIC_*", "VITE_*"],
-      "outputs": ["dist/**"]
-    },
     "@proxus/storybook#build": {
       "dependsOn": ["^build"],
       "env": ["PUBLIC_*", "VITE_*"],

@@ -1,10 +1,10 @@
 import { RegistryProvider, useAtomValue } from "@effect/atom-react"
-import { FormMessagesProvider } from "@proxus/frontend-web/form"
+import { FormMessagesProvider } from "./platform/form/index.js"
 import { StrictMode } from "react"
 import { createRoot } from "react-dom/client"
 import { App } from "./App.js"
 import { webRuntimeInitialValues } from "./runtime-layers.js"
-import { disposePublicRouter, messagesCatalogAtom } from "./routes/public-router.js"
+import { disposeRouter, messagesCatalogAtom } from "./routes/router.js"
 import "./app.css"
 
 const root = document.getElementById("root")
@@ -29,5 +29,5 @@ reactRoot.render(
 const hot = (import.meta as ImportMeta & { readonly hot?: { readonly dispose: (cleanup: () => void) => void } }).hot
 if (hot !== undefined) hot.dispose(() => {
   reactRoot.unmount()
-  void disposePublicRouter()
+  void disposeRouter()
 })

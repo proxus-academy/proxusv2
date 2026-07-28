@@ -81,7 +81,6 @@ git submodule update --init --recursive
 | API pública Effect | http://localhost:3000 | `pnpm dev:server` |
 | API administrativa Effect | http://localhost:3001 | `pnpm dev:admin-server` |
 | Web | http://localhost:5173 | `pnpm dev:web-front` |
-| Mobile web | http://localhost:5174 | `pnpm dev:mobile-web-front` |
 | Admin | http://localhost:5175 | `pnpm dev:admin-front` |
 | Storybook | http://localhost:6006 | `pnpm dev:storybook` |
 | Motel | http://127.0.0.1:27686 | `pnpm dev:motel` |
@@ -97,14 +96,12 @@ pnpm --filter @proxus/backend-infra db:seed:pglite
 pnpm dev
 ```
 
-`pnpm dev` inicia ambas APIs, web, mobile-web y admin. También hay composiciones más pequeñas:
+`pnpm dev` inicia ambas APIs, web y admin. También hay composiciones más pequeñas:
 
 | Composición | Comando |
 | --- | --- |
 | APIs pública y administrativa + admin | `pnpm dev:admin` |
 | API pública + web | `pnpm dev:web` |
-| API pública + mobile web | `pnpm dev:mobile-web` |
-| API pública + web + mobile web | `pnpm dev:web-mobile` |
 | Todo | `pnpm dev` |
 
 Storybook y Motel son opcionales y se inician por separado.
@@ -180,14 +177,11 @@ Actualmente Proxus todavía no exporta telemetría, por lo que Motel permanecer�
 pnpm dev
 pnpm dev:admin
 pnpm dev:web
-pnpm dev:mobile-web
-pnpm dev:web-mobile
 
 # Procesos individuales
 pnpm dev:server
 pnpm dev:admin-server
 pnpm dev:web-front
-pnpm dev:mobile-web-front
 pnpm dev:admin-front
 
 pnpm dev:storybook

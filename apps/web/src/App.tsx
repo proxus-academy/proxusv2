@@ -1,8 +1,8 @@
 import { useAtomValue } from "@effect/atom-react"
-import { localeLifecycleAtom } from "./routes/public-router.js"
-import { PublicRouterPage } from "./routes/public-router-page.js"
+import { localeLifecycleAtom } from "./routes/router.js"
+import { AppRoutes } from "./routes/app-routes.js"
 
 export function App() {
   useAtomValue(localeLifecycleAtom)
-  return <PublicRouterPage />
+  return <AppRoutes />
 }

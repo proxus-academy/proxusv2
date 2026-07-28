@@ -1,6 +1,6 @@
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { recoveryStateAtom } from "@proxus/frontend-core/auth"
-import { useFormMessages } from "@proxus/frontend-web/form"
+import { useFormMessages } from "../../platform/form/index.js"
 import { Button, Text } from "@proxus/ui"
 import { AuthError, BackToLoginButton } from "../../modules/auth/auth-controls.js"
 import { backToLoginAction, submitPasswordRecoveryAction } from "../../modules/auth/actions.js"
@@ -10,6 +10,7 @@ import { AuthPage } from "../../patterns/auth-page.js"
 export function PasswordRecoveryPage() {
   const recovery = useAtomValue(recoveryStateAtom)
   const submit = useAtomSet(submitPasswordRecoveryAction)
+  const submitForm = useAtomSet(ForgotPasswordForm.submit)
   const result = useAtomValue(submitPasswordRecoveryAction)
   const back = useAtomSet(backToLoginAction)
   const messages = useFormMessages()
@@ -18,10 +19,13 @@ export function PasswordRecoveryPage() {
   return (
     <AuthPage title={copy.title}>
       <Text tone="muted">{copy.description}</Text>
-      <ForgotPasswordForm.Provider defaultValues={{ email: recovery.email }}>
-        <ForgotPasswordForm.Form
+      <ForgotPasswordForm.Initialize defaultValues={{ email: recovery.email }}>
+        <form
           className="space-y-4"
-          getSubmitArgs={() => (value) => submit({ email: value.email })}
+          onSubmit={(event) => {
+            event.preventDefault()
+            submitForm((value: { readonly email: string }) => submit({ email: value.email }))
+          }}
         >
           <ForgotPasswordForm.email
             label={messages.auth.login.email}
@@ -30,11 +34,9 @@ export function PasswordRecoveryPage() {
             autoComplete="email"
           />
           <AuthError visible={result._tag === "Failure"} />
-          <ForgotPasswordForm.Submit asChild>
-            <Button disabled={result.waiting}>{copy.submit}</Button>
-          </ForgotPasswordForm.Submit>
-        </ForgotPasswordForm.Form>
-      </ForgotPasswordForm.Provider>
+          <Button type="submit" disabled={result.waiting}>{copy.submit}</Button>
+        </form>
+      </ForgotPasswordForm.Initialize>
       <BackToLoginButton onClick={() => back()} />
     </AuthPage>
   )

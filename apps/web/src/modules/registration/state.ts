@@ -12,7 +12,7 @@ import {
   type RegistrationStep,
 } from "@proxus/frontend-core/registration"
 import { DocumentNavigation } from "@proxus/frontend-core/routing"
-import { makeWebRegistrationDraftStorage } from "@proxus/frontend-web/registration"
+import { makeWebRegistrationDraftStorage } from "../../platform/registration/index.js"
 import {
   CompleteGoogleRegistrationInput,
   GoogleCallbackInput,
@@ -23,12 +23,12 @@ import {
 import { Effect, Schema } from "effect"
 import * as Atom from "effect/unstable/reactivity/Atom"
 import {
-  PublicRouter,
-  publicRouterRuntime,
+  Router,
+  routerRuntime,
   pushRegistrationStep,
   registrationUrlStateAtom,
   routeLocationAtom,
-} from "../../routes/public-router.js"
+} from "../../routes/router.js"
 import {
   registrationCompletedAnalyticsAction,
   registrationStartedAnalyticsAction,
@@ -92,7 +92,7 @@ export const beginEmailRegistrationAction = Atom.fn<void>()((_input, get) => Eff
   yield* get.setResult(dispatchRegistrationAction, { _tag: "EmailStarted" })
 }))
 
-export const beginGoogleRegistrationAction = publicRouterRuntime.fn((_input: void, get) => Effect.gen(function*() {
+export const beginGoogleRegistrationAction = routerRuntime.fn((_input: void, get) => Effect.gen(function*() {
   const documentNavigation = yield* DocumentNavigation
   yield* get.setResult(registrationStartedAnalyticsAction, undefined)
   yield* get.setResult(dispatchRegistrationAction, { _tag: "GoogleStarted" })
@@ -150,11 +150,11 @@ export const confirmGoogleRegistrationAction = Atom.fn<void>()((_input, get) => 
   yield* get.setResult(registrationCompletedAnalyticsAction, undefined)
 }))
 
-export const resolveGoogleCallbackAction = publicRouterRuntime.fn((query: {
+export const resolveGoogleCallbackAction = routerRuntime.fn((query: {
   readonly code: string
   readonly state: string
 }, get) => Effect.gen(function*() {
-  const router = yield* PublicRouter
+  const router = yield* Router
   const key = `${query.code}:${query.state}`
   if (get(processedGoogleCallbackAtom) === key) return
   const input = yield* Schema.decodeUnknownEffect(GoogleCallbackInput)(query)

@@ -1,10 +1,10 @@
 > Adaptado del README de [`lucas-barake/effect-form`](https://github.com/lucas-barake/effect-form/tree/38791189f5154983d545222e5d3fbf091bb044f1) en el commit `38791189f5154983d545222e5d3fbf091bb044f1` (licencia MIT).
-> Los imports se ajustan a los paquetes locales de Proxus; la implementación local es la autoridad sobre su API exacta.
+> Los imports usan los paquetes upstream fijados por el lockfile; sus tipos son la autoridad sobre la API exacta.
 
 ## 2. Array Fields
 
 ```tsx
-import { Field } from "@proxus/effect-form"
+import { Field } from "@lucas-barake/effect-form"
 
 const orderFormBuilder = FormBuilder.empty
   .addField("title", Schema.String)
@@ -21,7 +21,7 @@ const orderForm = FormReact.make(orderFormBuilder, {
 
 function OrderPage() {
   return (
-    <orderForm.Provider defaultValues={{ title: "", items: [] }}>
+    <orderForm.Initialize defaultValues={{ title: "", items: [] }}>
       <orderForm.title />
       <orderForm.items>
         {({ items, append, remove, swap, move }) => (
@@ -50,7 +50,7 @@ function OrderPage() {
           </>
         )}
       </orderForm.items>
-    </orderForm.Provider>
+    </orderForm.Initialize>
   )
 }
 ```

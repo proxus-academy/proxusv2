@@ -148,7 +148,7 @@ contract, serialization and lifecycle tests. Components test accessible
 rendering and dispatch; they do not duplicate atom or service behavior.
 
 Browser tests are reserved for navigation, focus, drag-and-drop, uploads and a
-few critical public/admin journeys. `apps/web` y `apps/mobile-web` ejecutan
+few critical public/admin journeys. `apps/web` ejecuta
 Vitest real con render estático de sus vistas públicas, estados remotos y copy
 accesible localizado; el test de stories web comprueba además que importar la
 story pura no modifica History. El build de Storybook con addon a11y sigue
@@ -228,7 +228,7 @@ repeated race tests and additional PostgreSQL versions.
 The checks have no generated allowlist or accepted-violation baseline:
 
 - `effect:diagnostics` obtains the workspace inventory from `pnpm list -r`, sorts
-  every discovered `tsconfig.json`, and checks all 15 projects. The wrapper also
+  every discovered `tsconfig.json`, and checks all 14 projects. The wrapper also
   accepts `--root` and a JSON `--inventory` for isolated probes. It passes the
   root Effect Language Service configuration explicitly, so a leaf `plugins`
   override cannot silently reduce coverage. Workspace tsconfigs include their

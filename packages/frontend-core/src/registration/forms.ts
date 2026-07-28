@@ -1,4 +1,4 @@
-import { Field, Form, FormBuilder } from "@proxus/effect-form"
+import { Field, FormBuilder } from "@lucas-barake/effect-form"
 import { Schema } from "effect"
 
 export const registrationProfileFormBuilder = FormBuilder.empty
@@ -25,19 +25,3 @@ export const registrationAccountFormBuilder = FormBuilder.empty
     path: ["terms"],
     issue: "validation.terms.required",
   })
-
-export const registrationProfileForm = Form.make(registrationProfileFormBuilder, {
-  mode: { validation: "onSubmit" },
-  onSubmit: (
-    submit: (value: { readonly username: string; readonly birthYear: number }) => void,
-    { decoded },
-  ) => submit(decoded),
-})
-
-export const registrationAccountForm = Form.make(registrationAccountFormBuilder, {
-  mode: { validation: "onSubmit" },
-  onSubmit: (
-    submit: (value: { readonly email: string; readonly password: string; readonly terms: boolean }) => void,
-    { decoded },
-  ) => submit(decoded),
-})

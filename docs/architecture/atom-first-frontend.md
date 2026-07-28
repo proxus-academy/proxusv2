@@ -2,7 +2,7 @@
 
 ## Estado
 
-Normativa para `apps/web`, `apps/mobile-web`, `apps/admin` y futuros clientes React de Proxus.
+Normativa para `apps/web`, `apps/admin` y futuros clientes React de Proxus.
 
 Este documento define cómo se organiza el frontend alrededor de Effect Atom. Debe leerse junto con:
 
@@ -266,7 +266,7 @@ packages/frontend-core/src/<feature>/
 ├── internal/
 └── index.ts
 
-packages/frontend-web/src/<feature>/
+apps/web/src/platform/<feature>/
 ├── <browser-adapter>.web.ts
 ├── <react-web-binding>.tsx
 ├── internal/
@@ -285,7 +285,7 @@ apps/<client>/src/
 └── main.tsx
 ```
 
-Un atom pertenece obligatoriamente a `frontend-core` cuando representa estado remoto, estado de producto, un workflow, una mutación, una form neutral o una derivación reutilizable en web, mobile-web, admin o el futuro cliente React Native. Las aplicaciones no duplican esos atoms para adaptar la presentación.
+Un atom pertenece obligatoriamente a `frontend-core` cuando representa estado remoto, estado de producto, un workflow, una mutación, una form neutral o una derivación reutilizable en web, admin o el futuro cliente React Native. Las aplicaciones no duplican esos atoms para adaptar la presentación.
 
 Un atom puede permanecer en una aplicación solo si representa estado exclusivo de esa aplicación, sin significado de producto ni posibilidad razonable de reutilización. Esta excepción debe documentar por qué no pertenece al bounded context neutral. El estado puramente visual sigue siendo estado React local, no un atom de aplicación.
 
@@ -324,16 +324,16 @@ Es el owner por defecto del estado y comportamiento frontend:
 
 No importa React, DOM ni adapters web. Sus atoms consumen clientes HTTP tipados o ports neutrales proporcionados por el runtime, de modo que web y React Native reutilizan exactamente las mismas definiciones.
 
-### `packages/frontend-web`
+### `apps/web/src/platform`
 
 Posee:
 
 - adapters de browser;
-- integración React web reutilizable;
+- integración React web propia de la aplicación;
 - bindings web de formularios;
-- patterns web compartidos solo cuando existan al menos dos consumidores reales.
+- selección de las implementaciones web de los ports neutrales.
 
-No contiene decisiones específicas de una aplicación.
+No se extrae a un package mientras no tenga dos consumidores reales.
 
 ### `packages/ui`
 

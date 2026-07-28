@@ -1,40 +1,44 @@
 ## 1. Basic Form Setup
 
-Define comportamiento y atoms fuera del renderer:
+Define los campos y el schema fuera del renderer:
 
 ```ts
-import { Form, FormBuilder } from "@proxus/effect-form"
+import { FormBuilder } from "@lucas-barake/effect-form"
 
-export const loginForm = Form.make(loginFormBuilder, {
+export const loginFormBuilder = FormBuilder.empty
+  .addField(EmailField)
+  .addField(PasswordField)
+```
+
+En web se construyen el formulario y sus atoms:
+
+```tsx
+import { FormReact } from "@lucas-barake/effect-form-react"
+import { TextField } from "../../platform/form/index.js"
+
+export const LoginForm = FormReact.make(loginFormBuilder, {
+  fields: { email: TextField, password: TextField },
   mode: { validation: "onSubmit" },
   onSubmit: (_: void, { decoded }) => login(decoded),
 })
-```
 
-En web se crea un binding visual, sin repetir runtime, mode ni submit:
+const submit = useAtomSet(LoginForm.submit)
 
-```tsx
-import { FormReact } from "@proxus/effect-form/react"
-import { TextField } from "@proxus/frontend-web/form"
-
-export const LoginForm = FormReact.make(loginForm, {
-  fields: { email: TextField, password: TextField },
-})
-
-<LoginForm.Provider defaultValues={{ email: "", password: "" }}>
-  <LoginForm.Form>
+<LoginForm.Initialize defaultValues={{ email: "", password: "" }}>
+  <form onSubmit={(event) => {
+    event.preventDefault()
+    submit()
+  }}>
     <LoginForm.email label="Email" type="email" />
     <LoginForm.password label="Password" type="password" />
-    <LoginForm.Submit asChild><button>Login</button></LoginForm.Submit>
-  </LoginForm.Form>
-</LoginForm.Provider>
+    <button type="submit">Login</button>
+  </form>
+</LoginForm.Initialize>
 ```
 
-Los componentes de producto leen los atoms neutrales directamente:
+Los componentes de producto leen los atoms de la instancia directamente:
 
 ```ts
-const result = useAtomValue(loginForm.submit)
-const reset = useAtomSet(loginForm.reset)
+const result = useAtomValue(LoginForm.submit)
+const reset = useAtomSet(LoginForm.reset)
 ```
-
-`Provider` ya no existe. `Provider` inicializa; `Form` posee el evento HTML; `Submit` puede estar dentro o fuera del elemento `<form>` mientras permanezca bajo el mismo provider.

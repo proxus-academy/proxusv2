@@ -7,22 +7,25 @@ import { dispatchRegistrationAction } from "../state.js"
 
 export function ProfileStep({ draft }: { readonly draft: RegistrationDraft }) {
   const dispatch = useAtomSet(dispatchRegistrationAction)
+  const submitForm = useAtomSet(RegistrationProfileForm.submit)
   return (
     <main>
       <Heading level={1}>Crea tu perfil</Heading>
-      <RegistrationProfileForm.Provider defaultValues={{
+      <RegistrationProfileForm.Initialize defaultValues={{
         username: draft.username ?? "",
         birthYear: draft.birthYear ?? 2000,
       }}>
         <RegistrationProfileForm.KeepAlive />
-        <RegistrationProfileForm.Form
-          getSubmitArgs={() => (value) => dispatch({ _tag: "ProfileCompleted", ...value })}
-        >
+        <form onSubmit={(event) => {
+          event.preventDefault()
+          submitForm((value: { readonly username: string; readonly birthYear: number }) =>
+            dispatch({ _tag: "ProfileCompleted", ...value }))
+        }}>
           <RegistrationProfileForm.username label="Nombre de usuario" />
           <RegistrationProfileForm.birthYear label="Año de nacimiento" />
-          <RegistrationProfileForm.Submit asChild><Button>Continuar</Button></RegistrationProfileForm.Submit>
-        </RegistrationProfileForm.Form>
-      </RegistrationProfileForm.Provider>
+          <Button type="submit">Continuar</Button>
+        </form>
+      </RegistrationProfileForm.Initialize>
       <DraftSummary draft={draft} />
     </main>
   )

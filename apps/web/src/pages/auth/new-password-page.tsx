@@ -1,5 +1,5 @@
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
-import { useFormMessages } from "@proxus/frontend-web/form"
+import { useFormMessages } from "../../platform/form/index.js"
 import { Button, Text } from "@proxus/ui"
 import { AuthError, BackToLoginButton } from "../../modules/auth/auth-controls.js"
 import { backToLoginAction, submitNewPasswordAction } from "../../modules/auth/actions.js"
@@ -8,6 +8,7 @@ import { AuthPage } from "../../patterns/auth-page.js"
 
 export function NewPasswordPage() {
   const submit = useAtomSet(submitNewPasswordAction)
+  const submitForm = useAtomSet(NewPasswordForm.submit)
   const result = useAtomValue(submitNewPasswordAction)
   const back = useAtomSet(backToLoginAction)
   const messages = useFormMessages()
@@ -17,10 +18,13 @@ export function NewPasswordPage() {
     <AuthPage title={copy.title}>
       <Text tone="muted">{copy.description}</Text>
       <span className="sr-only">{copy.confirmation}</span>
-      <NewPasswordForm.Provider defaultValues={{ password: "", confirmation: "" }}>
-        <NewPasswordForm.Form
+      <NewPasswordForm.Initialize defaultValues={{ password: "", confirmation: "" }}>
+        <form
           className="space-y-4"
-          getSubmitArgs={() => (value) => submit({ password: value.password })}
+          onSubmit={(event) => {
+            event.preventDefault()
+            submitForm((value: { readonly password: string }) => submit({ password: value.password }))
+          }}
         >
           <NewPasswordForm.password
             label={copy.password}
@@ -35,11 +39,9 @@ export function NewPasswordPage() {
             autoComplete="new-password"
           />
           <AuthError visible={result._tag === "Failure"} />
-          <NewPasswordForm.Submit asChild>
-            <Button disabled={result.waiting}>{copy.submit}</Button>
-          </NewPasswordForm.Submit>
-        </NewPasswordForm.Form>
-      </NewPasswordForm.Provider>
+          <Button type="submit" disabled={result.waiting}>{copy.submit}</Button>
+        </form>
+      </NewPasswordForm.Initialize>
       <BackToLoginButton onClick={() => back()} />
     </AuthPage>
   )

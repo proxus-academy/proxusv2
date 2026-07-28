@@ -1,9 +1,9 @@
 > Adaptado del README de [`lucas-barake/effect-form`](https://github.com/lucas-barake/effect-form/tree/38791189f5154983d545222e5d3fbf091bb044f1) en el commit `38791189f5154983d545222e5d3fbf091bb044f1` (licencia MIT).
-> Los imports se ajustan a los paquetes locales de Proxus; la implementación local es la autoridad sobre su API exacta.
+> Los imports usan los paquetes upstream fijados por el lockfile; sus tipos son la autoridad sobre la API exacta.
 
 ## 18. Persisting State Across Unmounts (KeepAlive)
 
-By default, form state is destroyed when `Provider` unmounts. For multi-step wizards or conditional fields where you want state to persist, use `KeepAlive`:
+By default, form state is destroyed when `Initialize` unmounts. For multi-step wizards or conditional fields where you want state to persist, use `KeepAlive`:
 
 ```tsx
 function MultiStepWizard() {
@@ -23,10 +23,10 @@ function MultiStepWizard() {
 
 function Step1({ onNext }: { onNext: () => void }) {
   return (
-    <step1Form.Provider defaultValues={{ name: "" }}>
+    <step1Form.Initialize defaultValues={{ name: "" }}>
       <step1Form.name />
       <button onClick={onNext}>Next</button>
-    </step1Form.Provider>
+    </step1Form.Initialize>
   )
 }
 ```

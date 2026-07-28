@@ -1,5 +1,5 @@
 > Adaptado del README de [`lucas-barake/effect-form`](https://github.com/lucas-barake/effect-form/tree/38791189f5154983d545222e5d3fbf091bb044f1) en el commit `38791189f5154983d545222e5d3fbf091bb044f1` (licencia MIT).
-> Los imports se ajustan a los paquetes locales de Proxus; la implementación local es la autoridad sobre su API exacta.
+> Los imports usan los paquetes upstream fijados por el lockfile; sus tipos son la autoridad sobre la API exacta.
 
 ## Field Component Props Reference
 
@@ -73,7 +73,7 @@ const TextInput: FormReact.FieldComponent<string> = ({ field }) => (
   />
 )
 
-const form = Form.make(formBuilder, { onSubmit })
+const form = FormReact.make(formBuilder, { fields, onSubmit })
 const FormView = FormReact.make(form, {
   fields: {
     name: TextInput,

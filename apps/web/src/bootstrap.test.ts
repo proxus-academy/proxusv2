@@ -12,7 +12,7 @@ import {
   canonicalizeLocaleAction,
   localeAtom,
   localeLifecycleAtom,
-} from "./routes/public-router.js"
+} from "./routes/router.js"
 
 describe("web application bootstrap", () => {
   it("canonicalizes locale through the typed router", () => Effect.runPromise(Effect.gen(function*() {

@@ -10,36 +10,36 @@ import { DocumentNavigation } from "@proxus/frontend-core/routing"
 import { RequestPasswordResetInput, ResetPasswordInput } from "@proxus/shared/auth"
 import { Effect, Schema } from "effect"
 import * as Atom from "effect/unstable/reactivity/Atom"
-import { PublicRouter, publicRouterRuntime } from "../../routes/public-router.js"
+import { Router, routerRuntime } from "../../routes/router.js"
 
-export const startGoogleLoginAction = publicRouterRuntime.fn((_input: void, get) => Effect.gen(function*() {
+export const startGoogleLoginAction = routerRuntime.fn((_input: void, get) => Effect.gen(function*() {
   const documentNavigation = yield* DocumentNavigation
   const authorization = yield* get.setResult(startGoogleAuthorizationAction, undefined)
   yield* documentNavigation.assign(authorization.authorizationUrl)
 }))
 
-export const openPasswordRecoveryAction = publicRouterRuntime.fn((input: { readonly email: string }, get) => Effect.gen(function*() {
-  const router = yield* PublicRouter
+export const openPasswordRecoveryAction = routerRuntime.fn((input: { readonly email: string }, get) => Effect.gen(function*() {
+  const router = yield* Router
   yield* get.setResult(dispatchRecoveryAction, { _tag: "ForgotRequested", email: input.email })
   yield* router.navigate("password-recovery")
 }))
 
-export const submitPasswordRecoveryAction = publicRouterRuntime.fn((input: { readonly email: string }, get) => Effect.gen(function*() {
-  const router = yield* PublicRouter
+export const submitPasswordRecoveryAction = routerRuntime.fn((input: { readonly email: string }, get) => Effect.gen(function*() {
+  const router = yield* Router
   const request = yield* Schema.decodeUnknownEffect(RequestPasswordResetInput)(input)
   yield* get.setResult(requestPasswordResetAction, request)
   yield* get.setResult(dispatchRecoveryAction, { _tag: "CodeRequested" })
   yield* router.navigate("password-recovery-code")
 }))
 
-export const submitRecoveryCodeAction = publicRouterRuntime.fn((input: { readonly code: string }, get) => Effect.gen(function*() {
-  const router = yield* PublicRouter
+export const submitRecoveryCodeAction = routerRuntime.fn((input: { readonly code: string }, get) => Effect.gen(function*() {
+  const router = yield* Router
   yield* get.setResult(dispatchRecoveryAction, { _tag: "CodeAccepted", code: input.code })
   yield* router.navigate("new-password")
 }))
 
-export const submitNewPasswordAction = publicRouterRuntime.fn((input: { readonly password: string }, get) => Effect.gen(function*() {
-  const router = yield* PublicRouter
+export const submitNewPasswordAction = routerRuntime.fn((input: { readonly password: string }, get) => Effect.gen(function*() {
+  const router = yield* Router
   const state = get(recoveryStateAtom)
   if (state.screen !== "new-password") return
   const request = yield* Schema.decodeUnknownEffect(ResetPasswordInput)({
@@ -60,8 +60,8 @@ export const resendRecoveryCodeAction = Atom.fn<void>()((_input, get) => Effect.
   yield* get.setResult(dispatchRecoveryAction, { _tag: "Resent", cooldownSeconds: 30 })
 }))
 
-export const backToLoginAction = publicRouterRuntime.fn((_input: void, get) => Effect.gen(function*() {
-  const router = yield* PublicRouter
+export const backToLoginAction = routerRuntime.fn((_input: void, get) => Effect.gen(function*() {
+  const router = yield* Router
   yield* get.setResult(dispatchRecoveryAction, { _tag: "BackToLogin" })
   yield* router.navigate("login")
 }))

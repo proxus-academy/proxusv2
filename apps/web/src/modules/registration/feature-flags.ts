@@ -6,7 +6,7 @@ import {
   FeatureFlagInstallationIdentityWebLive,
   makeFeatureFlagDistributionWebLive,
   registrationLandingAnalyticsWebLayer,
-} from "@proxus/frontend-web/feature-flags"
+} from "../../platform/feature-flags/index.js"
 import { Layer } from "effect"
 import * as Atom from "effect/unstable/reactivity/Atom"
 

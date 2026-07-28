@@ -11,7 +11,7 @@ route → identidad estable → módulo de feature → atoms → UI
 ```
 
 - `frontend-core` posee schemas, transitions, forms y atoms React-neutral.
-- `frontend-web` posee adapters de browser y bindings React web reutilizables.
+- `apps/web/src/platform` posee adapters de browser y bindings React web.
 - `packages/ui` posee primitives y patterns sin conocimiento del producto.
 - `apps/*` poseen routes, pages y composición específica del cliente.
 

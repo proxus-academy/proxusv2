@@ -1,8 +1,10 @@
 # Effect Form en Proxus
 
-Referencia fragmentada para cargar únicamente la parte de Effect Form necesaria para una tarea. Está adaptada del README upstream fijado en el commit [`38791189f5154983d545222e5d3fbf091bb044f1`](https://github.com/lucas-barake/effect-form/tree/38791189f5154983d545222e5d3fbf091bb044f1) y debe leerse junto con las convenciones de [`24_proxus_conventions.md`](./24_proxus_conventions.md).
+Referencia fragmentada para cargar únicamente la parte de Effect Form necesaria para una tarea. Está adaptada del README upstream y debe leerse junto con las convenciones de [`24_proxus_conventions.md`](./24_proxus_conventions.md).
 
-La implementación local en `packages/effect-form` y sus tipos prevalecen si la referencia upstream difiere.
+Proxus consume directamente `@lucas-barake/effect-form@0.25.0-beta.6` y
+`@lucas-barake/effect-form-react@0.26.0-beta.5`. Sus tipos prevalecen si esta
+referencia difiere de las versiones instaladas.
 
 ## Recorridos recomendados
 
@@ -33,7 +35,7 @@ La implementación local en `packages/effect-form` y sus tipos prevalecen si la 
 - [16. Reactivity (Query Invalidation)](./16_reactivity_and_invalidation.md)
 - [17. Reusable Field Definitions](./17_reusable_field_definitions.md)
 - [18. Persisting State Across Unmounts (KeepAlive)](./18_persisting_state_keep_alive.md)
-- [19. Validate on Provider](./19_validate_on_initialize.md)
+- [19. Validate on Initialize](./19_validate_on_initialize.md)
 - [20. defaultValues Are Read Once](./20_default_values_are_read_once.md)
 - [Available Atoms](./21_available_atoms.md)
 - [Available Operations](./22_available_operations.md)

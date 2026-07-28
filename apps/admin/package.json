@@ -12,7 +12,6 @@
     "@effect/atom-react": "4.0.0-beta.98",
     "@fontsource/montserrat": "^5.2.8",
     "@proxus/frontend-core": "workspace:*",
-    "@proxus/frontend-web": "workspace:*",
     "@proxus/shared": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

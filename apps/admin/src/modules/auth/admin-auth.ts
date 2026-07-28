@@ -1,11 +1,10 @@
-import { AuthClient, makeAuthAtoms } from "@proxus/frontend-core/auth"
-import { makeAuthWebLive } from "@proxus/frontend-web/auth"
+import { makeAuthAtoms } from "@proxus/frontend-core/auth"
 import { AdminApi } from "@proxus/shared/admin-api"
 import type { Capabilities } from "@proxus/shared/access-control"
 import { Context, Data, Effect, Layer } from "effect"
 import * as AsyncResult from "effect/unstable/reactivity/AsyncResult"
 import * as Atom from "effect/unstable/reactivity/Atom"
-import { FetchHttpClient } from "effect/unstable/http"
+import { FetchHttpClient, HttpClient } from "effect/unstable/http"
 import { HttpApiClient } from "effect/unstable/httpapi"
 
 export class AdminUnauthorized extends Data.TaggedError("AdminUnauthorized")<{}> {}
@@ -44,7 +43,11 @@ const liveAccessLayer = Layer.unwrap(HttpApiClient.make(AdminApi, { baseUrl: "/a
   Layer.provide(Layer.succeed(FetchHttpClient.RequestInit, { credentials: "include" })),
 )
 
-const makeAdminAuthComposition = (layer: Layer.Layer<AuthClient | AdminAccessClient>) => {
+const publicHttpLayer = FetchHttpClient.layer.pipe(
+  Layer.provide(Layer.succeed(FetchHttpClient.RequestInit, { credentials: "include" })),
+)
+
+const makeAdminAuthComposition = (layer: Layer.Layer<HttpClient.HttpClient | AdminAccessClient>) => {
   const runtime = Atom.runtime(layer)
   const auth = makeAuthAtoms(runtime)
   const capabilitiesAtom = runtime.atom(AdminAccessClient.use((client) => client.capabilities()))
@@ -53,7 +56,7 @@ const makeAdminAuthComposition = (layer: Layer.Layer<AuthClient | AdminAccessCli
 }
 
 export const adminAuthComposition = makeAdminAuthComposition(
-  Layer.merge(makeAuthWebLive("/api"), liveAccessLayer),
+  Layer.merge(publicHttpLayer, liveAccessLayer),
 )
 
 export const hasPermission = (capabilities: Capabilities, permission: Capabilities["permissions"][number]) =>

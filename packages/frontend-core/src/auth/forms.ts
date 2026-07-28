@@ -1,8 +1,5 @@
-import { Field, Form, FormBuilder } from "@proxus/effect-form"
-import { LoginWithPasswordInput } from "@proxus/shared/auth"
-import { Effect, Schema } from "effect"
-import { publicApiClient } from "../public-api/client.js"
-import { applicationRuntime } from "../runtime.js"
+import { Field, FormBuilder } from "@lucas-barake/effect-form"
+import { Schema } from "effect"
 
 const required = (message: string) => Schema.String.pipe(
   Schema.check(Schema.isMinLength(1, { message })),
@@ -35,31 +32,3 @@ export const newPasswordFormBuilder = FormBuilder.empty
     path: ["confirmation"],
     issue: "validation.password.mismatch",
   })
-
-export const loginForm = Form.make(loginFormBuilder, {
-  runtime: applicationRuntime,
-  mode: { validation: "onSubmit" },
-  reactivityKeys: ["auth"],
-  onSubmit: (_: void, { decoded }) => Effect.gen(function*() {
-    const input = yield* Schema.decodeUnknownEffect(LoginWithPasswordInput)(decoded)
-    return yield* publicApiClient.pipe(
-      Effect.flatMap((client) => client.auth.loginWithPassword({ payload: input })),
-    )
-  }),
-})
-
-export const forgotPasswordForm = Form.make(forgotPasswordFormBuilder, {
-  mode: { validation: "onSubmit" },
-  onSubmit: (submit: (values: { readonly email: string }) => void, { decoded }) => submit(decoded),
-})
-
-export const recoveryCodeForm = Form.make(recoveryCodeFormBuilder, {
-  mode: { validation: "onSubmit" },
-  onSubmit: (submit: (values: { readonly code: string }) => void, { decoded }) => submit(decoded),
-})
-
-export const newPasswordForm = Form.make(newPasswordFormBuilder, {
-  mode: { validation: "onSubmit" },
-  onSubmit: (submit: (values: { readonly password: string }) => void, { decoded }) =>
-    submit({ password: decoded.password }),
-})

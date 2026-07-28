@@ -19,7 +19,7 @@ Se entregará como **un único refactor grande, organizado internamente por slic
 7. componer un único `AppLayer`/`appRuntime` y hacer que los atoms posean sus lifecycles;
 8. completar la adopción del sistema de diseño.
 
-Se preservará el comportamiento funcional (sesión, auth, OAuth, recuperación, registro y restauración de draft), pero no la estructura interna ni necesariamente las URLs o el aspecto pixel-perfect. El alcance es web-first; `mobile-web` solo se tocará para mantener contratos compartidos compilables.
+Se preservará el comportamiento funcional (sesión, auth, OAuth, recuperación, registro y restauración de draft), pero no la estructura interna ni necesariamente las URLs o el aspecto pixel-perfect. El alcance es web; `mobile-web` ha sido retirado.
 
 No se moverá código a archivos nuevos sin cambiar el ownership: el criterio es reducir la interfaz y concentrar reglas, no repartir el mismo flujo.
 
@@ -94,7 +94,7 @@ Reglas de dependencia estrictas:
 - Screen **consume atoms mediante hooks** y pasa a la vista una unión discriminada o props específicas de esa vista.
 - View y feature UI nunca suben hacia screen/state; `@proxus/ui` es la hoja visual.
 - El state compartido vive en `packages/frontend-core`, nunca en `apps/web`: schemas, forms React-neutral, atoms, selectors y máquinas pueden reutilizarse desde web/mobile y probarse con Layers de memoria. No importa React ni plataforma.
-- `packages/frontend-web` contiene únicamente implementaciones browser de esos ports (History, HTTP, storage, document y OAuth), no estado de feature.
+- `apps/web/src/platform` contiene únicamente implementaciones browser de esos ports (History, HTTP, storage, document y OAuth), no estado de feature.
 - `apps/web` conserva solo composition (`AppLayer`/`appRuntime`) y módulos React: root/pages/screens/views y adapters visuales `FieldComponent`.
 - Los adapters nunca importan state ni componentes.
 - El actual `AuthPublicView` se separará por estados válidos (`LoginView`, `PendingVerificationView`, `ForgotPasswordView`, `RecoveryCodeView`, `NewPasswordView`, `PasswordUpdatedView`); así desaparece una interfaz con callbacks imposibles para la pantalla activa.
@@ -196,7 +196,7 @@ flowchart LR
 
 El router seguirá siendo un servicio Effect porque tiene dos adapters reales (browser y memory), fallos tipados y lifecycle de `popstate`, pero se proveerá dentro del mismo `AppLayer`. `currentRouteAtom` será el único puente reactivo al `RouterService.location`; al montarse poseerá la suscripción scoped y canonicalización. Los command atoms obtendrán `AppRouter` desde `appRuntime`, en vez de recibir el servicio concreto desde una composición ejecutada con `ManagedRuntime`.
 
-El contrato actual solo define `/:locale/` con destino terminal `registration`; auth, recovery, OAuth y pasos se codifican en `location.search`. `frontend-web/registration/wizard-url.ts` ya ofrece navegación tipada para `RegistrationStepParam`, pero `apps/web/src/composition.ts` la duplica con `navigatePublicStepAtom<string>` y `URLSearchParams`. El refactor reutilizará el adapter tipado existente, añadirá un codec/adaptador auth equivalente para callback/recovery y mantendrá Browser History como único writer. Las pantallas no leerán `window` ni parsearán query strings.
+El contrato actual solo define `/:locale/` con destino terminal `registration`; auth, recovery, OAuth y pasos se codifican en `location.search`. `apps/web/src/platform/registration/wizard-url.ts` ya ofrece navegación tipada para `RegistrationStepParam`, pero `apps/web/src/composition.ts` la duplica con `navigatePublicStepAtom<string>` y `URLSearchParams`. El refactor reutilizará el adapter tipado existente, añadirá un codec/adaptador auth equivalente para callback/recovery y mantendrá Browser History como único writer. Las pantallas no leerán `window` ni parsearán query strings.
 
 ## Servicios Effect frontend revisados
 
@@ -257,9 +257,8 @@ La revisión durante el refactor aplicará el deletion test a `PublicHttpClient`
 - Posiblemente `packages/frontend-core/src/study-catalog/*`
 
 ### Adapters web (sin React de producto)
-- `packages/frontend-web/src/public-product/composition.web.ts` — su composición runtime dispersa se moverá a la app
-- `packages/frontend-web/src/routing/*`
-- `packages/frontend-web/src/registration/*`
+- `apps/web/src/platform/routing/*`
+- `apps/web/src/platform/registration/*`
 - Adapters browser de redirect/storage/document si superan el deletion test
 
 ### Sistema de diseño y formularios
@@ -280,7 +279,7 @@ La revisión durante el refactor aplicará el deletion test a `PublicHttpClient`
 - `makeAuthAtoms` y `AuthClient`: `packages/frontend-core/src/auth/`
 - Máquina pura de registro (`transitionRegistration`, guards y schemas): `packages/frontend-core/src/registration/wizard.ts`
 - Atoms y navegación del path de registro: `packages/frontend-core/src/registration/atoms.ts`
-- Adapter de draft: `packages/frontend-web/src/registration/draft-storage.web.ts`
+- Adapter de draft: `apps/web/src/platform/registration/draft-storage.web.ts`
 - Router y comandos reintentables: `packages/frontend-core/src/routing/`, `packages/frontend-core/src/navigation/`
 - Presentación del catálogo: `packages/frontend-core/src/study-catalog/presentation.ts`
 - Primitives existentes: `Button`, `Heading`, `Text`, `Input`, `Label`, `Checkbox`, `RadioGroup`, `Textarea`, `ChoiceCard`, `Skeleton` en `packages/ui/src/`
@@ -289,7 +288,6 @@ La revisión durante el refactor aplicará el deletion test a `PublicHttpClient`
 - `.repos/effect-form` (revisado remotamente): motor existente para Effect v4/React 19 con `FormBuilder`, `FormReact.make`, Schema sync/async, cross-field errors, field atoms, `AsyncResult` de submit, dirty/touched, reset, arrays, `KeepAlive` y wizard. Su peer range (`effect`/`@effect/atom-react >= beta.52 < 4.0.1`) incluye la beta.98 actual.
 - `.repos/effect-atom-practical-examples` (main todavía usa Effect 3) demuestra `Atom.family` por scope, draft persistente schema-backed, protección frente a loads obsoletos, debounce y limpieza del draft tras submit; reutilizar conceptos, no imports/versiones.
 - El binding `FormReact` mezcla motor y render adapters, pero deja el markup en `FieldComponent`; esos adapters deben vivir junto a la app/feature y renderizar `@proxus/ui`, no convertir `@proxus/ui` en dependiente de Effect Form.
-- Patrón de `mobile-web`: pantalla contenedora con hooks (`RegistrationWizard`) y vista presentacional aislable (`RegistrationWizardView`), reutilizable como referencia sin copiar su actual lista extensa de props.
 - Patrón de vistas aislables mediante props usado por stories/tests, manteniendo esas vistas independientes de la composition root.
 
 ## Steps
@@ -298,7 +296,7 @@ La revisión durante el refactor aplicará el deletion test a `PublicHttpClient`
 - [x] Añadir tests de caracterización del flujo público: sesión, login, recuperación, OAuth, registro email/Google, restauración de draft, URL y errores.
 - [x] Añadir tests de arquitectura/composición que fijen el grafo objetivo: vistas sin imports de composition, pantallas sin globals/Layers, un único History writer, un único `appRuntime` y cada Effect service provisto una sola vez.
 - [ ] Mover/crear todo state React-neutral de auth, registro, routing, catálogo y flags en `packages/frontend-core`; exponer factories tipadas que reciban runtime/capacidades sin importar la composition root.
-- [ ] Mantener en `packages/frontend-web` solo Layers/adapters browser y en `apps/web` solo composición + React.
+- [ ] Mantener en `apps/web/src/platform` los Layers/adapters browser y en el resto de `apps/web` composición + React.
 - [ ] Crear en `apps/web/src/composition.ts` el `AppLayer` combinando router, auth, catálogo, flags, identidad, analytics, draft, locale y OAuth; crear un único `appRuntime = Atom.runtime(AppLayer)` fuera de React e inyectarlo en los módulos compartidos de atoms.
 - [ ] Documentar para cada pantalla su tabla de atoms y eliminar subscriptions globales de `PublicFlow`; los atoms públicos montados por las pantallas deben montar internamente cualquier polling/subscription/canonicalización que necesiten.
 - [x] Extraer y consolidar en `@proxus/ui` los primitives visuales de formulario: field, label, control, description, error, fieldset y estados invalid/disabled; adaptar `Input`, `Textarea`, `Checkbox` y `RadioGroup` a contratos accesibles consistentes. `@proxus/ui` no dependerá de Effect ni de schemas de producto.
@@ -327,8 +325,7 @@ La revisión durante el refactor aplicará el deletion test a `PublicHttpClient`
 - [ ] Reducir `App.tsx` a leer `currentScreenAtom` y renderizar `PublicRouterPage`; mover hooks de feature a `AuthScreen`, `RegistrationScreen` y `AuthenticatedScreen` según la tabla, sin reglas de producto ni transporte.
 - [ ] Inventariar y probar todos los servicios Effect frontend; concentrar selección de adapters, configuración y `AppLayer` en la composition root, y usar exclusivamente `appRuntime` para construir atoms; evitar composición ejecutada al importar módulos y eliminar `ManagedRuntime` paralelo.
 - [ ] Aplicar el deletion test a `PublicHttpClient` y eliminarlo si solo replica la interface generada de `HttpApiClient`; conservar `PublicStudyCatalogClient` como seam de aplicación si concentra errores/operaciones del catálogo.
-- [ ] Mantener `mobile-web` compilable ante cambios de contratos compartidos, sin migrar sus pantallas salvo adaptación mínima.
-- [ ] Revisar exports públicos de `frontend-core` y `frontend-web`, eliminando interfaces shallow o duplicadas que queden obsoletas.
+- [ ] Revisar exports públicos de `frontend-core` y los módulos platform de Web, eliminando interfaces shallow o duplicadas que queden obsoletas.
 - [ ] Actualizar documentación arquitectónica con el contrato del sistema de formularios y el ownership final de cada flujo.
 
 ## Verification
@@ -345,6 +342,6 @@ La revisión durante el refactor aplicará el deletion test a `PublicHttpClient`
 - Verificación de remount bajo React Strict Mode, montaje lazy de lifecycles desde atoms consumidores y cierre del único `appRuntime`/scope.
 - `pnpm --filter @proxus/effect-form test && pnpm --filter @proxus/effect-form typecheck` (incluye suites core y React/subpath)
 - `pnpm --filter @proxus/frontend-core test && pnpm --filter @proxus/frontend-core typecheck`
-- `pnpm --filter @proxus/frontend-web test && pnpm --filter @proxus/frontend-web typecheck`
+- `pnpm --filter @proxus/web test && pnpm --filter @proxus/web typecheck`
 - `pnpm --filter @proxus/ui typecheck`
 - `pnpm --filter @proxus/web test && pnpm --filter @proxus/web typecheck && pnpm --filter @proxus/web build`

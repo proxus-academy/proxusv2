@@ -305,6 +305,9 @@ export interface CompiledRoutes<Node extends AnyRouteNode> {
   readonly decode: (
     pathname: string,
   ) => Effect.Effect<DecodedRoute<DestinationOf<Node>, MatchOf<Node>>, RouteNotFound>
+  readonly matchDestination: (
+    destination: DestinationOf<Node>,
+  ) => Effect.Effect<readonly MatchOf<Node>[], Schema.SchemaError | RouteEncodingError | RouteNotFound>
 }
 
 interface CompiledRecord {
@@ -432,7 +435,6 @@ export const compile = <Node extends RootRouteNode>(tree: Node): CompiledRoutes<
     const staticSegments = new Set<string>()
     let parameterChildren = 0
     let indexChildren = 0
-    let layoutChildren = 0
     for (const child of node.children) {
       if (child.kind === "path") {
         if (staticSegments.has(child.segment)) {
@@ -443,13 +445,10 @@ export const compile = <Node extends RootRouteNode>(tree: Node): CompiledRoutes<
         parameterChildren++
       } else if (child.kind === "index") {
         indexChildren++
-      } else if (child.kind === "layout") {
-        layoutChildren++
       }
     }
     if (parameterChildren > 1) throw new RouteConfigurationError({ message: `Ambiguous parameter children at ${node.id}` })
     if (indexChildren > 1) throw new RouteConfigurationError({ message: `Ambiguous index children at ${node.id}` })
-    if (layoutChildren > 1) throw new RouteConfigurationError({ message: `Ambiguous layout children at ${node.id}` })
 
     const nextParameterNames = new Set(parameterNames)
     if (node.kind === "param") nextParameterNames.add(node.name)
@@ -540,16 +539,17 @@ export const compile = <Node extends RootRouteNode>(tree: Node): CompiledRoutes<
       if (offset === parts.length) {
         const indexNode = node.children.find((child) => child.kind === "index")
         if (indexNode !== undefined) return yield* walk(indexNode, offset, params, nextMatches)
-        const layoutNode = node.children.find((child) => child.kind === "layout")
-        if (layoutNode !== undefined) return yield* walk(layoutNode, offset, params, nextMatches)
+        for (const layoutNode of node.children.filter((child) => child.kind === "layout")) {
+          const result = yield* walk(layoutNode, offset, params, nextMatches)
+          if (result !== undefined) return result
+        }
         if (terminalRoutes.has(node.id)) {
           return decodedRoute<Node>(node.id, params, nextMatches)
         }
         return undefined
       }
 
-      const layoutNode = node.children.find((child) => child.kind === "layout")
-      if (layoutNode !== undefined) {
+      for (const layoutNode of node.children.filter((child) => child.kind === "layout")) {
         const result = yield* walk(layoutNode, offset, params, nextMatches)
         if (result !== undefined) return result
       }
@@ -585,6 +585,11 @@ export const compile = <Node extends RootRouteNode>(tree: Node): CompiledRoutes<
     return decoded
   })
 
+  const matchDestination = (route: DestinationOf<Node>) => Effect.gen(function*() {
+    const pathname = yield* encodeDestination(route)
+    return (yield* decode(pathname)).matches
+  })
+
   return {
     destination,
     encode: (route) => encodeDestination(route),
@@ -593,6 +598,7 @@ export const compile = <Node extends RootRouteNode>(tree: Node): CompiledRoutes<
     withQuery,
     makeDestination,
     decode,
+    matchDestination,
   }
 }
 
@@ -614,10 +620,15 @@ export class NavigationError extends Schema.TaggedErrorClass<NavigationError>()(
 ) {}
 
 export type RouterObservableError = NavigationError | RouteNotFound | RouteEncodingError | Schema.SchemaError
-export type RouterCommandError = NavigationError | RouteEncodingError | Schema.SchemaError
+export type RouterCommandError = NavigationError | RouteNotFound | RouteEncodingError | Schema.SchemaError
 
-export interface RouterLocation<Destination extends RouteDestination> {
+export interface RouterMatchState<Destination extends RouteDestination, Match extends RouteMatch = RouteMatch> {
   readonly destination: Destination
+  readonly matches: readonly Match[]
+}
+
+export interface RouterLocation<Destination extends RouteDestination, Match extends RouteMatch = RouteMatch>
+  extends RouterMatchState<Destination, Match> {
   /** Encoded query without the leading question mark. Platform-neutral by design. */
   readonly search: string
 }
@@ -654,9 +665,10 @@ export type NavigationArguments<
 export interface RouterService<
   Destination extends RouteDestination,
   ContextKey extends string = never,
+  Match extends RouteMatch = RouteMatch,
 > {
   readonly current: Atom.Atom<Destination>
-  readonly location: Atom.Atom<RouterLocation<Destination>>
+  readonly location: Atom.Atom<RouterLocation<Destination, Match>>
   /** The latest routing failure. Successful navigation clears it. */
   readonly error: Atom.Atom<RouterObservableError | undefined>
   readonly navigate: <Id extends RouteIdOf<Destination>>(
@@ -689,21 +701,9 @@ export interface RouterIdentifier<
   readonly contextKey: ContextKey
 }
 
-export type RouterTag<
-  Destination extends RouteDestination,
-  ContextKey extends string = never,
-> = Context.Service<
-  RouterIdentifier<Destination, ContextKey>,
-  RouterService<Destination, ContextKey>
->
+export type RouterTag<Destination extends RouteDestination, ContextKey extends string = never, Match extends RouteMatch = RouteMatch> = Context.Service<RouterIdentifier<Destination, ContextKey>, RouterService<Destination, ContextKey, Match>>
 
-export const makeRouterService = <
-  Destination extends RouteDestination,
-  ContextKey extends string = never,
->(key: string): RouterTag<Destination, ContextKey> => Context.Service<
-  RouterIdentifier<Destination, ContextKey>,
-  RouterService<Destination, ContextKey>
->(key)
+export const makeRouterService = <Destination extends RouteDestination, ContextKey extends string = never, Match extends RouteMatch = RouteMatch>(key: string): RouterTag<Destination, ContextKey, Match> => Context.Service<RouterIdentifier<Destination, ContextKey>, RouterService<Destination, ContextKey, Match>>(key)
 
 export const makeObservableValue = <Value>(initial: Value) => {
   let current = initial
@@ -724,9 +724,12 @@ export const makeObservableValue = <Value>(initial: Value) => {
   }
 }
 
-export interface RouterRoutes<Destination extends RouteDestination> {
+export interface RouterRoutes<Destination extends RouteDestination, Match extends RouteMatch = RouteMatch> {
   readonly makeDestination: (id: string, path: RouteParams, query: RouteQuery) => Destination
   readonly encodeQuery: (destination: Destination) => Effect.Effect<string, Schema.SchemaError | RouteEncodingError>
+  readonly matchDestination: (
+    destination: Destination,
+  ) => Effect.Effect<readonly Match[], Schema.SchemaError | RouteEncodingError | RouteNotFound>
 }
 
 export interface RouterLayerOptions<ContextKey extends string> {
@@ -736,19 +739,27 @@ export interface RouterLayerOptions<ContextKey extends string> {
 export const memoryRouterLayer = <
   Destination extends RouteDestination,
   ContextKey extends keyof Destination["params"] & string = never,
+  Match extends RouteMatch = RouteMatch,
 >(
-  routerTag: RouterTag<Destination, ContextKey>,
-  routes: RouterRoutes<Destination>,
+  routerTag: RouterTag<Destination, ContextKey, Match>,
+  routes: RouterRoutes<Destination, Match>,
   initial: Destination,
   options: RouterLayerOptions<ContextKey> = {},
-): Layer.Layer<RouterIdentifier<Destination, ContextKey>> =>
-  Layer.sync(routerTag, () => {
+): Layer.Layer<
+  RouterIdentifier<Destination, ContextKey>,
+  Schema.SchemaError | RouteEncodingError | RouteNotFound
+> =>
+  Layer.effect(routerTag, Effect.gen(function*() {
     interface RouterState {
-      readonly location: RouterLocation<Destination>
+      readonly location: RouterLocation<Destination, Match>
       readonly error: RouterObservableError | undefined
     }
 
-    const initialLocation: RouterLocation<Destination> = { destination: initial, search: "" }
+    const initialLocation: RouterLocation<Destination, Match> = {
+      destination: initial,
+      matches: yield* routes.matchDestination(initial),
+      search: "",
+    }
     const state = makeObservableValue<RouterState>({ location: initialLocation, error: undefined })
     const current = Atom.map(state.atom, ({ location }) => location.destination)
     const location = Atom.map(state.atom, ({ location }) => location)
@@ -765,8 +776,12 @@ export const memoryRouterLayer = <
       operation: "push" | "replace",
       destination: Destination,
       search: string,
-    ) => Effect.sync(() => {
-      const next: RouterLocation<Destination> = { destination, search }
+    ) => Effect.gen(function*() {
+      const next: RouterLocation<Destination, Match> = {
+        destination,
+        matches: yield* routes.matchDestination(destination),
+        search,
+      }
       if (operation === "push") {
         history = [...history.slice(0, cursor + 1), next]
         cursor++
@@ -811,4 +826,4 @@ export const memoryRouterLayer = <
       back: Effect.suspend(() => select(cursor - 1)),
       forward: Effect.suspend(() => select(cursor + 1)),
     })
-  })
+  }))

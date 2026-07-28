@@ -1,5 +1,5 @@
 import { applicationRuntime } from "@proxus/frontend-core/runtime"
-import { WebHttpClientLive } from "@proxus/frontend-web/http"
+import { WebHttpClientLive } from "./platform/http/index.js"
 import { Layer } from "effect"
 import * as Atom from "effect/unstable/reactivity/Atom"
 import * as Reactivity from "effect/unstable/reactivity/Reactivity"

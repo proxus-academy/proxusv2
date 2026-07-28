@@ -60,6 +60,23 @@ describe("routing compiler", () => {
     expect(Effect.runSync(router.decode("/users/new")).destination.id).toBe("new-user")
   })
 
+  it("supports sibling layouts when their terminal paths are unambiguous", () => {
+    const routes = compile(root({ id: "root", children: [
+      layout({ id: "public-only", children: [index({ id: "registration" }), path({ id: "login", path: "login" })] }),
+      layout({ id: "authenticated", children: [path({ id: "home", path: "app" })] }),
+    ] }))
+
+    expect(Effect.runSync(routes.decode("/login")).matches.map(({ id }) => id)).toEqual([
+      "root", "public-only", "login",
+    ])
+    expect(Effect.runSync(routes.decode("/app")).matches.map(({ id }) => id)).toEqual([
+      "root", "authenticated", "home",
+    ])
+    expect(Effect.runSync(routes.decode("/")).matches.map(({ id }) => id)).toEqual([
+      "root", "public-only", "registration",
+    ])
+  })
+
   it("rejects duplicate ids and ambiguous siblings", () => {
     expect(() => compile(root({ id: "r", children: [index({ id: "same" }), index({ id: "same" })] }))).toThrow(RouteConfigurationError)
     expect(() => compile(root({ id: "r", children: [
@@ -165,7 +182,10 @@ describe("memory router", () => {
         yield* service.pushDestination(newUser, { search: "step=university" })
         yield* service.back
         expect(registry.get(service.current).id).toBe("edit-user")
-        expect(registry.get(service.location).search).toBe("step=country")
+        expect(registry.get(service.location)).toMatchObject({
+          search: "step=country",
+          matches: [{ id: "root" }, { id: "shell" }, { id: "users" }, { id: "user" }, { id: "edit-user" }],
+        })
         yield* service.forward
         expect(registry.get(service.current).id).toBe("new-user")
         expect(registry.get(service.location).search).toBe("step=university")
@@ -182,6 +202,7 @@ describe("memory router", () => {
         yield* service.navigate("search", { query: { id: "effect", page: 2 } })
         expect(registry.get(service.location)).toMatchObject({
           destination: { id: "search", params: {}, query: { id: "effect", page: 2 } },
+          matches: [{ id: "root" }, { id: "shell" }, { id: "search" }],
           search: "id=effect&page=2",
         })
         if (false) {

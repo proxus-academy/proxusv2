@@ -1,6 +1,6 @@
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { recoveryStateAtom } from "@proxus/frontend-core/auth"
-import { useFormMessages } from "@proxus/frontend-web/form"
+import { useFormMessages } from "../../platform/form/index.js"
 import { Button, Text } from "@proxus/ui"
 import { AuthError, BackToLoginButton } from "../../modules/auth/auth-controls.js"
 import {
@@ -15,6 +15,7 @@ import { AuthPage } from "../../patterns/auth-page.js"
 export function RecoveryCodePage() {
   const recovery = useAtomValue(recoveryStateAtom)
   const submit = useAtomSet(submitRecoveryCodeAction)
+  const submitForm = useAtomSet(RecoveryCodeForm.submit)
   const submitResult = useAtomValue(submitRecoveryCodeAction)
   const resend = useAtomSet(resendRecoveryCodeAction)
   const resendResult = useAtomValue(resendRecoveryCodeAction)
@@ -28,10 +29,13 @@ export function RecoveryCodePage() {
   return (
     <AuthPage title={copy.title}>
       <Text tone="muted">{recovery.email}</Text>
-      <RecoveryCodeForm.Provider defaultValues={{ code: "" }}>
-        <RecoveryCodeForm.Form
+      <RecoveryCodeForm.Initialize defaultValues={{ code: "" }}>
+        <form
           className="space-y-4"
-          getSubmitArgs={() => (value) => submit({ code: value.code })}
+          onSubmit={(event) => {
+            event.preventDefault()
+            submitForm((value: { readonly code: string }) => submit({ code: value.code }))
+          }}
         >
           <RecoveryCodeForm.code
             label={copy.code}
@@ -40,11 +44,9 @@ export function RecoveryCodePage() {
             autoComplete="one-time-code"
           />
           <AuthError visible={submitResult._tag === "Failure" || resendResult._tag === "Failure"} />
-          <RecoveryCodeForm.Submit asChild>
-            <Button disabled={busy}>{copy.continue}</Button>
-          </RecoveryCodeForm.Submit>
-        </RecoveryCodeForm.Form>
-      </RecoveryCodeForm.Provider>
+          <Button type="submit" disabled={busy}>{copy.continue}</Button>
+        </form>
+      </RecoveryCodeForm.Initialize>
       <Button
         variant="secondary"
         disabled={busy || cooldownSeconds > 0}

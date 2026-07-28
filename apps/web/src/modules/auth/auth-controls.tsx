@@ -1,4 +1,4 @@
-import { useFormMessages } from "@proxus/frontend-web/form"
+import { useFormMessages } from "../../platform/form/index.js"
 import { Button, Text } from "@proxus/ui"
 
 export function AuthError({ visible, message }: {

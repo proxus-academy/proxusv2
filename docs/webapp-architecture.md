@@ -2,8 +2,7 @@
 
 ## Status
 
-Required React architecture for `apps/web`, `apps/mobile-web`, the future
-`apps/admin`, and future React Native clients.
+Required React architecture for `apps/web`, `apps/admin`, and future React Native clients.
 
 This document defines React rendering and synchronization rules. Frontend module
 organization and state ownership follow
@@ -144,23 +143,23 @@ opaque destination as an Effect Atom. Platform adapters own history:
 
 ```text
 frontend-core routing definition + Router service
-  → frontend-web browser History API adapter
+  → apps/web browser History API adapter
   → future native in-memory/native-navigation adapter
 ```
 
 The public product route contract is exported by
-`@proxus/frontend-core/public-product`. Web and mobile-web deliberately share
-that contract and their product flow while keeping separate application Router
-identities and separate screens. Their minimal composition roots call the shared
-`@proxus/frontend-web/public-product` factory, which selects the browser
-adapters. A future native client reuses the neutral route contract and product
-modules but selects native adapters; it does not depend on the web composition.
-Presentation differences alone do not fork routes or atoms.
+`@proxus/frontend-core/public-product`. Web consumes that neutral contract and
+selects browser adapters in its own composition root. A future native client
+reuses the neutral route contract and product modules but selects native
+adapters; it does not depend on the web composition. Presentation differences
+alone do not fork routes or atoms.
 
 The browser adapter is the sole owner of `pushState`, `replaceState`, and
 `popstate`. One internal state cell owns `RouterLocation` plus the latest typed
-error; `current`, `location`, and `error` are pure projections of that cell. Each
-transition captures one URL and updates the cell coherently. Path encoding
+error; `current`, `location`, and `error` are pure projections of that cell.
+`RouterLocation` preserves the terminal destination, the complete typed match
+chain, and the encoded query as one coherent value. Each transition captures one
+URL and updates that value atomically. Path encoding
 failures remain `SchemaError`/`RouteEncodingError` rather than being erased into
 a generic history error; failed `back` and `forward` calls are observable too.
 The scoped `popstate` lifecycle applies only the latest overlapping decode,
@@ -175,9 +174,13 @@ invalid values through a scoped router lifecycle (including after `popstate`),
 not merely project them to a local fallback. Every product path starts with
 the validated locale segment (`/:locale/...`); composition roots safely replace
 missing, legacy, or invalid forms with a canonical locale-prefixed destination.
-Components consume route atoms and, for plain navigation, one generic React
-binding to the router; they do not read `window`, parse URLs, create Layers, or
-run Effects during render. Workflows obtain the router service from the Layer
+A route view selects the terminal page from the destination and folds the
+recognized match chain from the inside out to apply structural layouts. Access
+boundaries such as `public-only` and `authenticated` are declared as route
+layouts rather than inferred from terminal IDs; their React implementations own
+session presentation and typed redirects. Components consume route atoms and,
+for plain navigation, one generic React binding to the router; they do not read
+`window`, parse URLs, create Layers, or run Effects during render. Workflows obtain the router service from the Layer
 and call its typed `navigate` or `replace` methods; there is no action per
 destination. URL-backed product transitions remain named function atoms, not
 writable projections that launch detached fibers. The composition root creates one navigation-command

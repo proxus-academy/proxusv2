@@ -1,36 +1,38 @@
 ## 15. Custom Submit Arguments
 
-El argumento se declara al crear la form neutral:
+El argumento se declara al construir la instancia React:
 
 ```ts
-const contactForm = Form.make(contactFormBuilder, {
+const ContactForm = FormReact.make(contactFormBuilder, {
   runtime,
+  fields: { email: TextField, message: TextField },
   onSubmit: (args: { source: string }, { decoded }) =>
     Effect.log(`Contact from ${args.source}: ${decoded.email}`),
 })
 ```
 
-El binding React exige `getSubmitArgs` cuando el argumento no es `void`:
+Al enviar, la pantalla pasa el argumento al setter del atom:
 
 ```tsx
-const ContactForm = FormReact.make(contactForm, {
-  fields: { email: TextField, message: TextField },
-})
+const submit = useAtomSet(ContactForm.submit)
 
-<ContactForm.Provider defaultValues={defaults}>
-  <ContactForm.Form getSubmitArgs={(event) => ({
-    source: event.nativeEvent.submitter?.getAttribute("data-source") ?? "page",
-  })}>
+<ContactForm.Initialize defaultValues={defaults}>
+  <form onSubmit={(event) => {
+    event.preventDefault()
+    submit({
+      source: event.nativeEvent.submitter?.getAttribute("data-source") ?? "page",
+    })
+  }}>
     {/* fields */}
-    <ContactForm.Submit asChild><button data-source="page">Send</button></ContactForm.Submit>
-  </ContactForm.Form>
-</ContactForm.Provider>
+    <button type="submit" data-source="page">Send</button>
+  </form>
+</ContactForm.Initialize>
 ```
 
 Para acciones programáticas se escribe directamente en el atom:
 
 ```ts
-const submit = useAtomSet(contactForm.submit)
+const submit = useAtomSet(ContactForm.submit)
 submit({ source: "shortcut" })
 ```
 

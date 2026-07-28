@@ -10,9 +10,9 @@
   },
   "dependencies": {
     "@effect/atom-react": "4.0.0-beta.98",
-    "@proxus/effect-form": "workspace:*",
+    "@lucas-barake/effect-form-react": "0.26.0-beta.5",
     "@proxus/frontend-core": "workspace:*",
-    "@proxus/frontend-web": "workspace:*",
+    "@proxus/product-messages": "workspace:*",
     "@proxus/shared": "workspace:*",
     "@proxus/ui": "workspace:*",
     "effect": "4.0.0-beta.98",
@@ -21,6 +21,7 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.2",
+    "@testing-library/react": "^16.3.2",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",

@@ -3,13 +3,13 @@ import { RegistryProvider, useAtomSet } from "@effect/atom-react"
 import { act } from "react"
 import { createRoot } from "react-dom/client"
 import { describe, expect, it } from "vitest"
-import { LoginForm, loginForm } from "./modules/auth/forms.js"
+import { LoginForm } from "./modules/auth/forms.js"
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
 
 function ContractProbe() {
-  useAtomSet(loginForm.submit)
-  return <LoginForm.Provider defaultValues={{ email: "", password: "" }}><LoginForm.KeepAlive /><span>registry-ready</span></LoginForm.Provider>
+  useAtomSet(LoginForm.submit)
+  return <LoginForm.Initialize defaultValues={{ email: "", password: "" }}><LoginForm.KeepAlive /><span>registry-ready</span></LoginForm.Initialize>
 }
 
 describe("Effect Form runtime contract", () => {

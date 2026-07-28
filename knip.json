@@ -9,10 +9,6 @@
       // Loaded only by Vite's inline development bootstrap in index.html.
       "ignoreDependencies": ["react-grab"]
     },
-    "apps/mobile-web": {
-      // Resolved indirectly by the Tailwind Vite plugin and shared theme CSS during builds.
-      "ignoreDependencies": ["tailwindcss"]
-    },
     "apps/storybook": {
       // Effect/shared are used by app-owned stories outside this workspace's source tree.
       // Tailwind is resolved indirectly by Storybook's Vite plugin and shared theme CSS.

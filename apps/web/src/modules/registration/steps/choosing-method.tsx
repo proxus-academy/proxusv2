@@ -10,12 +10,12 @@ import {
   beginGoogleRegistrationAction,
   registrationBusyAtom,
 } from "../state.js"
-import { usePublicRouter } from "../../../routes/use-public-router.js"
+import { useRouter } from "../../../routes/use-router.js"
 
 export function ChoosingMethod() {
   const beginGoogle = useAtomSet(beginGoogleRegistrationAction)
   const beginEmail = useAtomSet(beginEmailRegistrationAction)
-  const router = usePublicRouter()
+  const router = useRouter()
   const busy = useAtomValue(registrationBusyAtom)
   const assignment = useAtomValue(registrationLandingAssignmentAtom)
   useAtomValue(registrationLandingExposureLifecycleAtom)
