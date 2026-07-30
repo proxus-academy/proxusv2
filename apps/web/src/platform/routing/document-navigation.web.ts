@@ -1,7 +1,7 @@
 import {
   DocumentNavigation,
   DocumentNavigationError,
-} from "@proxus/frontend-core/routing"
+} from "@proxus/frontend-core/navigation"
 import { Effect, Layer } from "effect"
 
 export interface BrowserDocumentLocation {
@@ -9,10 +9,10 @@ export interface BrowserDocumentLocation {
 }
 
 export const browserDocumentNavigationLayer = (
-  location: BrowserDocumentLocation = window.location,
+  location?: BrowserDocumentLocation,
 ) => Layer.succeed(DocumentNavigation, DocumentNavigation.of({
   assign: (url) => Effect.try({
-    try: () => location.assign(url),
+    try: () => (location ?? window.location).assign(url),
     catch: (cause) => new DocumentNavigationError({
       message: cause instanceof globalThis.Error
         ? cause.message

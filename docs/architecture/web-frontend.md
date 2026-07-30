@@ -28,11 +28,16 @@ route → identidad estable → módulo de feature → atoms → UI
 
 ## Forms
 
-Las forms neutrales viven en `frontend-core` y se crean con `Form.make`. Web las enlaza con `FormReact.make(form, { fields })`. `Provider` inicializa, `Form` posee el submit HTML, `Submit` observa waiting y `KeepAlive` conserva estado cuando el workflow lo requiere.
+Los builders neutrales viven en `frontend-core`. Web crea la instancia con
+`FormReact.make`, usa `Initialize` para defaults y envía desde un `<form>` HTML
+mediante el atom `submit`.
 
 ## Routing
 
-El router tipado es el único owner de URL e History. Una route entrega identidades branded a la page. Los módulos de feature usan comandos de navegación tipados; no leen ni escriben `window.history`.
+`@proxus/effect-router` es el único owner de URL e History. El árbol tipado
+selecciona páginas y layouts sin loaders; la ubicación es un atom serializable y
+los matches son derivados. Las páginas usan Effect Atom para datos, mutaciones y
+formularios. Los módulos de feature no leen ni escriben `window.history`.
 
 ## Revisión
 

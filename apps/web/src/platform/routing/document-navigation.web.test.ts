@@ -1,4 +1,4 @@
-import { DocumentNavigation } from "@proxus/frontend-core/routing"
+import { DocumentNavigation } from "@proxus/frontend-core/navigation"
 import { Effect, Layer } from "effect"
 import { describe, expect, it } from "vitest"
 import { browserDocumentNavigationLayer } from "./document-navigation.web.js"

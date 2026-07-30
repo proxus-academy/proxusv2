@@ -6,40 +6,37 @@ import {
   startGoogleAuthorizationAction,
   transitionRecovery,
 } from "@proxus/frontend-core/auth"
-import { DocumentNavigation } from "@proxus/frontend-core/routing"
+import { DocumentNavigation } from "@proxus/frontend-core/navigation"
 import { RequestPasswordResetInput, ResetPasswordInput } from "@proxus/shared/auth"
 import { Effect, Schema } from "effect"
 import * as Atom from "effect/unstable/reactivity/Atom"
-import { Router, routerRuntime } from "../../routes/router.js"
+import { navigate } from "../../routes/navigation.js"
+import { navigationRuntime } from "../../routes/navigation-runtime.js"
 
-export const startGoogleLoginAction = routerRuntime.fn((_input: void, get) => Effect.gen(function*() {
+export const startGoogleLoginAction = navigationRuntime.fn((_input: void, get) => Effect.gen(function*() {
   const documentNavigation = yield* DocumentNavigation
   const authorization = yield* get.setResult(startGoogleAuthorizationAction, undefined)
   yield* documentNavigation.assign(authorization.authorizationUrl)
 }))
 
-export const openPasswordRecoveryAction = routerRuntime.fn((input: { readonly email: string }, get) => Effect.gen(function*() {
-  const router = yield* Router
+export const openPasswordRecoveryAction = navigationRuntime.fn((input: { readonly email: string }, get) => Effect.gen(function*() {
   yield* get.setResult(dispatchRecoveryAction, { _tag: "ForgotRequested", email: input.email })
-  yield* router.navigate("password-recovery")
+  yield* navigate({ id: "password-recovery" })
 }))
 
-export const submitPasswordRecoveryAction = routerRuntime.fn((input: { readonly email: string }, get) => Effect.gen(function*() {
-  const router = yield* Router
+export const submitPasswordRecoveryAction = navigationRuntime.fn((input: { readonly email: string }, get) => Effect.gen(function*() {
   const request = yield* Schema.decodeUnknownEffect(RequestPasswordResetInput)(input)
   yield* get.setResult(requestPasswordResetAction, request)
   yield* get.setResult(dispatchRecoveryAction, { _tag: "CodeRequested" })
-  yield* router.navigate("password-recovery-code")
+  yield* navigate({ id: "password-recovery-code" })
 }))
 
-export const submitRecoveryCodeAction = routerRuntime.fn((input: { readonly code: string }, get) => Effect.gen(function*() {
-  const router = yield* Router
+export const submitRecoveryCodeAction = navigationRuntime.fn((input: { readonly code: string }, get) => Effect.gen(function*() {
   yield* get.setResult(dispatchRecoveryAction, { _tag: "CodeAccepted", code: input.code })
-  yield* router.navigate("new-password")
+  yield* navigate({ id: "new-password" })
 }))
 
-export const submitNewPasswordAction = routerRuntime.fn((input: { readonly password: string }, get) => Effect.gen(function*() {
-  const router = yield* Router
+export const submitNewPasswordAction = navigationRuntime.fn((input: { readonly password: string }, get) => Effect.gen(function*() {
   const state = get(recoveryStateAtom)
   if (state.screen !== "new-password") return
   const request = yield* Schema.decodeUnknownEffect(ResetPasswordInput)({
@@ -49,7 +46,7 @@ export const submitNewPasswordAction = routerRuntime.fn((input: { readonly passw
   })
   yield* get.setResult(resetPasswordAction, request)
   yield* get.setResult(dispatchRecoveryAction, { _tag: "PasswordReset" })
-  yield* router.navigate("password-updated")
+  yield* navigate({ id: "password-updated" })
 }))
 
 export const resendRecoveryCodeAction = Atom.fn<void>()((_input, get) => Effect.gen(function*() {
@@ -60,10 +57,9 @@ export const resendRecoveryCodeAction = Atom.fn<void>()((_input, get) => Effect.
   yield* get.setResult(dispatchRecoveryAction, { _tag: "Resent", cooldownSeconds: 30 })
 }))
 
-export const backToLoginAction = routerRuntime.fn((_input: void, get) => Effect.gen(function*() {
-  const router = yield* Router
+export const backToLoginAction = navigationRuntime.fn((_input: void, get) => Effect.gen(function*() {
   yield* get.setResult(dispatchRecoveryAction, { _tag: "BackToLogin" })
-  yield* router.navigate("login")
+  yield* navigate({ id: "login" })
 }))
 
 export const recoveryCooldownLifecycleAtom = Atom.make((get) => {

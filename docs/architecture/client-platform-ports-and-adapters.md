@@ -16,6 +16,19 @@ screen/component
 
 Las diferencias exclusivamente visuales pertenecen a las vistas específicas de cada app. No justifican un port.
 
+### Cliente HTTP público
+
+`frontend-core` expone el servicio `PublicApiClient` y los módulos de producto
+dependen de ese servicio, no de `HttpClient` ni de una URL concreta. Cada
+composition root construye su Layer con `makePublicApiClientLayer(baseUrl)` y
+proporciona el transporte de su plataforma.
+
+Web selecciona la URL relativa `/api` y un `FetchHttpClient` con cookies. Admin
+selecciona de forma independiente el mismo cliente público para sus lecturas.
+Un cliente React Native seleccionará una URL absoluta y su política de
+autenticación/transporte sin modificar los atoms compartidos. `frontend-core`
+no contiene origins, URLs relativas ni configuración de cookies o tokens.
+
 ## Dirección de dependencias
 
 ```text
@@ -51,42 +64,32 @@ Los adapters compartidos se extraen solo cuando tienen consumidores reales. Debe
 
 ## Atom port o servicio Effect
 
-Usar un **port/factory de Atom** cuando la capacidad es principalmente estado reactivo legible y escribible: URL, navegación, preferencias, conectividad o estado local persistido.
+Usar un **port/factory de Atom** cuando la capacidad es principalmente estado reactivo legible y escribible: preferencias, conectividad o estado local persistido.
 
 Usar un **servicio Effect con Layer** cuando hay operaciones asíncronas, fallos tipados, permisos, recursos, cancelación o lifecycle: API, almacenamiento seguro, cámara, archivos, notificaciones o uploads.
 
 Cuando hay ambas necesidades, el servicio ejecuta las operaciones y los atoms modelan su estado y transiciones.
 
-### Router tipado
+### Router SPA
 
-El router es un servicio Effect proporcionado por Layer. Los workflows obtienen el servicio con `yield* Router` y ejecutan directamente `yield* router.navigate(...)` o `yield* router.replace(...)`; no se exporta una action distinta por cada destino. React puede usar un único binding que delega en ese servicio, pero nombres como `navigateToLoginAction` o `navigateToHomeAction` están prohibidos.
+`@proxus/effect-router` es el único propietario de URL e History en `apps/web`.
+Sus rutas seleccionan layouts y páginas, pero no usan loaders, caché de datos ni
+invalidación. La ubicación fuente vive en un atom serializable y los matches se
+derivan. React despacha la única `navigateAction`; los workflows Effect usan la
+misma operación tipada del router sin duplicar la ubicación.
 
-Cada ruta terminal separa explícitamente sus entradas:
-
-- `path`: parámetros que se codifican en el pathname;
-- `query`: estado de URL declarado mediante un Schema y codificado en la query;
-- parámetros contextuales heredados, como `locale`, que el router conserva sin exigirlos en cada llamada.
-
-```ts
-const router = yield* Router
-
-yield* router.navigate("password-recovery-code")
-yield* router.navigate("study-search", {
-  path: { studyId },
-  query: { page: 2 },
-})
-yield* router.replace("login")
-```
-
-El segundo argumento es obligatorio si la ruta tiene algún path param o query field obligatorio. Si toda la entrada es opcional, también lo es el argumento. La aplicación trabaja con los tipos decodificados —por ejemplo `page: number`— y el codec se ocupa de su representación textual. `pushDestination` y `replaceDestination` son escapes de bajo nivel reservados para canonicalizadores que deben editar o preservar una query ya codificada; las features y vistas no los usan para navegación ordinaria.
+Los parámetros y search params son detalles de la aplicación web. Sus codecs
+pueden usar Effect Schema, mientras los conceptos de producto que representan
+permanecen en `frontend-core`.
 
 Una navegación externa que abandona la SPA —por ejemplo OAuth— no acepta un ID del contrato y no pertenece a `Router.navigate`. Usa el servicio Effect `DocumentNavigation`, cuyo adapter web encapsula `window.location.assign` y transforma los fallos del host en `DocumentNavigationError`.
 
-Los adapters de almacenamiento web deben tratar el acceso como una capacidad que puede fallar incluso al leer `window.localStorage`. Una identidad funcional puede degradar a una única identidad en memoria estable durante el lifecycle del adapter; analytics y cualquier capacidad condicionada por consentimiento deben fallar cerradas si no pueden leer o escribir el estado requerido. Los valores persistidos se validan y codifican con `Schema`, no con assertions sobre strings recuperados.
+El almacenamiento key/value ordinario usa `effect/unstable/persistence/KeyValueStore`; cada aplicación proporciona mediante un Layer el backing store web, nativo o de test. No se crean ports que repitan `get`, `set` y `remove`. El acceso debe tratarse como una capacidad que puede fallar incluso al leer `window.localStorage`. Una identidad funcional puede degradar a una única identidad en memoria estable durante el lifecycle del adapter; analytics y cualquier capacidad condicionada por consentimiento deben fallar cerradas si no pueden leer o escribir el estado requerido. Los valores persistidos se validan y codifican con `KeyValueStore.toSchemaStore`, no con assertions sobre strings recuperados.
 
 ## Ejemplo normativo: path de registro
 
-El estado navegable del registro forma parte del destino tipado del router. `frontend-core` define las transiciones y recibe una lectura junto a la operación Effect que confirma el reemplazo:
+`frontend-core` define las transiciones del registro y recibe una operación de
+navegación. Web codifica el paso y el path en search params del Effect router:
 
 ```ts
 export interface RegistrationPathNavigation<E> {
@@ -98,9 +101,13 @@ export interface RegistrationPathNavigation<E> {
 }
 ```
 
-Web proyecta la lectura desde el destino actual y ejecuta la escritura mediante el escape `Router.replaceDestination`, porque esta canonicalización incremental debe preservar query values ajenos al registro; no existe un segundo adapter que escriba History ni un fiber fire-and-forget. `RegistrationPathParam` acepta solo los prefijos publicados `[]`, país, país→tipo, →universidad, →grado y →asignatura. Un lifecycle scoped elimina `path` cuando su valor no cumple ese Schema, tanto al inicio como tras `popstate`, preservando el resto de la query y aplicando solo la canonicalización más reciente. Seleccionar, volver, reiniciar y canonicalizar son atoms Effect nombrados. La composition root les inyecta el único runner de comandos de navegación: conserva el último comando fallido como Effect reejecutable y expone `failedAtom`/`retryAtom`, sin que la app inspeccione ni correlacione los `AsyncResult`. Un token impide que el éxito tardío de otro comando elimine un fallo más reciente. Los hitos analíticos de una selección se ejecutan únicamente después de que `replace` confirme el nuevo path. Un cliente React Native puede proporcionar una operación respaldada por navegación nativa o memoria sin cambiar las reglas ni las pantallas consumidoras.
+`RegistrationPathParam` valida la representación textual. El adapter web
+conserva los valores de query ajenos al wizard y es el único escritor de
+History.
 
-El locale es siempre el primer segmento (`/:locale/...`) y usa el codec `Locale` del árbol compilado. La canonicalización prioriza el path explícito, después el parámetro legado `lang`, y finalmente preferencia/dispositivo; elimina solo `lang` y conserva el resto de query y el hash. Persistencia y atributos de `document` se actualizan después de un `Router.replaceDestination` exitoso. El locale tampoco mantiene un escritor URL independiente.
+El locale es siempre el primer segmento (`/:locale/...`). El layout lo valida
+con `Locale`, proporciona el catálogo de mensajes y actualiza los atributos del
+documento.
 
 ## Composition roots
 

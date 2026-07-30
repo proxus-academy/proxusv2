@@ -25,9 +25,12 @@ export {
 } from "./wizard.js"
 export {
   StoredRegistrationDraft,
+  clearRegistrationDraft,
+  loadRegistrationDraft,
+  registrationDraftStorageKey,
   registrationDraftStorageVersion,
   registrationDraftTtlMs,
-  type RegistrationDraftStorage,
+  saveRegistrationDraft,
 } from "./draft-storage.js"
 export {
   appendRegistrationNode,

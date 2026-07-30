@@ -125,77 +125,43 @@ state.
 
 ## Routing
 
-Routing is modeled in `@proxus/frontend-core/routing` as a platform-independent,
-Effect-first capability. A single nested route definition is the source of truth
-for destination types, accumulated path parameters, URL encoding, URL decoding,
-and the chain of matched layouts. Both destinations and matches are discriminated
-unions, so narrowing a route ID also narrows its parameter types. Route parameters
-use Effect Schema codecs whose encoded representation is a URL segment string.
-
-Only terminal `path`, `param`, and `index` nodes are navigation destinations.
-`root`, `layout`, and parent nodes participate in the match chain but cannot be
-navigated to directly. Application code navigates with opaque destinations made
-by the compiled definition; it must not construct path strings or destination
-objects manually.
-
-The `Router` Effect service owns navigation commands and exposes the current
-opaque destination as an Effect Atom. Platform adapters own history:
+`apps/web` is a client-only SPA and uses `@proxus/effect-router` as the single
+owner of URL matching, browser history, nested layouts, parameters, search
+parameters and navigation. The typed route tree lives in
+`apps/web/src/routes/router.tsx`. Proxus does not use route loaders,
+router-managed data caches or router invalidation.
 
 ```text
-frontend-core routing definition + Router service
-  → apps/web browser History API adapter
-  → future native in-memory/native-navigation adapter
+Effect Router → URL, layouts and page selection
+React page    → renders observable states
+Effect Atom   → routing state, remote data, mutations, forms and workflows
 ```
 
-The public product route contract is exported by
-`@proxus/frontend-core/public-product`. Web consumes that neutral contract and
-selects browser adapters in its own composition root. A future native client
-reuses the neutral route contract and product modules but selects native
-adapters; it does not depend on the web composition. Presentation differences
-alone do not fork routes or atoms.
+Pages and layouts read application state from Effect Atom. Public-only and
+authenticated layouts render an `Outlet` or a typed redirect based on the
+session query. Loading and failure branches remain explicit in those React
+surfaces; navigation does not introduce another data lifecycle.
 
-The browser adapter is the sole owner of `pushState`, `replaceState`, and
-`popstate`. One internal state cell owns `RouterLocation` plus the latest typed
-error; `current`, `location`, and `error` are pure projections of that cell.
-`RouterLocation` preserves the terminal destination, the complete typed match
-chain, and the encoded query as one coherent value. Each transition captures one
-URL and updates that value atomically. Path encoding
-failures remain `SchemaError`/`RouteEncodingError` rather than being erased into
-a generic history error; failed `back` and `forward` calls are observable too.
-The scoped `popstate` lifecycle applies only the latest overlapping decode,
-unsubscribes before shutdown, and waits for active cleanup.
+React event handlers dispatch the single typed `navigateAction` atom. Effect
+workflows use the Effect function from the same small adapter in
+`apps/web/src/routes/navigation.ts`. Its discriminated destination union is
+exhaustive and delegates to the same typed Effect router operation. URL state
+lives in a serializable atom; matches are derived and are not copied into
+another React store.
 
-The adapter preserves unrelated search parameters, hashes, and history state.
-Its platform-neutral `RouterLocation` carries the encoded query so feature atoms
-can project query state and submit it back through router commands without a
-second History owner; the memory adapter stores the complete location in each
-history entry so back/forward restore its query. Query codecs must canonicalize
-invalid values through a scoped router lifecycle (including after `popstate`),
-not merely project them to a local fallback. Every product path starts with
-the validated locale segment (`/:locale/...`); composition roots safely replace
-missing, legacy, or invalid forms with a canonical locale-prefixed destination.
-A route view selects the terminal page from the destination and folds the
-recognized match chain from the inside out to apply structural layouts. Access
-boundaries such as `public-only` and `authenticated` are declared as route
-layouts rather than inferred from terminal IDs; their React implementations own
-session presentation and typed redirects. Components consume route atoms and,
-for plain navigation, one generic React binding to the router; they do not read
-`window`, parse URLs, create Layers, or run Effects during render. Workflows obtain the router service from the Layer
-and call its typed `navigate` or `replace` methods; there is no action per
-destination. URL-backed product transitions remain named function atoms, not
-writable projections that launch detached fibers. The composition root creates one navigation-command
-module with `makeRetryableCommands` from `@proxus/frontend-core/navigation`
-and injects its runner into canonical locale/path, registration, and locale
-operations. The module retains
-only the failure from the latest-started command as a re-executable Effect, so a
-late completion from older work cannot replace it; a retry becomes the latest
-command when its execution starts and is itself superseded by any later start.
-Token-checked success clears only its corresponding failure and manual retry
-re-executes that captured command. Views consume only its derived `failedAtom` and `retryAtom`; they do not
-correlate command `AsyncResult` causes with `Router.error`. Storage, `document`
-attributes, and analytics caused by a transition run only after
-the corresponding router operation (`replace` or the incremental
-`replaceDestination` escape hatch) succeeds; a failed replacement leaves all of them unchanged.
+The shared application runtime requires the typed `PublicApiClient` service.
+Each application composition root selects the public base URL and concrete HTTP
+transport; feature atoms do not depend directly on `HttpClient` or assume a
+browser-relative `/api` origin.
+
+URL-specific codecs, such as registration wizard search parameters, belong to
+`apps/web`. Domain concepts such as `RegistrationStep` and transition rules
+remain in `packages/frontend-core`. Full-document navigation used by OAuth is a
+separate platform capability because it leaves the SPA.
+
+The locale segment is validated at the locale layout, which also provides the
+message catalog and applies document language attributes. Invalid and unmatched
+URLs redirect to the preferred locale registration page.
 
 ## Legitimate effects
 

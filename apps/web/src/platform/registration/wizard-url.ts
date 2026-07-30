@@ -1,15 +1,12 @@
-import type { RetryableCommandRunner } from "@proxus/frontend-core/navigation"
 import {
-  guardRegistrationStep,
   RegistrationPathParam,
   RegistrationStepParam,
-  type RegistrationDraft,
   type RegistrationPath,
   type RegistrationStep,
 } from "@proxus/frontend-core/registration"
-import type { RouteDestination, RouterCommandError, RouterLocation, RouterService } from "@proxus/frontend-core/routing"
+import type { RouterNavigationError } from "@proxus/effect-router"
 import { Effect, Option, Schema } from "effect"
-import * as Atom from "effect/unstable/reactivity/Atom"
+import { router } from "../../routes/router.js"
 
 export interface RegistrationUrlState {
   readonly step: RegistrationStep
@@ -33,27 +30,16 @@ const encodeQuery = (current: string, step: RegistrationStep, path: Registration
   return search.toString()
 }
 
-export const makeWebRegistrationWizardNavigation = <Destination extends RouteDestination>(
-  router: RouterService<Destination>,
-  runner: RetryableCommandRunner,
-) => {
-  const urlStateAtom = Atom.make((get): RegistrationUrlState => decodeRegistrationQuery(get(router.location).search))
+export const registrationUrlState = (): RegistrationUrlState =>
+  decodeRegistrationQuery(router.location().search)
 
-  const navigate = (operation: "push" | "replace", step: RegistrationStep, path: RegistrationPath, get: Atom.FnContext) => {
-    const location = get(router.location)
-    const change = operation === "push" ? router.pushDestination : router.replaceDestination
-    return change(location.destination, { search: encodeQuery(location.search, step, path) })
-  }
-  const push = (step: RegistrationStep, path: RegistrationPath, get: Atom.FnContext): Effect.Effect<void, RouterCommandError> => navigate("push", step, path, get)
-  const replace = (step: RegistrationStep, path: RegistrationPath, get: Atom.FnContext): Effect.Effect<void, RouterCommandError> => navigate("replace", step, path, get)
-
-  const pushAtom = Atom.fn<{ readonly step: RegistrationStep; readonly path: RegistrationPath }>()((input, get) => runner.run(get, push(input.step, input.path, get)))
-  const canonicalizeAtom = Atom.fn<{ readonly location: RouterLocation<Destination>; readonly draft: RegistrationDraft }>()(({ location, draft }, get) => {
-    const decoded = decodeRegistrationQuery(location.search)
-    const guarded = guardRegistrationStep(decoded.step, { ...draft, path: decoded.path })
-    if (decoded.valid && guarded === decoded.step) return Effect.void
-    return runner.run(get, replace(guarded, decoded.path, get))
-  })
-
-  return { urlStateAtom, push, replace, pushAtom, canonicalizeAtom }
+export const changeRegistrationStep = (
+  operation: "push" | "replace",
+  step: RegistrationStep,
+  path: RegistrationPath,
+): Effect.Effect<void, RouterNavigationError> => {
+  const search = encodeQuery(router.location().search, step, path)
+  return operation === "replace"
+    ? router.replaceSearch(search)
+    : router.pushSearch(search)
 }

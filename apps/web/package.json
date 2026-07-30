@@ -11,6 +11,7 @@
   "dependencies": {
     "@effect/atom-react": "4.0.0-beta.98",
     "@lucas-barake/effect-form-react": "0.26.0-beta.5",
+    "@proxus/effect-router": "workspace:*",
     "@proxus/frontend-core": "workspace:*",
     "@proxus/product-messages": "workspace:*",
     "@proxus/shared": "workspace:*",

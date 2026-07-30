@@ -1,8 +1,9 @@
 import { useAtomValue } from "@effect/atom-react"
 import type { RegistrationState, RegistrationStep } from "@proxus/frontend-core/registration"
+import type { RegistrationUrlState } from "../../platform/registration/wizard-url.js"
 import { Heading, Text } from "@proxus/ui"
 import { isStudyStep } from "./registration-copy.js"
-import { registrationStateAtom, registrationUrlStateAtom } from "./state.js"
+import { registrationStateAtom } from "./state.js"
 import { AccountStep } from "./steps/account-step.js"
 import { ChoosingMethod } from "./steps/choosing-method.js"
 import { ProblemStep } from "./steps/problem-step.js"
@@ -37,9 +38,10 @@ function OnboardingSteps({ state, requestedStep }: {
 }
 
 /** Connected registration feature. It consumes stable atoms directly instead of an action bag. */
-export function RegistrationOnboarding() {
+export function RegistrationOnboarding({ url = { step: "start", path: [], valid: true } }: {
+  readonly url?: RegistrationUrlState
+}) {
   const state = useAtomValue(registrationStateAtom)
-  const url = useAtomValue(registrationUrlStateAtom)
   const requestedStep = onboardingSteps.has(url.step) ? url.step : undefined
 
   switch (state._tag) {

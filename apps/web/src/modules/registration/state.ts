@@ -11,8 +11,7 @@ import {
   type RegistrationDraft,
   type RegistrationStep,
 } from "@proxus/frontend-core/registration"
-import { DocumentNavigation } from "@proxus/frontend-core/routing"
-import { makeWebRegistrationDraftStorage } from "../../platform/registration/index.js"
+import { DocumentNavigation } from "@proxus/frontend-core/navigation"
 import {
   CompleteGoogleRegistrationInput,
   GoogleCallbackInput,
@@ -22,13 +21,13 @@ import {
 } from "@proxus/shared/auth"
 import { Effect, Schema } from "effect"
 import * as Atom from "effect/unstable/reactivity/Atom"
+import * as KeyValueStore from "effect/unstable/persistence/KeyValueStore"
 import {
-  Router,
-  routerRuntime,
-  pushRegistrationStep,
-  registrationUrlStateAtom,
-  routeLocationAtom,
-} from "../../routes/router.js"
+  replaceSearch,
+} from "../../routes/navigation.js"
+import { navigationRuntime } from "../../routes/navigation-runtime.js"
+import { router } from "../../routes/router.js"
+import { changeRegistrationStep } from "../../platform/registration/wizard-url.js"
 import {
   registrationCompletedAnalyticsAction,
   registrationStartedAnalyticsAction,
@@ -39,23 +38,24 @@ export interface GoogleRegistrationDraft {
   readonly email: string
 }
 
-const draftStorage = makeWebRegistrationDraftStorage(sessionStorage)
+export const registrationDraftStorageLayer = KeyValueStore.layerStorage(
+  () => sessionStorage,
+)
 const registrationFlow = makeRegistrationFlowAtoms({
-  storage: draftStorage,
+  storageLayer: registrationDraftStorageLayer,
   now: () => performance.timeOrigin + performance.now(),
-  navigate: (step, state, get) => pushRegistrationStep(
-    step,
-    state._tag === "CollectingOnboarding" || state._tag === "ConfirmingGoogle"
-      ? state.draft.path
-      : [],
-    get,
-  ),
+  navigate: (step, state) => changeRegistrationStep(
+      "push",
+      step,
+      state._tag === "CollectingOnboarding" || state._tag === "ConfirmingGoogle"
+        ? state.draft.path
+        : [],
+    ),
 })
 
 export const registrationStateAtom = registrationFlow.stateAtom
+export const registrationDraftRestoreLifecycleAtom = registrationFlow.restoreLifecycleAtom
 export const dispatchRegistrationAction = registrationFlow.dispatchAtom
-export { registrationUrlStateAtom }
-
 export const verificationEmailAtom = Atom.make("")
 export const googleRegistrationDraftAtom = Atom.make<GoogleRegistrationDraft | undefined>(undefined)
 const processedGoogleCallbackAtom = Atom.make<string | undefined>(undefined)
@@ -92,7 +92,7 @@ export const beginEmailRegistrationAction = Atom.fn<void>()((_input, get) => Eff
   yield* get.setResult(dispatchRegistrationAction, { _tag: "EmailStarted" })
 }))
 
-export const beginGoogleRegistrationAction = routerRuntime.fn((_input: void, get) => Effect.gen(function*() {
+export const beginGoogleRegistrationAction = navigationRuntime.fn((_input: void, get) => Effect.gen(function*() {
   const documentNavigation = yield* DocumentNavigation
   yield* get.setResult(registrationStartedAnalyticsAction, undefined)
   yield* get.setResult(dispatchRegistrationAction, { _tag: "GoogleStarted" })
@@ -150,21 +150,19 @@ export const confirmGoogleRegistrationAction = Atom.fn<void>()((_input, get) => 
   yield* get.setResult(registrationCompletedAnalyticsAction, undefined)
 }))
 
-export const resolveGoogleCallbackAction = routerRuntime.fn((query: {
+export const resolveGoogleCallbackAction = navigationRuntime.fn((query: {
   readonly code: string
   readonly state: string
 }, get) => Effect.gen(function*() {
-  const router = yield* Router
   const key = `${query.code}:${query.state}`
   if (get(processedGoogleCallbackAtom) === key) return
   const input = yield* Schema.decodeUnknownEffect(GoogleCallbackInput)(query)
   const result = yield* get.setResult(completeGoogleCallbackAction, input)
   get.set(processedGoogleCallbackAtom, key)
-  const location = get(router.location)
-  const search = new URLSearchParams(location.search)
+  const search = new URLSearchParams(router.location().search)
   search.delete("code")
   search.delete("state")
-  yield* router.replaceDestination(location.destination, { search: search.toString() })
+  yield* replaceSearch(Object.fromEntries(search))
   // OAuth returns through a full document navigation, so the in-memory state
   // starts at ChoosingMethod even though the user already initiated Google.
   if (get(registrationStateAtom)._tag === "ChoosingMethod") {
@@ -188,7 +186,7 @@ export const resolveGoogleCallbackAction = routerRuntime.fn((query: {
 }))
 
 export const googleCallbackLifecycleAtom = Atom.make((get) => {
-  const search = new URLSearchParams(get(routeLocationAtom).search)
+  const search = new URLSearchParams(router.location().search)
   const code = search.get("code")
   const state = search.get("state")
   return code === null || state === null
@@ -201,7 +199,7 @@ export const editRegistrationStepAction = Atom.fn<RegistrationStep>()((step, get
   const path: RegistrationDraft["path"] = state._tag === "CollectingOnboarding" || state._tag === "ConfirmingGoogle"
     ? state.draft.path
     : []
-  return pushRegistrationStep(step, path, get)
+  return changeRegistrationStep("push", step, path)
 })
 
 const operationResults = (get: Atom.FnContext) => [
@@ -215,5 +213,3 @@ const operationResults = (get: Atom.FnContext) => [
 
 export const registrationBusyAtom = Atom.make((get) => operationResults(get).some((result) => result.waiting))
 export const registrationFailedAtom = Atom.make((get) => operationResults(get).some((result) => result._tag === "Failure"))
-
-export { draftStorage as registrationDraftStorage }

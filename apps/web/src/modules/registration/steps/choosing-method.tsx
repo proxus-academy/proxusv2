@@ -10,12 +10,12 @@ import {
   beginGoogleRegistrationAction,
   registrationBusyAtom,
 } from "../state.js"
-import { useRouter } from "../../../routes/use-router.js"
+import { navigateAction } from "../../../routes/navigation.js"
 
 export function ChoosingMethod() {
   const beginGoogle = useAtomSet(beginGoogleRegistrationAction)
   const beginEmail = useAtomSet(beginEmailRegistrationAction)
-  const router = useRouter()
+  const navigate = useAtomSet(navigateAction)
   const busy = useAtomValue(registrationBusyAtom)
   const assignment = useAtomValue(registrationLandingAssignmentAtom)
   useAtomValue(registrationLandingExposureLifecycleAtom)
@@ -29,7 +29,7 @@ export function ChoosingMethod() {
       <RegistrationFailure />
       <Button disabled={busy} onClick={() => beginGoogle()}>Continuar con Google</Button>
       <Button disabled={busy} onClick={() => beginEmail()}>Empezar con email</Button>
-      <Button variant="ghost" onClick={() => router.navigate("login")}>Ya tengo cuenta</Button>
+      <Button variant="ghost" onClick={() => navigate({ id: "login" })}>Ya tengo cuenta</Button>
     </main>
   )
 }

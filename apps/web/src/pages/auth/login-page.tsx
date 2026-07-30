@@ -6,7 +6,7 @@ import { AuthError } from "../../modules/auth/auth-controls.js"
 import { openPasswordRecoveryAction, startGoogleLoginAction } from "../../modules/auth/actions.js"
 import { LoginForm } from "../../modules/auth/forms.js"
 import { AuthPage } from "../../patterns/auth-page.js"
-import { useRouter } from "../../routes/use-router.js"
+import { navigateAction } from "../../routes/navigation.js"
 
 export function LoginPage() {
   const loginResult = useAtomValue(LoginForm.submit)
@@ -14,7 +14,7 @@ export function LoginPage() {
   const startGoogle = useAtomSet(startGoogleLoginAction)
   const startGoogleResult = useAtomValue(startGoogleLoginAction)
   const openRecovery = useAtomSet(openPasswordRecoveryAction)
-  const router = useRouter()
+  const navigate = useAtomSet(navigateAction)
   const messages = useFormMessages()
   const copy = messages.auth.login
 
@@ -42,7 +42,7 @@ export function LoginPage() {
       >
         Continuar con Google
       </Button>
-      <Button className="w-full" variant="ghost" onClick={() => router.navigate("registration")}>
+      <Button className="w-full" variant="ghost" onClick={() => navigate({ id: "registration" })}>
         Crear una cuenta
       </Button>
       <Button variant="ghost" onClick={() => openRecovery({ email: "" })}>

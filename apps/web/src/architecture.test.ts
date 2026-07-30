@@ -42,19 +42,25 @@ describe("frontend architecture boundaries", () => {
     }
   })
 
-  it("uses the router service instead of one action per destination", () => {
+  it("uses one typed navigation interface instead of one action per destination", () => {
     for (const [path, source] of appFiles) {
       expect(source, path).not.toMatch(/export const navigateTo[A-Z]\w*Action/)
       expect(source, path).not.toMatch(/get\.setResult\(navigateTo[A-Z]\w*Action/)
     }
   })
 
-  it("has one browser History writer", () => {
+  it("keeps browser History writes in the router adapter", () => {
     const writers = appFiles
       .filter(([, source]) => /history\.(?:pushState|replaceState)\(/.test(source))
       .map(([path]) => path.replace(/^\.\.\/\.\.\/\.\.\//, ""))
-    expect(writers).toEqual([
-      "./platform/routing/browser-router.ts",
-    ])
+    expect(writers).toEqual(["./platform/routing/browser-history.web.ts"])
+  })
+
+  it("keeps route definitions free of data loaders", () => {
+    const routeFiles = appFiles.filter(([path]) => path.endsWith("/routes/router.tsx"))
+    expect(routeFiles).toHaveLength(1)
+    for (const [path, source] of routeFiles) {
+      expect(source, path).not.toMatch(/\b(?:loader|beforeLoad)\s*:/)
+    }
   })
 })

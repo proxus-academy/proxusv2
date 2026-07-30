@@ -108,7 +108,7 @@ El composition root:
 | Query remota y su `AsyncResult` | Query atom |
 | Mutación remota | Function atom |
 | Workflow o máquina de producto | Atom o conjunto cohesivo de atoms |
-| Draft persistente | Atom respaldado por port de storage |
+| Draft persistente | Atom respaldado por `KeyValueStore` y un Layer de plataforma |
 | Formulario | Form neutral creada con `Form.make` |
 | Derivación compartida | `Atom.readable` o atom derivado |
 | Estado por entidad/instancia | `Atom.family` |
@@ -445,7 +445,8 @@ Se adoptan:
 
 Se adapta:
 
-- TanStack Router se sustituye por el router tipado de Proxus;
+- `@proxus/effect-router` se usa solo para URL, layouts y renderizado de
+  páginas; los loaders y el estado remoto del router no se usan;
 - su separación container/presentation se reemplaza por identidad → atom family → módulo visual;
 - Effect Atom, no un screen central, posee el estado de aplicación.
 
