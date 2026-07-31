@@ -13,7 +13,7 @@ import { decodeRegistrationQuery } from "./wizard-url.js"
 describe("registration web codecs and draft", () => {
   it("rejects invalid deep links without consuming campaign", () => {
     const decoded = decodeRegistrationQuery("campaign=summer&step=verify&path=not-json")
-    expect(decoded).toEqual({ step: "verify", path: [], valid: false })
+    expect(decoded).toEqual({ step: "verify", nodeIds: [], valid: false })
     expect(new URLSearchParams("campaign=summer&step=verify&path=not-json").get("campaign")).toBe("summer")
   })
 

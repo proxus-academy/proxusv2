@@ -11,7 +11,8 @@ const user = (status: User["status"], googleSubject: string | null): User => ({
   id: makeUserId(`${status}-${googleSubject ?? "email"}`), email: `${status}@example.com`, status,
   emailVerifiedAt: status === "active" ? now : null, passwordHash: "hash", googleSubject,
   usernameNormalized: `${status}_${googleSubject ?? "email"}`, birthYear: 2000, problemKind: "prepare-exams", problemOther: null,
-  subjectId: "subject", validatedNodeIds: ["1", "2", "3", "4", "5"], createdAt: now, updatedAt: now,
+  acquisitionSource: "friend", acquisitionOther: null,
+  studyId: "study", subjectId: "subject", createdAt: now, updatedAt: now,
 })
 const clock = Layer.succeed(Clock.Clock, { currentTimeMillisUnsafe: () => 100, currentTimeMillis: Effect.succeed(100), currentTimeNanosUnsafe: () => 100_000_000n, currentTimeNanos: Effect.succeed(100_000_000n), sleep: () => Effect.void })
 const sessions = Layer.succeed(GoogleSessionIssuer, GoogleSessionIssuer.of({ issue: (userId) => Effect.succeed({ token: `token-${userId}`, session: { id: makeSessionId(`session-${userId}`), userId, tokenHash: "hash", previousTokenHash: null, previousTokenValidUntil: null, expiresAt: new Date(1_000), revokedAt: null, createdAt: now } }) }))

@@ -10,9 +10,16 @@ export interface BrowserDocumentLocation {
 
 export const browserDocumentNavigationLayer = (
   location?: BrowserDocumentLocation,
+  baseUrl?: string,
 ) => Layer.succeed(DocumentNavigation, DocumentNavigation.of({
   assign: (url) => Effect.try({
-    try: () => (location ?? window.location).assign(url),
+    try: () => {
+      const target = location ?? window.location
+      const resolved = url.startsWith("http://") || url.startsWith("https://")
+        ? url
+        : new URL(url, baseUrl ?? window.location.href).href
+      target.assign(resolved)
+    },
     catch: (cause) => new DocumentNavigationError({
       message: cause instanceof globalThis.Error
         ? cause.message

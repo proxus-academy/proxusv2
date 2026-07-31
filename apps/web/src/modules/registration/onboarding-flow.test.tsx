@@ -13,10 +13,7 @@ import {
   registrationLandingExposureLifecycleAtom,
 } from "./feature-flags.js"
 import { RegistrationOnboarding } from "./onboarding-flow.js"
-import {
-  googleRegistrationDraftAtom,
-  registrationStateAtom,
-} from "./state.js"
+import { registrationStateAtom } from "./state.js"
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
 const emailDraft: RegistrationDraft = { provider: "email", path: [] }
@@ -24,7 +21,7 @@ let host: HTMLDivElement
 let root: Root
 let renderKey = 0
 
-const render = (state: RegistrationState, googleEmail?: string) => {
+const render = (state: RegistrationState) => {
   const initialValues = [
     Atom.initialValue(registrationStateAtom, state),
     Atom.initialValue(registrationLandingAssignmentAtom, AsyncResult.success({
@@ -34,12 +31,6 @@ const render = (state: RegistrationState, googleEmail?: string) => {
       subject: makeFeatureFlagSubjectId("00000000-0000-4000-8000-000000000001"),
     })),
     Atom.initialValue(registrationLandingExposureLifecycleAtom, AsyncResult.success(undefined)),
-    ...(googleEmail === undefined
-      ? []
-      : [Atom.initialValue(googleRegistrationDraftAtom, {
-          registrationId: "registration-id",
-          email: googleEmail,
-        })]),
   ]
   renderKey++
   return Effect.promise(() => act(() => {
@@ -78,12 +69,16 @@ describe("public registration onboarding", () => {
 
   it("renders the problem step without a screen-wide action bag", () => Effect.runPromise(Effect.gen(function*() {
     yield* render({ _tag: "CollectingOnboarding", draft: emailDraft, step: "problem" })
-    expect(host.querySelector('input[value="other"]')).not.toBeNull()
+    const other = Array.from(host.querySelectorAll("button")).find((button) => button.textContent === "Otro")
+    expect(other).toBeDefined()
+    expect(host.querySelector("textarea")).toBeNull()
+    expect(host.querySelector('input[type="radio"]')).toBeNull()
+    yield* render({ _tag: "CollectingOnboarding", draft: emailDraft, step: "problem-other" })
     expect(host.querySelector("textarea")).not.toBeNull()
-    expect(host.textContent).toContain("¿Qué quieres resolver?")
+    expect(host.textContent).toContain("Cuéntanos qué necesitas")
   })))
 
-  it("shows editable summary data on the account step", () => Effect.runPromise(Effect.gen(function*() {
+  it("shows only account fields on the account step", () => Effect.runPromise(Effect.gen(function*() {
     yield* render({
       _tag: "CollectingOnboarding",
       draft: {
@@ -94,9 +89,11 @@ describe("public registration onboarding", () => {
       },
       step: "account",
     })
-    expect(host.textContent).toContain("Preparar exámenes")
-    expect(host.textContent).toContain("alumna_1, 2001")
-    expect(host.textContent).toContain("Editar problema")
+    expect(host.textContent).toContain("Email")
+    expect(host.textContent).toContain("Contraseña")
+    expect(host.textContent).toContain("Confirmar contraseña")
+    expect(host.textContent).not.toContain("Tu resumen")
+    expect(host.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(true)
   })))
 
   it("renders verification and Google confirmation as explicit variants", () => Effect.runPromise(Effect.gen(function*() {
@@ -106,7 +103,8 @@ describe("public registration onboarding", () => {
       maskedEmail: "a***@example.test",
     })
     expect(host.textContent).toContain("a***@example.test")
-    expect(host.textContent).toContain("Reenviar código")
+    expect(host.textContent).toContain("Reenviar en 60s")
+    expect(Array.from(host.querySelectorAll("button")).find((button) => button.textContent?.startsWith("Reenviar"))?.disabled).toBe(true)
 
     yield* render({
       _tag: "ConfirmingGoogle",
@@ -117,7 +115,11 @@ describe("public registration onboarding", () => {
         username: "student_1",
         birthYear: 2000,
       },
-    }, "verified@example.test")
+      googleRegistration: {
+        registrationId: "registration-id",
+        email: "verified@example.test",
+      },
+    })
     expect(host.textContent).toContain("verified@example.test")
     expect(host.textContent).not.toContain("Contraseña")
   })))

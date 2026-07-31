@@ -14,11 +14,19 @@ export interface RegistrationLandingAssignment {
   readonly subject: FeatureFlagSubjectId
 }
 
+export interface RegistrationStepAnalytics {
+  readonly step: string
+  readonly stepIndex: number
+  readonly totalSteps: number
+  readonly provider: "email" | "google"
+}
+
 /** Capability seam for consent-aware, best-effort public product analytics. */
 export class RegistrationLandingAnalytics extends Context.Service<RegistrationLandingAnalytics, {
   readonly record: (
     assignment: RegistrationLandingAssignment,
     tag: PublicProductAnalyticsEvent["_tag"],
+    step?: RegistrationStepAnalytics,
   ) => Effect.Effect<void>
 }>()("@proxus/frontend-core/feature-flags/registration-landing/RegistrationLandingAnalytics") {}
 
@@ -39,8 +47,11 @@ export const makeRegistrationLandingAtoms = <E>(options: {
   ))
 
   const recordRegistrationLandingEventAtom = runtime.fn(
-    ({ assignment, tag }: { readonly assignment: RegistrationLandingAssignment; readonly tag: PublicProductAnalyticsEvent["_tag"] }) =>
-      RegistrationLandingAnalytics.use((analytics) => analytics.record(assignment, tag)),
+    ({ assignment, tag, step }: {
+      readonly assignment: RegistrationLandingAssignment
+      readonly tag: PublicProductAnalyticsEvent["_tag"]
+      readonly step?: RegistrationStepAnalytics
+    }) => RegistrationLandingAnalytics.use((analytics) => analytics.record(assignment, tag, step)),
   )
   const exposedAssignmentsAtom = Atom.make<ReadonlySet<string>>(new Set<string>()).pipe(Atom.keepAlive)
   const lastExposedAssignmentAtom = Atom.make<RegistrationLandingAssignment | undefined>(undefined).pipe(Atom.keepAlive)
@@ -77,11 +88,25 @@ export const makeRegistrationLandingAtoms = <E>(options: {
       ? Effect.void
       : get.setResult(recordRegistrationLandingEventAtom, { assignment, tag: "registration_completed" })
   })
+  const registrationStepViewedAtom = runtime.fn((step: RegistrationStepAnalytics, get) => {
+    const assignment = get(lastExposedAssignmentAtom)
+    return assignment === undefined
+      ? Effect.void
+      : get.setResult(recordRegistrationLandingEventAtom, { assignment, tag: "registration_step_viewed", step })
+  })
+  const registrationStepCompletedAtom = runtime.fn((step: RegistrationStepAnalytics, get) => {
+    const assignment = get(lastExposedAssignmentAtom)
+    return assignment === undefined
+      ? Effect.void
+      : get.setResult(recordRegistrationLandingEventAtom, { assignment, tag: "registration_step_completed", step })
+  })
 
   return {
     assignmentAtom,
     exposureLifecycleAtom,
     registrationStartedAtom,
     registrationCompletedAtom,
+    registrationStepViewedAtom,
+    registrationStepCompletedAtom,
   }
 }

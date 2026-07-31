@@ -26,7 +26,7 @@ Los handlers solo adaptan HTTP/cookies. Los servicios coordinan reglas y puertos
 
 ## Sesiones y challenges
 
-La cookie contiene un token opaco; solo su hash se persiste. Es `HttpOnly`, `SameSite=Lax` y `Secure` en la composición actual. Una sesión dura 30 días, entra en renovación deslizante durante los últimos 7 y conserva 10 segundos de gracia al rotar. Logout revoca la actual; reset de password revoca todas.
+La cookie contiene un token opaco; solo su hash se persiste. Es `HttpOnly` y `SameSite=Lax`; producción exige además `Secure`. La composición de desarrollo omite `Secure` para que la sesión funcione en previews HTTP de la red privada, mientras que producción mantiene HTTPS como requisito. Una sesión dura 30 días, entra en renovación deslizante durante los últimos 7 y conserva 10 segundos de gracia al rotar. Logout revoca la actual; reset de password revoca todas.
 
 Los códigos de verificación/reset son de seis dígitos, hasheados, de un uso, con propósito, TTL de 15 minutos y máximo cinco intentos. Reenvío de verificación tiene cooldown de 60 segundos. Solicitud de reset y reenvío responden de forma neutra para evitar enumeración.
 

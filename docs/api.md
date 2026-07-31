@@ -26,19 +26,30 @@ Prefijo: `/auth`. Las respuestas de sesión instalan una cookie opaca `HttpOnly`
 
 | Method | Path | Operation |
 | --- | --- | --- |
+| GET | `/availability/email?email=` | Comprobar disponibilidad normalizada de email |
+| GET | `/availability/username?username=` | Comprobar disponibilidad normalizada de nombre de usuario |
 | POST | `/register/email` | Crear alta pendiente y enviar código (`202`) |
 | POST | `/verify-email` | Consumir código, activar cuenta y crear sesión |
 | POST | `/verify-email/resend` | Reemitir de forma no enumerable (`202`) |
 | POST | `/login` | Login email/password y sesión |
 | POST | `/password-reset/request` | Solicitud no enumerable (`202`) |
 | POST | `/password-reset/confirm` | Cambiar password y revocar sesiones |
-| GET | `/google/start` | Crear redirect/state/nonce |
+| POST | `/google/start` | Crear redirect/state/nonce sin semántica cacheable |
 | GET | `/google/callback` | Resolver login, auto-link o draft Google |
 | POST | `/google/register` | Completar onboarding de identidad Google nueva |
 | GET | `/session` | Leer sesión activa; requiere cookie |
 | POST | `/logout` | Revocar sesión activa; requiere cookie |
 
-Registro recibe el onboarding completo y un path publicado y contiguo de Study Catalog. El servidor no confía en nombres ni perfiles Google enviados por el navegador. Verificación y reset usan challenges hasheados, con propósito, expiración, intentos y uso único. Login devuelve errores genéricos; reset y reenvío no revelan si existe una cuenta. Google usa authorization-code/callback: una identidad existente entra directamente, un email activo y verificado puede auto-vincularse de forma transaccional y una identidad nueva recibe un draft pendiente antes del alta.
+Registro recibe el onboarding completo, incluida la fuente de adquisición, y el identificador de la asignatura elegida. La fuente usa una clasificación cerrada; `other` exige un detalle de hasta 200 caracteres. El navegador recorre dinámicamente los hijos publicados del grafo y conserva la ruta solo como estado transitorio, pero no la envía como autoridad. El servidor comprueba que la asignatura sea publicada y terminal, deriva su único padre publicado como estudio y persiste ambos identificadores (`studyId` y `subjectId`). No confía en nombres, relaciones de catálogo ni perfiles Google enviados por el navegador. Verificación y reset usan challenges hasheados, con propósito, expiración, intentos y uso único. Login devuelve errores genéricos; reset y reenvío no revelan si existe una cuenta. Google usa authorization-code/callback: una identidad existente entra directamente, un email activo y verificado puede auto-vincularse de forma transaccional y una identidad nueva recibe un draft pendiente antes del alta.
+
+`GoogleAuthorization.authorizationUrl` admite una URL HTTP(S) absoluta para el
+proveedor real y una ruta same-origin que empiece por `/` para adapters mock de
+desarrollo. No admite URLs protocol-relative. El mock local vuelve así al mismo
+host desde el que se abrió la web, incluido un hostname de Tailscale. La
+respuesta de inicio se sirve con `Cache-Control: no-store`: contiene un
+`state`/nonce de un solo uso y nunca puede reutilizarse desde la caché.
+
+Las comprobaciones de disponibilidad normalizan con las mismas reglas que el alta y solo devuelven `{ available }`; no exponen cuentas, estados ni proveedores. Deben protegerse con rate limiting en el borde de despliegue antes de habilitarse públicamente en producción.
 
 Los endpoints protegidos por `SessionAuthorization` responden `401` si la cookie falta o no resuelve una cuenta activa. La renovación deslizante puede rotar la cookie en cualquier respuesta autenticada; no existe endpoint de refresh.
 
@@ -67,6 +78,8 @@ than an empty collection. `/nodes/children/:nodeId` additionally selects its
 allowed relationship kinds exhaustively from the persisted parent kind. Roots
 and graph collections keep deterministic relationship position/ID ordering.
 Administrative reads do not apply this publication policy.
+
+Las colecciones públicas de nodos incluyen `userCount`, calculado en una única consulta sobre los paths validados de cuentas activas. `imageUrl` queda como campo opcional del contrato para que el adapter de entrega de assets pueda incorporarlo sin cambiar de nuevo la forma pública.
 
 ## Administrative study catalog
 

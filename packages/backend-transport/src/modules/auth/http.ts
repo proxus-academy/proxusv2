@@ -2,6 +2,7 @@ import {
   AuthenticationService,
   GoogleFlow,
   RegistrationService,
+  RegistrationAvailability,
   validateRegistrationDraft,
   makeSessionId as makeDomainSessionId,
   type IssuedSession,
@@ -9,6 +10,7 @@ import {
 } from "@proxus/backend-domain/auth"
 import {
   AccountSummary,
+  AuthAvailability,
   AuthCodeInvalid,
   AuthRegistrationConflict,
   AuthenticationFailed,
@@ -33,7 +35,7 @@ import * as HttpServerResponse from "effect/unstable/http/HttpServerResponse"
 import { HttpApiBuilder, HttpApiError } from "effect/unstable/httpapi"
 
 export interface AuthCookieOptions {
-  readonly secure: true
+  readonly secure: boolean
   readonly sameSite: "lax" | "strict" | "none"
 }
 
@@ -93,13 +95,24 @@ const attachSession = (issued: IssuedSession) => Effect.gen(function*() {
   yield* cookies.set(issued.token, issued.session.expiresAt)
   return yield* view.fromIssued(issued)
 })
+const preventCaching = HttpEffect.appendPreResponseHandler((_request, response) =>
+  Effect.succeed(HttpServerResponse.setHeader(response, "cache-control", "no-store")))
 
 export const PublicAuthHandlers = HttpApiBuilder.group(PublicApi, "auth", Effect.fn(function* (handlers) {
   const registration = yield* RegistrationService
+  const availability = yield* RegistrationAvailability
   const authentication = yield* AuthenticationService
   const google = yield* GoogleFlow
 
   return handlers
+    .handle("emailAvailability", ({ query }) => availability.emailAvailable(query.email).pipe(
+      Effect.map((available) => new AuthAvailability({ available })),
+      Effect.mapError(() => internal()),
+    ))
+    .handle("usernameAvailability", ({ query }) => availability.usernameAvailable(query.username).pipe(
+      Effect.map((available) => new AuthAvailability({ available })),
+      Effect.mapError(() => internal()),
+    ))
     .handle("registerWithEmail", ({ payload }) => Clock.currentTimeMillis.pipe(
       Effect.map((now) => DateTime.toDateUtc(DateTime.makeUnsafe(now)).getUTCFullYear()),
       Effect.flatMap((year) => validateRegistrationDraft(payload.onboarding, year).pipe(Effect.mapError(() => registrationConflict()))),
@@ -115,10 +128,13 @@ export const PublicAuthHandlers = HttpApiBuilder.group(PublicApi, "auth", Effect
       Effect.as(accepted()),
     ))
     .handle("resetPassword", ({ payload }) => authentication.resetPassword(payload.email, payload.code, payload.password).pipe(Effect.mapError(resetError), Effect.as(accepted())))
-    .handle("startGoogle", () => google.start("login").pipe(
-      Effect.map(({ url }) => new GoogleAuthorization({ authorizationUrl: url })),
-      Effect.mapError(() => internal()),
-    ))
+    .handle("startGoogle", () => Effect.gen(function*() {
+      yield* preventCaching
+      return yield* google.start("login").pipe(
+        Effect.map(({ url }) => new GoogleAuthorization({ authorizationUrl: url })),
+        Effect.mapError(() => internal()),
+      )
+    }))
     .handle("completeGoogleCallback", ({ query }) => Effect.gen(function*() {
       const resolution = yield* google.complete(query).pipe(Effect.mapError(() => googleFailed()))
       if (resolution._tag === "Authenticated") return yield* attachSession(resolution.session).pipe(Effect.map((session) => new ExistingGoogleSession({ session })))

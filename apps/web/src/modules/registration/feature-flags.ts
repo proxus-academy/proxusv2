@@ -28,3 +28,5 @@ export const registrationLandingAssignmentAtom = landing.assignmentAtom
 export const registrationLandingExposureLifecycleAtom = landing.exposureLifecycleAtom
 export const registrationStartedAnalyticsAction = landing.registrationStartedAtom
 export const registrationCompletedAnalyticsAction = landing.registrationCompletedAtom
+export const registrationStepViewedAnalyticsAction = landing.registrationStepViewedAtom
+export const registrationStepCompletedAnalyticsAction = landing.registrationStepCompletedAtom

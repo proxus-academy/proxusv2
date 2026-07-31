@@ -31,7 +31,7 @@ view → atom → typed HTTP client or platform port → Effect/platform adapter
 
 Platform capabilities follow
 [`../architecture/client-platform-ports-and-adapters.md`](../architecture/client-platform-ports-and-adapters.md).
-Atoms use the shared typed HTTP API directly when the operation is already expressed by an endpoint. Do not create feature client services that merely duplicate generated endpoint methods. Use Effect's `KeyValueStore` service for ordinary key/value persistence and provide the platform backing store as a Layer; add a product-specific service only when `KeyValueStore` cannot express the capability. Capability ports remain appropriate for other non-Effect or platform-specific behavior such as browser redirects, React Native modules, and vendor SDKs. `@proxus/effect-router` owns web SPA routing; Effect workflows use its typed Effect operations rather than browser History globals.
+Atoms use the shared typed HTTP API directly when the operation is already expressed by an endpoint. Do not create feature client services that merely duplicate generated endpoint methods. Use Effect's `KeyValueStore` service for ordinary key/value persistence and provide the platform backing store as a Layer; add a product-specific service only when `KeyValueStore` cannot express the capability. Capability ports remain appropriate for other non-Effect or platform-specific behavior such as browser redirects, React Native modules, and vendor SDKs. TanStack Router owns web SPA URL matching and History; Effect workflows navigate through the typed adapter in `apps/web/src/routes/navigation.ts` rather than browser History globals.
 
 ## Runtime and Layers
 

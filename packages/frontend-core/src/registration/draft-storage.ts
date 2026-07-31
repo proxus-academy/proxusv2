@@ -2,8 +2,8 @@ import { Effect, Option, Schema } from "effect"
 import * as KeyValueStore from "effect/unstable/persistence/KeyValueStore"
 import { RegistrationDraft } from "./wizard.js"
 
-export const registrationDraftStorageVersion = 1
-export const registrationDraftTtlMs = 24 * 60 * 60 * 1_000
+export const registrationDraftStorageVersion = 2
+export const registrationDraftTtlMs = 15 * 60 * 1_000
 export const registrationDraftStorageKey = "proxus.registration-draft"
 
 export const StoredRegistrationDraft = Schema.Struct({

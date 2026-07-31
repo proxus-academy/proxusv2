@@ -16,6 +16,21 @@ describe("browser document navigation", () => {
     expect(assigned).toEqual(["https://accounts.example.test/oauth"])
   }))))
 
+  it("resolves same-origin mock callbacks against the current web origin", () => Effect.runPromise(Effect.scoped(Effect.gen(function*() {
+    const assigned: Array<string> = []
+    const context = yield* Layer.build(
+      browserDocumentNavigationLayer(
+        { assign: (url) => { assigned.push(url) } },
+        "http://vps.tailnet.test:5173/es",
+      ),
+    )
+    yield* Effect.gen(function*() {
+      const navigation = yield* DocumentNavigation
+      yield* navigation.assign("/es?code=mock&state=signed")
+    }).pipe(Effect.provide(context))
+    expect(assigned).toEqual(["http://vps.tailnet.test:5173/es?code=mock&state=signed"])
+  }))))
+
   it("maps host failures to DocumentNavigationError", () => Effect.runPromise(Effect.scoped(Effect.gen(function*() {
     const context = yield* Layer.build(
       browserDocumentNavigationLayer({ assign: () => { throw new Error("blocked") } }),

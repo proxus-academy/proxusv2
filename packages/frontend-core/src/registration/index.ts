@@ -1,9 +1,6 @@
 export {
   RegistrationPath,
   RegistrationPathParam,
-  expectedTargetKinds,
-  stepFromPath,
-  type CatalogRegistrationStep,
 } from "./model.js"
 export {
   makeRegistrationAtoms,

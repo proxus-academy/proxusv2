@@ -1,20 +1,20 @@
 import type { StudyNodeId } from "@proxus/shared/study-catalog"
 import { Effect } from "effect"
 import * as Atom from "effect/unstable/reactivity/Atom"
-import { publicApiClient } from "../public-api/client.js"
+import { PublicApiClient } from "../public-api/client.js"
 import { applicationRuntime } from "../runtime.js"
 import { PublicStudyCatalogClient } from "./client.js"
 
 /** Stable public catalog queries backed by the typed PublicApi client. */
 export const publicStudyCatalogRootsQuery = applicationRuntime.atom(
-  publicApiClient.pipe(
+  PublicApiClient.pipe(
     Effect.flatMap((client) => client.publicStudyCatalog.listRoots()),
   ),
 )
 
 export const publicStudyCatalogChildrenQuery = Atom.family((nodeId: StudyNodeId) =>
   applicationRuntime.atom(
-    publicApiClient.pipe(
+    PublicApiClient.pipe(
       Effect.flatMap((client) => client.publicStudyCatalog.listChildren({ params: { nodeId } })),
     ),
   ),

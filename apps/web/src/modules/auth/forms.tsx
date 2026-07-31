@@ -5,7 +5,7 @@ import {
   newPasswordFormBuilder,
   recoveryCodeFormBuilder,
 } from "@proxus/frontend-core/auth"
-import { publicApiClient } from "@proxus/frontend-core/public-api"
+import { PublicApiClient } from "@proxus/frontend-core/public-api"
 import { applicationRuntime } from "@proxus/frontend-core/runtime"
 import { LoginWithPasswordInput } from "@proxus/shared/auth"
 import { Effect, Schema } from "effect"
@@ -18,7 +18,7 @@ export const LoginForm = FormReact.make(loginFormBuilder, {
   reactivityKeys: ["auth"],
   onSubmit: (_: void, { decoded }) => Effect.gen(function*() {
     const input = yield* Schema.decodeUnknownEffect(LoginWithPasswordInput)(decoded)
-    return yield* publicApiClient.pipe(
+    return yield* PublicApiClient.pipe(
       Effect.flatMap((client) => client.auth.loginWithPassword({ payload: input })),
     )
   }),

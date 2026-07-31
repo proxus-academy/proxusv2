@@ -6,6 +6,8 @@ export interface ChoiceCardProps
   readonly title: string
   readonly description?: string
   readonly leading?: React.ReactNode
+  readonly leadingVariant?: "default" | "plain"
+  readonly meta?: React.ReactNode
   readonly selected?: boolean
 }
 
@@ -13,6 +15,8 @@ export function ChoiceCard({
   title,
   description,
   leading,
+  leadingVariant = "default",
+  meta,
   selected = false,
   className,
   ref,
@@ -37,16 +41,22 @@ export function ChoiceCard({
       {...props}
     >
       {leading === undefined ? null : (
-        <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-2xl">
+        <span className={cn(
+          "flex size-12 shrink-0 items-center justify-center",
+          leadingVariant === "default" && "rounded-xl bg-primary/10 text-2xl",
+        )}>
           {leading}
         </span>
       )}
-      <span className="min-w-0">
+      <span className="min-w-0 flex-1">
         <span className="block text-lg font-bold text-card-foreground">{title}</span>
         {description === undefined ? null : (
           <span className="mt-1 block text-sm text-muted-foreground">{description}</span>
         )}
       </span>
+      {meta === undefined ? null : (
+        <span className="shrink-0 text-sm font-medium text-muted-foreground">{meta}</span>
+      )}
     </button>
   )
 }

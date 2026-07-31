@@ -13,7 +13,7 @@ describe("FakeGoogleIdentityProvider", () => {
       const identity = yield* google.exchangeCallback({ code: "ok", state: "state" })
       return { authorizationUrl, identity }
     }).pipe(Effect.provide(layer)))
-    expect(result.authorizationUrl).toBe("http://localhost:5173/en?code=ok&state=state")
+    expect(result.authorizationUrl).toBe("/es?code=ok&state=state")
     expect(result.identity).toMatchObject({ subject: "g-1", nonce: "nonce" })
   })
 

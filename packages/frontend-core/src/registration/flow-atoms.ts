@@ -35,8 +35,16 @@ export const makeRegistrationFlowAtoms = <E>(capabilities: RegistrationFlowCapab
     if (next._tag === "Completed" || next._tag === "ChoosingMethod") {
       yield* Effect.ignore(clearRegistrationDraft)
     }
-    const step = next._tag === "CollectingOnboarding" ? next.step : next._tag === "ConfirmingGoogle" ? "confirm-google" : "start"
-    yield* capabilities.navigate(step, next, get)
+    const step = next._tag === "CollectingOnboarding"
+      ? next.step
+      : next._tag === "ConfirmingGoogle"
+      ? "confirm-google"
+      : next._tag === "EmailVerificationPending"
+      ? "verify"
+      : next._tag === "ChoosingMethod"
+      ? "start"
+      : undefined
+    if (step !== undefined) yield* capabilities.navigate(step, next, get)
   }))
   return { stateAtom, restoreLifecycleAtom, dispatchAtom }
 }

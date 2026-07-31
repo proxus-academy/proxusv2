@@ -1,7 +1,7 @@
 export * from "./atoms.js"
 export {
-  PublicHttpClient,
   PublicStudyCatalogClient,
+  PublicStudyCatalogClientLive,
   makePublicStudyCatalogClientLayer,
 } from "./client.js"
 export * from "./presentation.js"

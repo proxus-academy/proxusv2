@@ -17,20 +17,12 @@ import { authChallenges, users, type AuthChallengeRow, type UserRow } from "../.
 
 type AuthDatabase = PgEffectDatabase<EffectPgQueryEffectHKT, EffectPgQueryResultHKT>
 
-const validatedNodeIds = (values: unknown): User["validatedNodeIds"] => {
-  if (!Array.isArray(values) || !values.every((value) => typeof value === "string") || values.length !== 5) throw new InvalidRepositoryState({ entity: "user" })
-  const [country, studyType, university, degree, subject] = values
-  if (country === undefined || studyType === undefined || university === undefined || degree === undefined || subject === undefined) {
-    throw new InvalidRepositoryState({ entity: "user" })
-  }
-  return [country, studyType, university, degree, subject]
-}
 const userFromRow = (row: UserRow): User => ({
   id: row.id as User["id"], email: row.emailNormalized, status: row.status,
   emailVerifiedAt: row.emailVerifiedAt, passwordHash: row.passwordHash, googleSubject: row.googleSubject,
   usernameNormalized: row.usernameNormalized, birthYear: row.birthYear, problemKind: row.problemKind,
-  problemOther: row.problemOther, subjectId: row.subjectId,
-  validatedNodeIds: validatedNodeIds(row.validatedNodeIds),
+  problemOther: row.problemOther, acquisitionSource: row.acquisitionSource,
+  acquisitionOther: row.acquisitionOther, studyId: row.studyId, subjectId: row.subjectId,
   createdAt: row.createdAt, updatedAt: row.updatedAt,
 })
 const challengeFromRow = (row: AuthChallengeRow): AuthChallenge => ({
@@ -72,7 +64,8 @@ export const makeUserRepositoryDrizzle = (db: AuthDatabase) => {
     id: user.id, emailNormalized: user.email, status: user.status, emailVerifiedAt: user.emailVerifiedAt,
     passwordHash: user.passwordHash, googleSubject: user.googleSubject, usernameNormalized: user.usernameNormalized,
     birthYear: user.birthYear, problemKind: user.problemKind, problemOther: user.problemOther,
-    subjectId: user.subjectId, validatedNodeIds: [...user.validatedNodeIds], createdAt: user.createdAt, updatedAt: user.updatedAt,
+    acquisitionSource: user.acquisitionSource, acquisitionOther: user.acquisitionOther,
+    studyId: user.studyId, subjectId: user.subjectId, createdAt: user.createdAt, updatedAt: user.updatedAt,
   }).onConflictDoNothing().returning().pipe(
     Effect.flatMap((rows) => Option.match(first(rows), {
       onNone: () => db.select({

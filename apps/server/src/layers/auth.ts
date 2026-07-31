@@ -1,4 +1,4 @@
-import { GoogleIdentityProvider, GoogleIdentityRejected, UserRepository, type User } from "@proxus/backend-domain/auth"
+import { GoogleIdentityProvider, GoogleIdentityRejected, RegistrationAvailability, UserRepository, type User } from "@proxus/backend-domain/auth"
 import { makeGoogleFlowLive } from "@proxus/backend-domain/auth/google-live"
 import {
   ConsoleEmailDelivery,
@@ -59,11 +59,13 @@ const sessionServices = Layer.merge(
 )
 const services = Layer.mergeAll(
   makeEmailRegistrationServiceLive(registrationPolicy),
+  RegistrationAvailability.layer,
   makeAuthenticationLive(authenticationPolicy),
   makeGoogleFlowLive({ stateTtlMillis: 10 * 60_000, pendingTtlMillis: 30 * 60_000 }),
 ).pipe(Layer.provideMerge(sessionServices))
 
-const cookies = makeAuthSessionCookies({ secure: true, sameSite: "lax" })
+const developmentCookies = makeAuthSessionCookies({ secure: false, sameSite: "lax" })
+const productionCookies = makeAuthSessionCookies({ secure: true, sameSite: "lax" })
 
 export const makeAuthDevLive = (email = ConsoleEmailDelivery, google = makeFakeGoogleIdentityProvider([
   { code: "dev-google-new", identity: { subject: "dev-google-user", email: "google@example.test", emailVerified: true, displayName: "Development User" } },
@@ -71,7 +73,7 @@ export const makeAuthDevLive = (email = ConsoleEmailDelivery, google = makeFakeG
 ]), persistence = makeAuthPersistencePgliteLive(sessionPolicy.ttlMillis).pipe(Layer.provide(PgliteDevelopmentLive))) => {
   const dependencies = Layer.mergeAll(PasswordsLive, SecureVerificationCodeGeneratorLive, SecureSessionRandomLive, email, google,
     makeGoogleSecurityLive("proxus-development-google-secret-32-bytes-minimum"), persistence)
-  return Layer.mergeAll(services.pipe(Layer.provide(dependencies)), AuthSessionViewLive.pipe(Layer.provide(persistence)), cookies)
+  return Layer.mergeAll(services.pipe(Layer.provide(dependencies)), AuthSessionViewLive.pipe(Layer.provide(persistence)), developmentCookies)
 }
 
 export const AuthDevLive = makeAuthDevLive()
@@ -103,8 +105,6 @@ const prodDependencies = Layer.mergeAll(
 export const AuthProdLive = Layer.mergeAll(
   services.pipe(Layer.provide(prodDependencies)),
   AuthSessionViewLive.pipe(Layer.provide(prodPersistence)),
-  cookies,
+  productionCookies,
   ProductionAuthSafety,
 )
-
-

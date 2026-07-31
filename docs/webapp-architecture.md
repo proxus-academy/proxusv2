@@ -125,16 +125,16 @@ state.
 
 ## Routing
 
-`apps/web` is a client-only SPA and uses `@proxus/effect-router` as the single
-owner of URL matching, browser history, nested layouts, parameters, search
-parameters and navigation. The typed route tree lives in
+`apps/web` is a client-only SPA and uses TanStack Router as the single owner of
+URL matching, browser history, nested layouts, parameters, search parameters and
+React rendering. The typed, code-based route tree lives in
 `apps/web/src/routes/router.tsx`. Proxus does not use route loaders,
-router-managed data caches or router invalidation.
+`beforeLoad`, router-managed data caches or router invalidation.
 
 ```text
-Effect Router → URL, layouts and page selection
-React page    → renders observable states
-Effect Atom   → routing state, remote data, mutations, forms and workflows
+TanStack Router → URL, layouts and page selection
+React page      → renders observable states
+Effect Atom     → remote data, mutations, forms and workflows
 ```
 
 Pages and layouts read application state from Effect Atom. Public-only and
@@ -145,9 +145,9 @@ surfaces; navigation does not introduce another data lifecycle.
 React event handlers dispatch the single typed `navigateAction` atom. Effect
 workflows use the Effect function from the same small adapter in
 `apps/web/src/routes/navigation.ts`. Its discriminated destination union is
-exhaustive and delegates to the same typed Effect router operation. URL state
-lives in a serializable atom; matches are derived and are not copied into
-another React store.
+exhaustive and maps to TanStack's typed imperative navigation API. The adapter
+converts the returned promise into a typed `Effect`. TanStack's location is the
+only source of URL state; it is not mirrored into an Effect Atom.
 
 The shared application runtime requires the typed `PublicApiClient` service.
 Each application composition root selects the public base URL and concrete HTTP
@@ -216,3 +216,9 @@ come from:
 - Local Effect Atom rules: [`effect/90_react_and_effect_atom.md`](effect/90_react_and_effect_atom.md)
 
 Upstream React material last reviewed on 2026-07-15.
+`apps/web` aplica un gate reactivo de viewport antes de montar sus rutas de
+producto. El adapter de navegador se suscribe a `matchMedia("(min-width:
+1024px)")`; por debajo de ese ancho solo monta la pantalla de descarga. Esto
+evita que pantallas ocultas emitan lifecycles, exposiciones de feature flags o
+peticiones remotas. Los enlaces futuros a stores conservan la query actual para
+no perder atribución de campañas o referidos.

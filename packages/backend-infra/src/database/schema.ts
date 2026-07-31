@@ -97,8 +97,12 @@ export const users = pgTable(
       "other",
     ] }).notNull(),
     problemOther: text("problem_other"),
+    acquisitionSource: text("acquisition_source", { enum: [
+      "friend", "tiktok", "instagram", "whatsapp", "google", "ai", "event", "other", "legacy",
+    ] }).notNull(),
+    acquisitionOther: text("acquisition_other"),
+    studyId: uuid("study_id").notNull().references(() => studyNodes.id, { onDelete: "restrict" }),
     subjectId: uuid("subject_id").notNull().references(() => studyNodes.id, { onDelete: "restrict" }),
-    validatedNodeIds: jsonb("validated_node_ids").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).notNull(),
   },
@@ -106,6 +110,7 @@ export const users = pgTable(
     uniqueIndex("users_email_normalized_uidx").on(table.emailNormalized),
     uniqueIndex("users_username_normalized_uidx").on(table.usernameNormalized),
     uniqueIndex("users_google_subject_uidx").on(table.googleSubject).where(sql`${table.googleSubject} is not null`),
+    index("users_study_id_idx").on(table.studyId),
     index("users_subject_id_idx").on(table.subjectId),
     check("users_email_normalized_check", sql`${table.emailNormalized} = lower(btrim(${table.emailNormalized})) and length(${table.emailNormalized}) <= 254 and ${table.emailNormalized} ~ '^[^[:space:]@]+@[^[:space:]@]+\\.[^[:space:]@]+$'`),
     check("users_username_normalized_check", sql`${table.usernameNormalized} = lower(${table.usernameNormalized}) and ${table.usernameNormalized} ~ '^[a-z0-9_]{3,30}$'`),
@@ -113,7 +118,8 @@ export const users = pgTable(
     check("users_status_check", sql`${table.status} in ('pending', 'active', 'disabled')`),
     check("users_problem_kind_check", sql`${table.problemKind} in ('understand-content', 'prepare-exams', 'organize-study', 'choose-studies', 'other')`),
     check("users_problem_other_check", sql`(${table.problemKind} = 'other' and length(btrim(${table.problemOther})) between 1 and 280) or (${table.problemKind} <> 'other' and ${table.problemOther} is null)`),
-    check("users_validated_node_ids_check", sql`jsonb_typeof(${table.validatedNodeIds}) = 'array' and jsonb_array_length(${table.validatedNodeIds}) = 5`),
+    check("users_acquisition_source_check", sql`${table.acquisitionSource} in ('friend', 'tiktok', 'instagram', 'whatsapp', 'google', 'ai', 'event', 'other', 'legacy')`),
+    check("users_acquisition_other_check", sql`(${table.acquisitionSource} = 'other' and length(btrim(${table.acquisitionOther})) between 1 and 200) or (${table.acquisitionSource} <> 'other' and ${table.acquisitionOther} is null)`),
   ],
 )
 

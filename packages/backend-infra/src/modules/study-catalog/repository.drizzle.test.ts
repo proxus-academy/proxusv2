@@ -25,6 +25,7 @@ import {
   studyAssets,
   studyEdges,
   studyNodes,
+  users,
 } from "../../database/schema.js"
 import {
   StudyCatalog,
@@ -105,6 +106,41 @@ const withRepository = <A, E>(
 }
 
 describe("StudyCatalogRepository Drizzle contract", () => {
+  test("counts active users for their assigned study and subject in one batch", () => {
+    const ClientLive = PgliteClient.layer()
+    return Effect.runPromise(Effect.scoped(Effect.gen(function*() {
+      const context = yield* Layer.build(ClientLive)
+      return yield* Effect.gen(function*() {
+        const db = yield* PgliteDrizzle.makeWithDefaults()
+        yield* migratePglite("./drizzle")
+        const repository = makeStudyCatalogRepositoryDrizzle(db)
+        yield* repository.createNode(country)
+        const base = {
+          emailVerifiedAt: DateTime.toDateUtc(now),
+          passwordHash: null,
+          googleSubject: null,
+          birthYear: 2000,
+          problemKind: "prepare-exams" as const,
+          problemOther: null,
+          acquisitionSource: "friend" as const,
+          acquisitionOther: null,
+          studyId: countryId,
+          subjectId: countryId,
+          createdAt: DateTime.toDateUtc(now),
+          updatedAt: DateTime.toDateUtc(now),
+        }
+        yield* db.insert(users).values([
+          { ...base, id: "10000000-0000-4000-8000-000000000001", emailNormalized: "active@example.test", usernameNormalized: "active_user", status: "active" },
+          { ...base, id: "10000000-0000-4000-8000-000000000002", emailNormalized: "pending@example.test", usernameNormalized: "pending_user", status: "pending", emailVerifiedAt: null },
+        ])
+        const countUsers = repository.userCountsByNodeIds
+        if (countUsers === undefined) return yield* Effect.die("user count adapter missing")
+        const counts = yield* countUsers([countryId])
+        expect(counts.get(countryId)).toBe(1)
+      }).pipe(Effect.provide(context))
+    })))
+  }, 15_000)
+
   test("lists only published countries", () =>
     Effect.runPromise(
       withRepository(

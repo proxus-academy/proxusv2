@@ -38,6 +38,10 @@ export class StudyCatalogRepository extends Context.Service<
       StudyCatalogRepositoryError
     >
 
+    readonly userCountsByNodeIds?: (
+      nodeIds: ReadonlyArray<StudyNodeId>,
+    ) => Effect.Effect<ReadonlyMap<StudyNodeId, number>, StudyCatalogRepositoryError>
+
     /** The persisted discriminator, not the caller's branded ID, determines the node variant. */
     readonly findNodeById: (
       nodeId: StudyNodeId,

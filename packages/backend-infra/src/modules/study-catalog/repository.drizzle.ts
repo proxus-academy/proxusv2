@@ -8,6 +8,7 @@ import {
   StudyEdgeEndpointKindMismatch,
   StudyEdgeNotFound,
   StudyNode,
+  StudyNodeId,
   StudyNodeNotFound,
   StudyTypeNode,
   SubjectNode,
@@ -19,11 +20,10 @@ import {
   type StudyEdge as StudyEdgeType,
   type StudyEdgeId,
   type StudyNode as StudyNodeType,
-  type StudyNodeId,
   type StudyNodeKind,
   type StudyNodeStatus,
 } from "@proxus/shared/study-catalog"
-import { and, asc, eq, inArray } from "drizzle-orm"
+import { and, asc, eq, inArray, sql } from "drizzle-orm"
 import type {
   EffectPgQueryEffectHKT,
   EffectPgQueryResultHKT,
@@ -34,6 +34,7 @@ import { Data, DateTime, Effect, Option, Schema } from "effect"
 import {
   studyEdges,
   studyNodes,
+  users,
   type StudyEdgeRow,
   type StudyNodeRow,
 } from "../../database/schema.js"
@@ -192,6 +193,30 @@ export const makeStudyCatalogRepositoryDrizzle = (db: StudyDatabase) => {
         Effect.flatMap((rows) => Effect.forEach(rows, decodeCountryNode)),
         failRepository("listCountries"),
       )
+
+  const userCountsByNodeIds = (nodeIds: ReadonlyArray<StudyNodeId>) => {
+    if (nodeIds.length === 0) return Effect.succeed(new Map<StudyNodeId, number>())
+    const CountRow = Schema.Struct({
+      nodeId: StudyNodeId,
+      userCount: Schema.Union([Schema.Number, Schema.NumberFromString]),
+    })
+    const CountResult = Schema.Union([Schema.Array(CountRow), Schema.Struct({ rows: Schema.Array(CountRow) })])
+    return db.execute(sql`
+      select assignments.node_id as "nodeId", count(distinct ${users.id})::int as "userCount"
+      from ${users}
+      cross join lateral (values (${users.studyId}), (${users.subjectId})) as assignments(node_id)
+      where ${users.status} = 'active'
+        and assignments.node_id in (${sql.join(nodeIds.map((id) => sql`${id}`), sql`, `)})
+      group by assignments.node_id
+    `).pipe(
+      Effect.flatMap(Schema.decodeUnknownEffect(CountResult)),
+      Effect.map((result) => {
+        const rows = "rows" in result ? result.rows : result
+        return new Map<StudyNodeId, number>(rows.map((row) => [row.nodeId, row.userCount]))
+      }),
+      failRepository("userCountsByNodeIds"),
+    )
+  }
 
   const findNodeById = (nodeId: StudyNodeId) =>
     db
@@ -794,6 +819,7 @@ export const makeStudyCatalogRepositoryDrizzle = (db: StudyDatabase) => {
   return StudyCatalogRepository.of({
     listNodes,
     listCountries,
+    userCountsByNodeIds,
     findNodeById,
     findEdgeById,
     createNode,

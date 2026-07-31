@@ -13,9 +13,12 @@ import * as Atom from "effect/unstable/reactivity/Atom"
 import { navigate } from "../../routes/navigation.js"
 import { navigationRuntime } from "../../routes/navigation-runtime.js"
 
-export const startGoogleLoginAction = navigationRuntime.fn((_input: void, get) => Effect.gen(function*() {
+export const startGoogleLoginAction = navigationRuntime.fn((
+  request: { readonly requestId: string },
+  get,
+) => Effect.gen(function*() {
   const documentNavigation = yield* DocumentNavigation
-  const authorization = yield* get.setResult(startGoogleAuthorizationAction, undefined)
+  const authorization = yield* get.setResult(startGoogleAuthorizationAction, request)
   yield* documentNavigation.assign(authorization.authorizationUrl)
 }))
 

@@ -25,8 +25,10 @@ export interface User {
   readonly birthYear: number
   readonly problemKind: "understand-content" | "prepare-exams" | "organize-study" | "choose-studies" | "other"
   readonly problemOther: string | null
+  readonly acquisitionSource: "friend" | "tiktok" | "instagram" | "whatsapp" | "google" | "ai" | "event" | "other" | "legacy"
+  readonly acquisitionOther: string | null
+  readonly studyId: string
   readonly subjectId: string
-  readonly validatedNodeIds: readonly [string, string, string, string, string]
   readonly createdAt: Date
   readonly updatedAt: Date
 }

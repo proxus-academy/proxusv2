@@ -22,7 +22,14 @@ const session = Schema.decodeUnknownSync(CurrentSession)({
   account: { id: makeAccountId("00000000-0000-4000-8000-000000000002"), email: "safe@example.test", username: "safe_user", status: "active", provider: "email" },
   expiresAt: "1970-01-01T00:00:00.000Z",
 })
-const complete = { provider: "email" as const, problemKind: "understand-content" as const, path, username: "learner", birthYear: 2000 }
+const complete = {
+  provider: "email" as const,
+  problemKind: "understand-content" as const,
+  path,
+  username: "learner",
+  birthYear: 2000,
+  acquisitionSource: "friend" as const,
+}
 
 describe("registration machine", () => {
   it("runs every email onboarding transition and rejects out-of-state events", () => {
@@ -32,6 +39,8 @@ describe("registration machine", () => {
     state = transitionRegistration(state, { _tag: "ProblemSelected", kind: "understand-content" })
     for (const node of nodes) state = transitionRegistration(state, { _tag: "StudyNodeSelected", node })
     state = transitionRegistration(state, { _tag: "ProfileCompleted", username: "learner", birthYear: 2000 })
+    expect(state).toMatchObject({ _tag: "CollectingOnboarding", step: "discovery" })
+    state = transitionRegistration(state, { _tag: "AcquisitionSelected", source: "friend" })
     expect(state).toMatchObject({ _tag: "CollectingOnboarding", step: "account" })
     state = transitionRegistration(state, { _tag: "EmailSubmitted", draftId: "draft", maskedEmail: "l***@x.test" })
     expect(state._tag).toBe("EmailVerificationPending")
@@ -42,19 +51,26 @@ describe("registration machine", () => {
   it("resolves all Google branches", () => {
     const resolving = transitionRegistration({ _tag: "ChoosingMethod" }, { _tag: "GoogleStarted" })
     expect(transitionRegistration(resolving, { _tag: "GoogleResolved", result: { _tag: "Existing", session } })._tag).toBe("Completed")
-    expect(transitionRegistration(resolving, { _tag: "GoogleResolved", result: { _tag: "New" } })).toMatchObject({ _tag: "CollectingOnboarding", draft: { provider: "google" } })
+    expect(transitionRegistration(resolving, {
+      _tag: "GoogleResolved",
+      result: { _tag: "New", registrationId: "pending", email: "new@example.test" },
+    })).toMatchObject({
+      _tag: "CollectingOnboarding",
+      draft: { provider: "google" },
+      googleRegistration: { registrationId: "pending", email: "new@example.test" },
+    })
     expect(transitionRegistration(resolving, { _tag: "GoogleResolved", result: { _tag: "Conflict" } })._tag).toBe("ChoosingMethod")
   })
 
   it("guards invalid deep links and provider-only terminal steps", () => {
     expect(guardRegistrationStep("verify", { provider: "email", path: [] })).toBe("problem")
-    expect(guardRegistrationStep("subject", { provider: "email", problemKind: "understand-content", path: [] })).toBe("country")
+    expect(guardRegistrationStep("profile", { provider: "email", problemKind: "understand-content", path: [] })).toBe("study")
     expect(guardRegistrationStep("confirm-google", complete)).toBe("account")
     expect(firstIncompleteStep({ ...complete, provider: "google" })).toBe("confirm-google")
   })
 
-  it("replacing an ancestor truncates all descendants", () => {
+  it("appends graph nodes without assuming a fixed kind sequence", () => {
     const replacement = new CountryNode({ ...common, id: makeCountryNodeId("20000000-0000-4000-8000-000000000099"), kind: "country", name: "PT" })
-    expect(selectStudyNode(path, replacement)).toEqual([replacement])
+    expect(selectStudyNode(path.slice(0, 2), replacement)).toEqual([...path.slice(0, 2), replacement])
   })
 })

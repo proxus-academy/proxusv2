@@ -1,6 +1,6 @@
 import { RegistrationLandingAnalytics, type RegistrationLandingAssignment } from "@proxus/frontend-core/feature-flags"
 import {
-  type PublicProductAnalyticsEvent,
+  PublicProductAnalyticsEvent,
   RecordProductAnalyticsBatchRequest,
 } from "@proxus/shared/product-analytics"
 import { Effect, Layer, Option, Schema } from "effect"
@@ -18,7 +18,7 @@ export const makeRegistrationLandingAnalyticsWeb = (
   request: (input: string, init: RequestInit) => Promise<unknown>,
   baseUrl = "/api",
 ) => RegistrationLandingAnalytics.of({
-  record: (assignment, tag) => Effect.gen(function*() {
+  record: (assignment, tag, step) => Effect.gen(function*() {
     const storageDecision = yield* Effect.option(Effect.try({
       try: () => {
         if (storage.getItem("proxus.analytics.consent") !== "granted") return false
@@ -33,12 +33,13 @@ export const makeRegistrationLandingAnalyticsWeb = (
     }))
     if (Option.isNone(storageDecision) || !storageDecision.value) return
 
-    const event: PublicProductAnalyticsEvent = {
+    const event = yield* Schema.decodeUnknownEffect(PublicProductAnalyticsEvent)({
       _tag: tag,
       flagKey: assignment.flagKey,
       variant: assignment.variant,
       revision: assignment.revision,
-    }
+      ...(step === undefined ? {} : step),
+    })
     const batch = yield* decodeAnalyticsBatch({ events: [event] })
     const body = yield* encodeAnalyticsBatch(batch)
     yield* Effect.tryPromise({

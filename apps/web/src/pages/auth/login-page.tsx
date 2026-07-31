@@ -38,7 +38,9 @@ export function LoginPage() {
         className="w-full"
         variant="secondary"
         disabled={startGoogleResult.waiting}
-        onClick={() => startGoogle()}
+        onClick={() => startGoogle({
+          requestId: `${globalThis.performance.timeOrigin}:${globalThis.performance.now()}`,
+        })}
       >
         Continuar con Google
       </Button>

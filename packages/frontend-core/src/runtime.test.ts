@@ -4,6 +4,7 @@ import * as Atom from "effect/unstable/reactivity/Atom"
 import * as AtomRegistry from "effect/unstable/reactivity/AtomRegistry"
 import { HttpClient, HttpClientError, HttpClientResponse } from "effect/unstable/http"
 import { describe, expect, it } from "vitest"
+import { makePublicApiClientLayer, PublicApiClient } from "./public-api/client.js"
 import { applicationRuntime } from "./runtime.js"
 
 const makeClient = () => {
@@ -17,23 +18,29 @@ const makeClient = () => {
   )
 }
 
-const clientProbe = applicationRuntime.atom(HttpClient.HttpClient)
+const clientProbe = applicationRuntime.atom(PublicApiClient)
+const applicationLayer = (client: HttpClient.HttpClient, baseUrl = "/api") =>
+  makePublicApiClientLayer(baseUrl).pipe(
+    Layer.provide(Layer.succeed(HttpClient.HttpClient, client)),
+  )
 
 describe("applicationRuntime", () => {
-  it("runs the same atom with registry-specific HttpClient Layers", () => {
+  it("runs the same atom with registry-specific configured public clients", () => {
     const first = makeClient()
     const second = makeClient()
     const firstRegistry = AtomRegistry.make({
-      initialValues: [Atom.initialValue(applicationRuntime.layer, Layer.succeed(HttpClient.HttpClient, first))],
+      initialValues: [Atom.initialValue(applicationRuntime.layer, applicationLayer(first, "https://first.example/api"))],
     })
     const secondRegistry = AtomRegistry.make({
-      initialValues: [Atom.initialValue(applicationRuntime.layer, Layer.succeed(HttpClient.HttpClient, second))],
+      initialValues: [Atom.initialValue(applicationRuntime.layer, applicationLayer(second, "https://second.example/api"))],
     })
 
     firstRegistry.mount(clientProbe)
     secondRegistry.mount(clientProbe)
-    expect(AsyncResult.getOrThrow(firstRegistry.get(clientProbe))).toBe(first)
-    expect(AsyncResult.getOrThrow(secondRegistry.get(clientProbe))).toBe(second)
+    const firstPublicClient = AsyncResult.getOrThrow(firstRegistry.get(clientProbe))
+    const secondPublicClient = AsyncResult.getOrThrow(secondRegistry.get(clientProbe))
+    expect(firstPublicClient).not.toBe(secondPublicClient)
+    expect(firstPublicClient.authSession.currentSession).not.toBe(secondPublicClient.authSession.currentSession)
   })
 
   it("fails when the registry does not provide the application Layer", () => Effect.runPromise(Effect.gen(function*() {

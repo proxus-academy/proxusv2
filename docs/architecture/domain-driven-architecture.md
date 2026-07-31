@@ -28,7 +28,7 @@ No todos los contexts necesitan todas las capas. No se crean packages, directori
 Identity & Access incorpora tres límites colaboradores:
 
 - **Identity** posee cuentas, password/Google, challenges y sesiones; `RegistrationService` coordina altas y `AuthenticationService` acceso posterior.
-- **Learner Profile/Onboarding** define username, año, necesidad y referencia al path validado; Study Catalog conserva la autoridad sobre el grafo y sus nombres.
+- **Learner Profile/Onboarding** define username, año, necesidad, fuente de adquisición, estudio y asignatura. Study Catalog conserva la autoridad sobre el grafo: el alta recibe la asignatura y deriva de ella el estudio padre, sin persistir la ruta de navegación del cliente.
 - **Access Control** posee roles, scopes, capabilities y autorización; autenticarse no concede permisos administrativos.
 
 ```mermaid

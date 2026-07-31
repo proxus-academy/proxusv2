@@ -82,6 +82,10 @@ export class StudyCatalog extends Context.Service<
       StudyCatalogRepositoryError
     >
 
+    readonly userCountsByNodeIds?: (
+      nodeIds: ReadonlyArray<StudyNodeId>,
+    ) => Effect.Effect<ReadonlyMap<StudyNodeId, number>, StudyCatalogRepositoryError>
+
     readonly listChildren: (
       parentId: StudyNodeId,
     ) => Effect.Effect<ReadonlyArray<StudyNode>, ReadStudyNodeError>

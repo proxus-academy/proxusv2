@@ -10,6 +10,7 @@ import * as AtomRegistry from "effect/unstable/reactivity/AtomRegistry"
 import * as Reactivity from "effect/unstable/reactivity/Reactivity"
 import { HttpClient, HttpClientError, HttpClientResponse } from "effect/unstable/http"
 import { describe, expect, it } from "vitest"
+import { makePublicApiClientLayer } from "../public-api/client.js"
 import { applicationRuntime } from "../runtime.js"
 import {
   requestPasswordResetAction,
@@ -44,13 +45,18 @@ describe("stable public auth actions", () => {
     const registry = AtomRegistry.make({
       initialValues: [Atom.initialValue(
         applicationRuntime.layer,
-        Layer.provideMerge(Layer.succeed(HttpClient.HttpClient, client), Reactivity.layer),
+        Layer.merge(
+          makePublicApiClientLayer("/api").pipe(
+            Layer.provide(Layer.succeed(HttpClient.HttpClient, client)),
+          ),
+          Reactivity.layer,
+        ),
       )],
     })
     registry.mount(startGoogleAuthorizationAction)
     registry.mount(requestPasswordResetAction)
 
-    registry.set(startGoogleAuthorizationAction, undefined)
+    registry.set(startGoogleAuthorizationAction, { requestId: "request-1" })
     registry.set(
       requestPasswordResetAction,
       Schema.decodeUnknownSync(RequestPasswordResetInput)({ email: "student@example.com" }),

@@ -2,6 +2,7 @@ import { Schema } from "effect"
 import { describe, expect, it } from "vitest"
 import {
   AuthRequestAccepted,
+  GoogleAuthorization,
   GoogleCallbackResult,
   NewGoogleRegistration,
   RegisterWithEmailInput,
@@ -9,10 +10,6 @@ import {
 import { makeGoogleRegistrationId, VerificationCode } from "./model.js"
 
 const ids = {
-  countryId: "00000000-0000-4000-8000-000000000001",
-  studyTypeId: "00000000-0000-4000-8000-000000000002",
-  universityId: "00000000-0000-4000-8000-000000000003",
-  degreeId: "00000000-0000-4000-8000-000000000004",
   subjectId: "00000000-0000-4000-8000-000000000005",
 }
 
@@ -23,6 +20,7 @@ const validRegistration = {
     username: "learner_1",
     birthYear: 2001,
     problemKind: "prepare-exams",
+    acquisitionSource: "friend",
     study: ids,
   },
 }
@@ -41,6 +39,16 @@ describe("auth schemas", () => {
     })
     const encoded = Schema.encodeSync(GoogleCallbackResult)(result)
     expect(Schema.decodeUnknownSync(GoogleCallbackResult)(encoded)).toEqual(result)
+  })
+
+  it("accepts absolute provider URLs and same-origin mock callbacks", () => {
+    for (const authorizationUrl of ["https://accounts.google.com/o/oauth2/v2/auth", "/es?code=mock"]) {
+      expect(Schema.decodeUnknownSync(GoogleAuthorization)({ authorizationUrl }).authorizationUrl)
+        .toBe(authorizationUrl)
+    }
+    expect(() => Schema.decodeUnknownSync(GoogleAuthorization)({
+      authorizationUrl: "//untrusted.example/callback",
+    })).toThrow()
   })
 
   it.each([

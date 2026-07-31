@@ -5,6 +5,7 @@ import * as Atom from "effect/unstable/reactivity/Atom"
 import * as AtomRegistry from "effect/unstable/reactivity/AtomRegistry"
 import { HttpClient, HttpClientError, HttpClientResponse } from "effect/unstable/http"
 import { describe, expect, it } from "vitest"
+import { makePublicApiClientLayer } from "../public-api/client.js"
 import { makeAuthAtoms } from "./atoms.js"
 
 const session = (sessionId: string) => Schema.decodeUnknownSync(CurrentSession)({
@@ -41,7 +42,11 @@ const setup = (options: { readonly unauthorizedSession?: boolean; readonly failS
     }),
     preprocess,
   )
-  const runtime = Atom.runtime(Layer.succeed(HttpClient.HttpClient, client))
+  const runtime = Atom.runtime(
+    makePublicApiClientLayer("/api").pipe(
+      Layer.provide(Layer.succeed(HttpClient.HttpClient, client)),
+    ),
+  )
   const atoms = makeAuthAtoms(runtime)
   const registry = AtomRegistry.make()
   registry.mount(atoms.restoreSessionAtom)

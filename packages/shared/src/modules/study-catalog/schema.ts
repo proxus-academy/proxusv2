@@ -77,6 +77,8 @@ export const NonNegativeInt = Schema.Number.pipe(
 const StudyNodeFields = {
   name: Schema.NonEmptyString,
   imageAssetId: Schema.NullOr(StudyAssetId),
+  imageUrl: Schema.optional(Schema.String.pipe(Schema.check(Schema.isPattern(/^https?:\/\//)))),
+  userCount: Schema.optional(NonNegativeInt),
   status: StudyNodeStatus,
   createdAt: Schema.DateTimeUtcFromString,
   updatedAt: Schema.DateTimeUtcFromString,

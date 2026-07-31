@@ -1,42 +1,44 @@
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { RegistrationDraft } from "@proxus/frontend-core/registration"
-import { Button, Heading, Text } from "@proxus/ui"
+import { Button, Card, CardContent, CardHeader, CardTitle, Text } from "@proxus/ui"
 import { problemLabels } from "./registration-copy.js"
 import {
   editRegistrationStepAction,
-  registrationFailedAtom,
+  registrationErrorMessageAtom,
 } from "./state.js"
 
 export function DraftSummary({ draft }: { readonly draft: RegistrationDraft }) {
   const edit = useAtomSet(editRegistrationStepAction)
   const problem = problemLabels.find(([kind]) => kind === draft.problemKind)?.[1]
   return (
-    <aside aria-label="Resumen del registro" className="rounded-xl border bg-card p-4">
-      <Heading level={2}>Tu resumen</Heading>
-      <dl>
-        <dt>Problema</dt>
-        <dd>
+    <Card aria-label="Resumen del registro" className="mt-6">
+      <CardHeader><CardTitle>Tu resumen</CardTitle></CardHeader>
+      <CardContent>
+      <dl className="space-y-4">
+        <div><dt className="text-sm font-semibold text-muted-foreground">Problema</dt>
+        <dd className="flex items-center justify-between gap-4">
           {draft.problemOtherText ?? problem ?? "Pendiente"}
           <Button type="button" variant="ghost" onClick={() => edit("problem")}>Editar problema</Button>
-        </dd>
-        <dt>Estudios</dt>
-        <dd>
+        </dd></div>
+        <div><dt className="text-sm font-semibold text-muted-foreground">Estudios</dt>
+        <dd className="flex items-center justify-between gap-4">
           {draft.path.map((node) => node.name).join(" → ") || "Pendiente"}
-          <Button type="button" variant="ghost" onClick={() => edit("country")}>Editar estudios</Button>
-        </dd>
-        <dt>Perfil</dt>
-        <dd>
+          <Button type="button" variant="ghost" onClick={() => edit("study")}>Editar estudios</Button>
+        </dd></div>
+        <div><dt className="text-sm font-semibold text-muted-foreground">Perfil</dt>
+        <dd className="flex items-center justify-between gap-4">
           {draft.username === undefined ? "Pendiente" : `${draft.username}, ${String(draft.birthYear)}`}
           <Button type="button" variant="ghost" onClick={() => edit("profile")}>Editar perfil</Button>
-        </dd>
+        </dd></div>
       </dl>
-    </aside>
+      </CardContent>
+    </Card>
   )
 }
 
 export function RegistrationFailure() {
-  const failed = useAtomValue(registrationFailedAtom)
-  return failed
-    ? <Text role="alert">No hemos podido completar la operación. Inténtalo de nuevo.</Text>
-    : null
+  const message = useAtomValue(registrationErrorMessageAtom)
+  return message === undefined
+    ? null
+    : <Text role="alert">{message}</Text>
 }

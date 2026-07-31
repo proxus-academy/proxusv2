@@ -5,6 +5,7 @@ import * as Atom from "effect/unstable/reactivity/Atom"
 import * as AtomRegistry from "effect/unstable/reactivity/AtomRegistry"
 import { HttpClient, HttpClientError, HttpClientResponse } from "effect/unstable/http"
 import { describe, expect, it } from "vitest"
+import { makePublicApiClientLayer } from "../public-api/client.js"
 import { applicationRuntime } from "../runtime.js"
 import { currentSessionQuery } from "./session.js"
 
@@ -33,7 +34,10 @@ const httpLayer = (response: Response) => {
 
 const read = (response: Response) => Effect.gen(function*() {
   const registry = AtomRegistry.make({
-    initialValues: [Atom.initialValue(applicationRuntime.layer, httpLayer(response))],
+    initialValues: [Atom.initialValue(
+      applicationRuntime.layer,
+      makePublicApiClientLayer("/api").pipe(Layer.provide(httpLayer(response))),
+    )],
   })
   const unmount = registry.mount(currentSessionQuery)
   yield* Effect.sleep("10 millis")

@@ -7,6 +7,8 @@ import {
   FeatureFlagExposed,
   PublicProductAnalyticsEvent,
   RegistrationCompleted,
+  RegistrationStepCompleted,
+  RegistrationStepViewed,
   RegistrationStarted,
 } from "./events.js"
 
@@ -17,6 +19,7 @@ const context = {
   revision: Number.MAX_SAFE_INTEGER,
   variant: "short",
 } as const
+const step = { step: "profile", stepIndex: 7, totalSteps: 9, provider: "email" as const }
 
 describe("product analytics contract", () => {
   it("accepts only the closed assignment-aware event union", () => {
@@ -54,8 +57,14 @@ describe("product analytics contract", () => {
     [new FeatureFlagExposed(context), "feature_flag_exposed"],
     [new RegistrationStarted(context), "registration_started"],
     [new RegistrationCompleted(context), "registration_completed"],
+    [new RegistrationStepViewed({ ...context, ...step }), "registration_step_viewed"],
+    [new RegistrationStepCompleted({ ...context, ...step }), "registration_step_completed"],
   ] as const)("preserves the %s wire tag", (event, tag) => {
-    expect(encodeEvent(event)).toEqual({ _tag: tag, ...context })
+    expect(encodeEvent(event)).toEqual({
+      _tag: tag,
+      ...context,
+      ...(tag.startsWith("registration_step_") ? step : {}),
+    })
   })
 
   it("keeps the batch endpoint success status at 200", () => {

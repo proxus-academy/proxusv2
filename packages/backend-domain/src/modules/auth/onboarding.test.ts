@@ -39,7 +39,8 @@ const decodeInput = (overrides: Record<string, unknown> = {}) => Schema.decodeUn
   username: "Learner_1",
   birthYear: 2000,
   problemKind: "understand-content",
-  study: ids,
+  acquisitionSource: "friend",
+  study: { subjectId: ids.subjectId },
   ...overrides,
 })
 const run = (input: OnboardingInput, catalog = makeCatalog()) => Effect.runPromise(
@@ -53,8 +54,8 @@ const run = (input: OnboardingInput, catalog = makeCatalog()) => Effect.runPromi
 const unavailable = () => Effect.die("unused")
 const makeCatalog = (options: {
   readonly nodes?: ReadonlyArray<StudyNode>
-  readonly breakBefore?: StudyNodeId
   readonly terminalChild?: boolean
+  readonly studies?: ReadonlyArray<StudyNode>
 } = {}): typeof StudyCatalog.Service => {
   const available = options.nodes ?? nodes
   const terminalChild = nodes.find(({ kind }) => kind === "country")
@@ -65,7 +66,7 @@ const makeCatalog = (options: {
     connect: unavailable, updateEdge: unavailable, disconnect: unavailable, getEdge: unavailable,
     getPublishedEdge: unavailable, listOutgoingEdges: unavailable, listIncomingEdges: unavailable,
     listTargets: unavailable, listSources: unavailable, listPublishedOutgoingEdges: unavailable,
-    listPublishedIncomingEdges: unavailable, listPublishedSources: unavailable,
+    listPublishedIncomingEdges: unavailable,
     getPublishedNode: (id) => {
       const node = available.find((candidate) => candidate.id === id)
       return node === undefined
@@ -74,19 +75,18 @@ const makeCatalog = (options: {
     },
     listPublishedTargets: (sourceId) => {
       if (sourceId === ids.subjectId) return Effect.succeed(options.terminalChild === true ? [terminalChild] : [])
-      const index = nodes.findIndex(({ id }) => id === sourceId)
-      const target = nodes[index + 1]
-      return Effect.succeed(target === undefined || target.id === options.breakBefore ? [] : [target])
+      return Effect.succeed([])
     },
+    listPublishedSources: () => Effect.succeed(options.studies ?? nodes.filter(({ kind }) => kind === "degree")),
   })
 }
 
 describe("onboarding domain validation", () => {
-  test.each([1900, 2016])("accepts birth-year boundary %i", (birthYear) =>
+  test.each([1926, 2013])("accepts birth-year boundary %i", (birthYear) =>
     expect(run(decodeInput({ birthYear }))).resolves.toMatchObject({ birthYear }),
   )
 
-  test.each([1899, 2017])("rejects birth year outside the supported range: %i", (birthYear) =>
+  test.each([1925, 2014])("rejects birth year outside the supported range: %i", (birthYear) =>
     expect(run(decodeInput({ birthYear }))).rejects.toMatchObject({ _tag: "InvalidRegistrationDraft", field: "birthYear" }),
   )
 
@@ -100,29 +100,50 @@ describe("onboarding domain validation", () => {
     expect(run(decodeInput({ problemKind: "other", problemOtherText: "x".repeat(280) }))).resolves.toMatchObject({ problem: { kind: "other" } }),
   )
 
+  test("requires acquisition detail only for other", () => Promise.all([
+    expect(run(decodeInput({ acquisitionSource: "other" }))).rejects.toMatchObject({
+      field: "acquisitionOtherText",
+      reason: "required",
+    }),
+    expect(run(decodeInput({
+      acquisitionSource: "other",
+      acquisitionOtherText: "  Una asociación estudiantil  ",
+    }))).resolves.toMatchObject({
+      acquisition: { source: "other", otherText: "Una asociación estudiantil" },
+    }),
+    expect(run(decodeInput({ acquisitionOtherText: "injected" }))).rejects.toMatchObject({
+      field: "acquisitionOtherText",
+      reason: "not-allowed",
+    }),
+  ]))
+
   test("normalizes username", () =>
     expect(run(decodeInput())).resolves.toMatchObject({ normalizedUsername: "learner_1" }),
   )
 
-  test("accepts a published contiguous path ending at a terminal subject and stores IDs only", () =>
+  test("accepts a terminal subject and derives its study from the unique parent", () =>
     run(decodeInput()).then((draft) => {
-      expect(draft.study.nodeIds).toEqual(Object.values(ids))
+      expect(draft.study).toEqual({ studyId: ids.degreeId, subjectId: ids.subjectId })
       expect(JSON.stringify(draft)).not.toContain("must-not-be-persisted")
       expect(Object.keys(draft.study)).not.toContain("name")
     }),
   )
 
-  test("rejects non-contiguous and non-terminal paths", () => Promise.all([
-    expect(run(decodeInput(), makeCatalog({ breakBefore: ids.degreeId }))).rejects.toMatchObject({ _tag: "InvalidStudyPath", reason: "non-contiguous", nodeId: ids.degreeId }),
+  test("rejects missing, ambiguous and non-terminal study assignments", () => Promise.all([
+    expect(run(decodeInput(), makeCatalog({ studies: [] }))).rejects.toMatchObject({ _tag: "InvalidStudyPath", reason: "missing-study" }),
+    expect(run(decodeInput(), makeCatalog({
+      studies: nodes.filter(({ kind }) => kind === "university" || kind === "degree"),
+    }))).rejects.toMatchObject({ reason: "ambiguous-study" }),
     expect(run(decodeInput(), makeCatalog({ terminalChild: true }))).rejects.toMatchObject({ reason: "non-terminal" }),
   ]))
 
-  test("rejects unpublished and client-manipulated node kinds", () => {
-    const manipulated = [...nodes]
-    manipulated[2] = new DegreeNode({ ...fields, id: makeDegreeNodeId(ids.universityId), kind: "degree" })
+  test("rejects unpublished and client-manipulated subject kinds", () => {
+    const manipulated = nodes.map((node) => node.id === ids.subjectId
+      ? new DegreeNode({ ...fields, id: makeDegreeNodeId(ids.subjectId), kind: "degree" })
+      : node)
     return Promise.all([
       expect(run(decodeInput(), makeCatalog({ nodes: nodes.slice(0, -1) }))).rejects.toMatchObject({ reason: "unpublished-node", nodeId: ids.subjectId }),
-      expect(run(decodeInput(), makeCatalog({ nodes: manipulated }))).rejects.toMatchObject({ reason: "unexpected-node-kind", nodeId: ids.universityId }),
+      expect(run(decodeInput(), makeCatalog({ nodes: manipulated }))).rejects.toMatchObject({ reason: "unexpected-node-kind", nodeId: ids.subjectId }),
     ])
   })
 })

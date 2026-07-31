@@ -1,0 +1,1 @@
+CREATE INDEX "users_validated_node_ids_gin_idx" ON "users" USING gin ("validated_node_ids");

@@ -36,7 +36,8 @@ export const seedAuthQa = (studyPath: readonly [string, string, string, string, 
         passwordHash, googleSubject: fixture.provider === "google" ? `qa-google:${fixture.name}` : null,
         usernameNormalized: fixture.username, birthYear: 2000,
         problemKind: "organize-study", problemOther: null,
-        subjectId: studyPath[4], validatedNodeIds: studyPath,
+        acquisitionSource: "friend", acquisitionOther: null,
+        studyId: studyPath[3], subjectId: studyPath[4],
         createdAt: seededAt, updatedAt: seededAt,
       })
       user = fixture.provider === "google"
@@ -73,7 +74,7 @@ export const listAuthQa = Effect.gen(function* () {
       name: fixture.name, email: user.email, username: user.usernameNormalized,
       status: user.status, provider: authProviderOf(user), roles: assigned,
       capabilities: [...Access.permissionsForRoles(assigned)].sort(),
-      studyPath: [...user.validatedNodeIds],
+      studyPath: [user.studyId, user.subjectId],
     })
   }
   return result as readonly AuthQaListing[]

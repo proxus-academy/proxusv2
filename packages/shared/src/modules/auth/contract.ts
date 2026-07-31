@@ -6,6 +6,7 @@ import {
   OnboardingInput,
   Password,
   VerificationCode,
+  Username,
 } from "./model.js"
 
 export class RegisterWithEmailInput extends Schema.Class<RegisterWithEmailInput>(
@@ -44,9 +45,25 @@ export class AuthRequestAccepted extends Schema.Class<AuthRequestAccepted>(
   "AuthRequestAccepted",
 )({ accepted: Schema.Literal(true) }) {}
 
+export class EmailAvailabilityInput extends Schema.Class<EmailAvailabilityInput>(
+  "EmailAvailabilityInput",
+)({ email: EmailAddress }) {}
+
+export class UsernameAvailabilityInput extends Schema.Class<UsernameAvailabilityInput>(
+  "UsernameAvailabilityInput",
+)({ username: Username }) {}
+
+export class AuthAvailability extends Schema.Class<AuthAvailability>(
+  "AuthAvailability",
+)({ available: Schema.Boolean }) {}
+
 export class GoogleAuthorization extends Schema.Class<GoogleAuthorization>(
   "GoogleAuthorization",
-)({ authorizationUrl: Schema.String.pipe(Schema.check(Schema.isPattern(/^https?:\/\//))) }) {}
+)({
+  authorizationUrl: Schema.String.pipe(
+    Schema.check(Schema.isPattern(/^(?:https?:\/\/|\/(?!\/))/)),
+  ),
+}) {}
 
 export class GoogleCallbackInput extends Schema.Class<GoogleCallbackInput>(
   "GoogleCallbackInput",

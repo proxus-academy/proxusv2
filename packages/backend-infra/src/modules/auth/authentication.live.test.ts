@@ -24,7 +24,8 @@ const user = (status: User["status"] = "active"): User => makeUser({
   id: makeUserId(`user-${status}`), email: `${status}@example.test`, status,
   emailVerifiedAt: status === "active" ? now : null, passwordHash: "hash:secret", googleSubject: null,
   usernameNormalized: status, birthYear: 2000, problemKind: "organize-study", problemOther: null,
-  subjectId: "subject", validatedNodeIds: ["a", "b", "c", "d", "subject"], createdAt: now, updatedAt: now,
+  acquisitionSource: "friend", acquisitionOther: null,
+  studyId: "study", subjectId: "subject", createdAt: now, updatedAt: now,
 })
 
 const passwordLayer = Layer.succeed(Passwords, Passwords.of({

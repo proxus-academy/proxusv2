@@ -1,4 +1,5 @@
 import { Field, FormBuilder } from "@lucas-barake/effect-form"
+import { PASSWORD_MIN_LENGTH } from "@proxus/shared/auth"
 import { Schema } from "effect"
 
 const required = (message: string) => Schema.String.pipe(
@@ -14,7 +15,7 @@ export const RecoveryCodeField = Field.makeField("code", Schema.String.pipe(
   Schema.check(Schema.isPattern(/^\d{6}$/, { message: "validation.recoveryCode.invalid" })),
 ))
 export const NewPasswordField = Field.makeField("password", Schema.String.pipe(
-  Schema.check(Schema.isMinLength(12, { message: "validation.password.minLength" })),
+    Schema.check(Schema.isMinLength(PASSWORD_MIN_LENGTH, { message: "validation.password.minLength" })),
 ))
 export const PasswordConfirmationField = Field.makeField("confirmation", required("validation.password.confirmationRequired"))
 

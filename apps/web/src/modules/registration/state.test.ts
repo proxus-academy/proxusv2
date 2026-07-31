@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { applicationRuntime } from "@proxus/frontend-core/runtime"
+import { makePublicApiClientLayer } from "@proxus/frontend-core/public-api"
 import { CurrentSession, ExistingGoogleSession } from "@proxus/shared/auth"
 import { Effect, Layer, Schema } from "effect"
 import * as AsyncResult from "effect/unstable/reactivity/AsyncResult"
@@ -24,6 +25,8 @@ const session = Schema.decodeUnknownSync(CurrentSession)({
 describe("web registration state", () => {
   it("resumes Google OAuth after a document navigation and removes callback secrets", () => Effect.runPromise(Effect.gen(function*() {
     history.replaceState(null, "", "/es?code=oauth-code&state=signed&campaign=spring")
+    const { router } = yield* Effect.promise(() => import("../../routes/router.js"))
+    yield* Effect.promise(() => router.load())
     const stateModule = yield* Effect.promise(() => import("./state.js"))
     const responseBody = new ExistingGoogleSession({ session })
     const preprocess: HttpClient.HttpClient.Preprocess<HttpClientError.HttpClientError, never> = Effect.succeed
@@ -38,7 +41,12 @@ describe("web registration state", () => {
       initialValues: [
         Atom.initialValue(
           applicationRuntime.layer,
-          Layer.provideMerge(Layer.succeed(HttpClient.HttpClient, client), Reactivity.layer),
+          Layer.merge(
+            makePublicApiClientLayer("/api").pipe(
+              Layer.provide(Layer.succeed(HttpClient.HttpClient, client)),
+            ),
+            Reactivity.layer,
+          ),
         ),
         Atom.initialValue(stateModule.registrationStateAtom, { _tag: "ChoosingMethod" }),
       ],
@@ -54,8 +62,8 @@ describe("web registration state", () => {
 
     expect(AsyncResult.getOrThrow(registry.get(stateModule.resolveGoogleCallbackAction))).toBeUndefined()
     expect(registry.get(stateModule.registrationStateAtom)).toEqual({ _tag: "Completed", session })
+    expect(location.pathname).toBe("/es/app")
     expect(new URLSearchParams(location.search).get("code")).toBeNull()
     expect(new URLSearchParams(location.search).get("state")).toBeNull()
-    expect(new URLSearchParams(location.search).get("campaign")).toBe("spring")
   })))
 })

@@ -1,7 +1,8 @@
-import { Context, Effect } from "effect"
+import { Context, Effect, Layer, Option } from "effect"
 import type { GoogleAuthorizationRequest, IssuedSession, User } from "./model.js"
+import { normalizeEmail } from "./model.js"
 import type { RegistrationDraft } from "./onboarding.js"
-import type { AuthRepositoryError, UserConflict, UserNotFound } from "./repositories.js"
+import { UserRepository, type AuthRepositoryError, type UserConflict, type UserNotFound } from "./repositories.js"
 import type { EmailDeliveryError, PasswordError, VerificationCodeGenerationError } from "./ports.js"
 import type { GoogleIdentityRejected, InvalidCredentials, InvalidUserState, InvalidVerificationCode, UnauthorizedSession, VerificationAttemptsExceeded, VerificationCodeExpired, VerificationCooldown } from "./model.js"
 
@@ -22,6 +23,19 @@ export class RegistrationService extends Context.Service<RegistrationService, {
   readonly verifyEmail: (email: string, code: string) => Effect.Effect<IssuedSession, RegistrationError>
   readonly resendVerification: (email: string) => Effect.Effect<void, RegistrationError>
 }>()("@proxus/backend-domain/modules/auth/services/RegistrationService") {}
+
+export class RegistrationAvailability extends Context.Service<RegistrationAvailability, {
+  readonly emailAvailable: (email: string) => Effect.Effect<boolean, AuthRepositoryError>
+  readonly usernameAvailable: (username: string) => Effect.Effect<boolean, AuthRepositoryError>
+}>()("@proxus/backend-domain/modules/auth/services/RegistrationAvailability") {
+  static readonly layer = Layer.effect(RegistrationAvailability, Effect.gen(function*() {
+    const users = yield* UserRepository
+    return RegistrationAvailability.of({
+      emailAvailable: (email) => users.findByEmail(normalizeEmail(email)).pipe(Effect.map(Option.isNone)),
+      usernameAvailable: (username) => users.usernameExists(username.normalize("NFKC").toLocaleLowerCase("en-US")).pipe(Effect.map((exists) => !exists)),
+    })
+  }))
+}
 
 export class AuthenticationService extends Context.Service<AuthenticationService, {
   readonly loginWithPassword: (input: PasswordLoginInput) => Effect.Effect<IssuedSession, AuthenticationError>

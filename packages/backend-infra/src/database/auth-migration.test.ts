@@ -9,7 +9,7 @@ import { defaultMigrationsFolder } from "./paths.js"
 import { migratePglite } from "./pglite.js"
 import { users } from "./schema.js"
 
-const previousMigrationCount = 5
+const previousMigrationCount = 8
 const subjectId = "00000000-0000-4000-8000-000000000401"
 const userId = "00000000-0000-4000-8000-000000000402"
 const grantorId = "00000000-0000-4000-8000-000000000403"
@@ -33,8 +33,10 @@ const insertValidUsers = Effect.gen(function*() {
     birthYear: 2001,
     problemKind: "prepare-exams" as const,
     problemOther: null,
+    acquisitionSource: "friend" as const,
+    acquisitionOther: null,
+    studyId: subjectId,
     subjectId,
-    validatedNodeIds: [subjectId, subjectId, subjectId, subjectId, subjectId],
     createdAt: now,
     updatedAt: now,
   }
@@ -79,10 +81,10 @@ describe("auth database migration", () => {
       db.execute(sql`insert into users
         (id, email_normalized, status, email_verified_at, password_hash, google_subject,
          username_normalized, birth_year, problem_kind, problem_other, subject_id,
-         validated_node_ids, created_at, updated_at)
+         study_id, acquisition_source, acquisition_other, created_at, updated_at)
         values (gen_random_uuid(), ${email}, 'active', now(), 'hash', ${googleSubject},
           ${username}, 2001, 'prepare-exams', null, ${subjectId}::uuid,
-          '["00000000-0000-4000-8000-000000000401","00000000-0000-4000-8000-000000000401","00000000-0000-4000-8000-000000000401","00000000-0000-4000-8000-000000000401","00000000-0000-4000-8000-000000000401"]'::jsonb, now(), now())`)
+          ${subjectId}::uuid, 'friend', null, now(), now())`)
 
     yield* expectRejected(invalidUser("Not-Normalized@example.com", "valid_name", "subject-1"))
     yield* expectRejected(invalidUser("valid-email@example.com", "Invalid-Name", "subject-2"))
@@ -104,6 +106,13 @@ describe("auth database migration", () => {
     })
     yield* db.execute(sql`insert into study_nodes (id, kind, name, status, created_at, updated_at)
       values (${subjectId}::uuid, 'subject', 'Existing subject', 'published', now(), now())`)
+    yield* db.execute(sql`insert into users
+      (id, email_normalized, status, email_verified_at, password_hash, google_subject,
+       username_normalized, birth_year, problem_kind, problem_other, subject_id,
+       study_id, created_at, updated_at)
+      values (${userId}::uuid, 'existing@example.com', 'active', now(), 'hash', null,
+        'existing_user', 2001, 'prepare-exams', null, ${subjectId}::uuid,
+        ${subjectId}::uuid, now(), now())`)
 
     yield* migratePglite(defaultMigrationsFolder)
     const existing = yield* db.execute<{ name: string }>(sql`
@@ -113,7 +122,13 @@ describe("auth database migration", () => {
       rows: Schema.Array(Schema.Struct({ name: Schema.String })),
     }))(existing)
     expect(decodedExisting.rows).toEqual([{ name: "Existing subject" }])
-    yield* insertValidUsers
-    expect(yield* db.select().from(users)).toHaveLength(2)
+    const migratedUsers = yield* db.select().from(users)
+    expect(migratedUsers).toHaveLength(1)
+    expect(migratedUsers[0]).toMatchObject({
+      studyId: subjectId,
+      subjectId,
+      acquisitionSource: "legacy",
+      acquisitionOther: null,
+    })
   })), 20_000)
 })

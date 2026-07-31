@@ -4,7 +4,7 @@ import { Effect, Layer, Ref } from "effect"
 export interface FakeGoogleCode { readonly code: string; readonly identity: Omit<VerifiedGoogleIdentity, "nonce"> }
 
 /** Deterministic local authorization-code provider. Codes are configured by tests/dev, never client profiles. */
-export const makeFakeGoogleIdentityProvider = (codes: ReadonlyArray<FakeGoogleCode>, callbackUrl = "http://localhost:5173/en") =>
+export const makeFakeGoogleIdentityProvider = (codes: ReadonlyArray<FakeGoogleCode>, callbackUrl = "/es") =>
   Layer.effect(GoogleIdentityProvider, Effect.gen(function*() {
     const issued = yield* Ref.make(new Map<string, string>())
     const identities = new Map(codes.map((entry) => [entry.code, entry.identity]))

@@ -45,7 +45,8 @@ describe("auth QA fixtures", () => {
       return yield* listAuthQa
     }))
     expect(rows).toHaveLength(authQaFixtures.length)
-    expect(rows.every(({ studyPath }) => JSON.stringify(studyPath) === JSON.stringify(alternatePath))).toBe(true)
+    expect(rows.every(({ studyPath }) =>
+      JSON.stringify(studyPath) === JSON.stringify(alternatePath.slice(-2)))).toBe(true)
   })
 
   test("assigns only the fixture role and its exact capabilities", async () => {
@@ -55,7 +56,7 @@ describe("auth QA fixtures", () => {
       if (fixture === undefined) throw new Error(`unknown fixture ${row.name}`)
       expect(row.roles).toEqual([fixture.role])
       expect(row.capabilities).toEqual([...Access.permissionsForRoles([fixture.role])].sort())
-      expect(row.studyPath).toHaveLength(5)
+      expect(row.studyPath).toHaveLength(2)
     }
     expect(rows.find(({ name }) => name === "pending-email")?.status).toBe("pending")
     expect(rows.find(({ name }) => name === "student-google")?.provider).toBe("google")

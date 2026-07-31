@@ -93,6 +93,7 @@ export const StudyCatalogLive: Layer.Layer<
 
     const listCountries = () => repository.listCountries()
     const listRoots = () => repository.listCountries()
+    const userCountsByNodeIds = repository.userCountsByNodeIds
 
     const createNode = (
       input: CreateStudyNodeInput,
@@ -398,6 +399,7 @@ export const StudyCatalogLive: Layer.Layer<
       listNodes,
       listCountries,
       listRoots,
+      ...(userCountsByNodeIds === undefined ? {} : { userCountsByNodeIds }),
       listChildren,
       createNode,
       getNode,

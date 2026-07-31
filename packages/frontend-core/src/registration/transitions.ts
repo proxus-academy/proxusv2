@@ -6,6 +6,7 @@ export const appendRegistrationNode = (
   path: RegistrationPath,
   node: StudyNode,
 ): RegistrationPath => {
+  if (path.some((selected) => selected.id === node.id)) return path
   const candidate: ReadonlyArray<StudyNode> = [...path, node]
   return Schema.is(RegistrationPath)(candidate) ? candidate : path
 }

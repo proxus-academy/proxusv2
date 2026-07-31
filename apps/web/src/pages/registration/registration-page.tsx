@@ -5,11 +5,11 @@ import {
   googleCallbackLifecycleAtom,
   registrationDraftRestoreLifecycleAtom,
 } from "../../modules/registration/state.js"
-import { registrationUrlState } from "../../platform/registration/wizard-url.js"
+import { decodeRegistrationQuery } from "../../platform/registration/wizard-url.js"
 
-export function RegistrationPage() {
+export function RegistrationPage({ searchValue }: { readonly searchValue: string }) {
   useAtomValue(featureFlagSnapshotLifecycleAtom)
   useAtomValue(registrationDraftRestoreLifecycleAtom)
   useAtomValue(googleCallbackLifecycleAtom)
-  return <RegistrationOnboarding url={registrationUrlState()} />
+  return <RegistrationOnboarding url={decodeRegistrationQuery(searchValue)} />
 }

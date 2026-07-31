@@ -71,7 +71,8 @@ export const makeEmailRegistrationServiceLive = (policy: EmailRegistrationPolicy
           id: makeUserId(uuid()), email: draft.email, status: "pending", emailVerifiedAt: null, passwordHash,
           googleSubject: null, usernameNormalized: draft.normalizedUsername, birthYear: draft.birthYear,
           problemKind: draft.problem.kind, problemOther: draft.problem.kind === "other" ? draft.problem.otherText : null,
-          subjectId: draft.study.subjectId, validatedNodeIds: draft.study.nodeIds as User["validatedNodeIds"],
+          acquisitionSource: draft.acquisition.source, acquisitionOther: draft.acquisition.otherText,
+          studyId: draft.study.studyId, subjectId: draft.study.subjectId,
           createdAt: checkedAt, updatedAt: checkedAt,
         })
         return yield* transactions.withTransaction(Effect.gen(function*() {
@@ -134,7 +135,8 @@ export const makeEmailRegistrationServiceLive = (policy: EmailRegistrationPolicy
             id: makeUserId(uuid()), email: pending.email, status: "active", emailVerifiedAt: date(checkedAt), passwordHash: null,
             googleSubject: pending.subject, usernameNormalized: draft.normalizedUsername, birthYear: draft.birthYear,
             problemKind: draft.problem.kind, problemOther: draft.problem.kind === "other" ? draft.problem.otherText : null,
-            subjectId: draft.study.subjectId, validatedNodeIds: draft.study.nodeIds as User["validatedNodeIds"],
+            acquisitionSource: draft.acquisition.source, acquisitionOther: draft.acquisition.otherText,
+            studyId: draft.study.studyId, subjectId: draft.study.subjectId,
             createdAt: date(checkedAt), updatedAt: date(checkedAt),
           })
           const created = yield* (yield* UserRepository).createGoogleActive(user)

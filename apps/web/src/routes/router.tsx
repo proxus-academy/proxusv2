@@ -1,12 +1,18 @@
 import {
+  createRootRoute,
+  createRoute,
   createRouter,
-  index,
-  layout,
-  route,
-} from "@proxus/effect-router"
-import { createReactRouter, Outlet as RouterOutlet } from "@proxus/effect-router/react"
+  Navigate,
+  notFound,
+  Outlet,
+  RouterProvider as TanStackRouterProvider,
+  type RouterHistory,
+  useRouterState,
+} from "@tanstack/react-router"
 import { catalogFor, Locale } from "@proxus/product-messages"
 import { Heading } from "@proxus/ui"
+import { Option, Schema } from "effect"
+import { AuthenticatedLayout, PublicOnlyLayout } from "../modules/auth/layouts.js"
 import { LoginPage } from "../pages/auth/login-page.js"
 import { NewPasswordPage } from "../pages/auth/new-password-page.js"
 import { PasswordRecoveryPage } from "../pages/auth/password-recovery-page.js"
@@ -16,116 +22,157 @@ import { HomePage } from "../pages/home-page.js"
 import { RegistrationPage } from "../pages/registration/registration-page.js"
 import { FormMessagesProvider } from "../platform/form/index.js"
 import { preferredBrowserLocale } from "../platform/product-locale/index.js"
-import { browserHistory } from "../platform/routing/browser-history.web.js"
-import {
-  AuthenticatedLayout,
-  PublicOnlyLayout,
-} from "../modules/auth/layouts.js"
+import { useDesktopViewport } from "../platform/viewport/index.js"
+import { DownloadAppPage } from "../patterns/download-app-page.js"
 
-const initialLocation = browserHistory.location()
-
-export const router = createRouter([
-  route({
-    path: ":locale",
-    params: {
-      locale: Locale,
-    },
-    Component: ({ params }) => {
-      document.documentElement.lang = params.locale
-      document.documentElement.dir = "ltr"
-      return (
-        <FormMessagesProvider value={catalogFor(params.locale)}>
-          <RouterOutlet />
-        </FormMessagesProvider>
-      )
-    },
-    children: [
-      layout({
-        Layout: PublicOnlyLayout,
-        children: [
-          index({
-            id: "registration",
-            Component: RegistrationPage,
-          }),
-          route({
-            id: "login",
-            path: "login",
-            params: {},
-            Component: LoginPage,
-          }),
-          route({
-            path: "password-recovery",
-            params: {},
-            Component: RouterOutlet,
-            children: [
-              index({
-                id: "password-recovery",
-                Component: PasswordRecoveryPage,
-              }),
-              route({
-                id: "password-recovery-code",
-                path: "code",
-                params: {},
-                Component: RecoveryCodePage,
-              }),
-              route({
-                id: "new-password",
-                path: "new-password",
-                params: {},
-                Component: NewPasswordPage,
-              }),
-              route({
-                id: "password-updated",
-                path: "done",
-                params: {},
-                Component: PasswordUpdatedPage,
-              }),
-            ],
-          }),
-        ],
-      }),
-      layout({
-        Layout: AuthenticatedLayout,
-        children: [
-          route({
-            id: "home",
-            path: "app",
-            params: {},
-            Component: HomePage,
-          }),
-        ],
-      }),
-    ],
-  }),
-], {
-  NotFound: () => (
-    <RootRedirect />
-  ),
-  InvalidUrl: () => <RootRedirect />,
-  Error: () => (
-    <main>
-      <Heading level={1}>No hemos podido abrir esta página</Heading>
-    </main>
-  ),
-}, {
-  initialLocation,
-  snapshotKey: "web/router/location",
+const rootRoute = createRootRoute({
+  component: Outlet,
+  notFoundComponent: RootRedirect,
+  errorComponent: RouteError,
+  validateSearch: (search): Readonly<Record<string, unknown>> => search,
 })
 
-export const {
-  Link,
-  Navigate,
-  Outlet,
-  RouterProvider,
-} = createReactRouter(router, browserHistory)
+export const localeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "$locale",
+  params: {
+    parse: ({ locale }) => {
+      const decoded = Schema.decodeUnknownOption(Locale)(locale)
+      if (Option.isNone(decoded)) throw notFound()
+      return { locale: decoded.value }
+    },
+    stringify: ({ locale }) => ({ locale }),
+  },
+  component: LocaleLayout,
+})
+
+const publicRoute = createRoute({
+  getParentRoute: () => localeRoute,
+  id: "public",
+  component: PublicOnlyLayout,
+})
+
+export const registrationRoute = createRoute({
+  getParentRoute: () => publicRoute,
+  path: "/",
+  component: RegistrationRoutePage,
+})
+
+function RegistrationRoutePage() {
+  const searchValue = useRouterState({ select: ({ location }) => location.searchStr })
+  return <RegistrationPage searchValue={searchValue} />
+}
+
+const loginRoute = createRoute({
+  getParentRoute: () => publicRoute,
+  path: "login",
+  component: LoginPage,
+})
+
+const passwordRecoveryRoute = createRoute({
+  getParentRoute: () => publicRoute,
+  path: "password-recovery",
+  component: Outlet,
+})
+
+const passwordRecoveryIndexRoute = createRoute({
+  getParentRoute: () => passwordRecoveryRoute,
+  path: "/",
+  component: PasswordRecoveryPage,
+})
+
+const passwordRecoveryCodeRoute = createRoute({
+  getParentRoute: () => passwordRecoveryRoute,
+  path: "code",
+  component: RecoveryCodePage,
+})
+
+const newPasswordRoute = createRoute({
+  getParentRoute: () => passwordRecoveryRoute,
+  path: "new-password",
+  component: NewPasswordPage,
+})
+
+const passwordUpdatedRoute = createRoute({
+  getParentRoute: () => passwordRecoveryRoute,
+  path: "done",
+  component: PasswordUpdatedPage,
+})
+
+const authenticatedRoute = createRoute({
+  getParentRoute: () => localeRoute,
+  id: "authenticated",
+  component: AuthenticatedLayout,
+})
+
+const homeRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: "app",
+  component: HomePage,
+})
+
+const routeTree = rootRoute.addChildren([
+  localeRoute.addChildren([
+    publicRoute.addChildren([
+      registrationRoute,
+      loginRoute,
+      passwordRecoveryRoute.addChildren([
+        passwordRecoveryIndexRoute,
+        passwordRecoveryCodeRoute,
+        newPasswordRoute,
+        passwordUpdatedRoute,
+      ]),
+    ]),
+    authenticatedRoute.addChildren([homeRoute]),
+  ]),
+])
+
+export const makeWebRouter = (history?: RouterHistory) => createRouter({
+  routeTree,
+  defaultPreload: "intent",
+  ...(history === undefined ? {} : { history }),
+})
+
+export const router = makeWebRouter()
+
+declare module "@tanstack/react-router" {
+  interface Register {
+    router: typeof router
+  }
+}
+
+export function RouterProvider() {
+  return <TanStackRouterProvider router={router} />
+}
+
+export { Navigate, Outlet }
+
+function LocaleLayout() {
+  const { locale } = localeRoute.useParams()
+  const desktop = useDesktopViewport()
+  document.documentElement.lang = locale
+  document.documentElement.dir = "ltr"
+  return (
+    <FormMessagesProvider value={catalogFor(locale)}>
+      {desktop ? <Outlet /> : <DownloadAppPage />}
+    </FormMessagesProvider>
+  )
+}
 
 function RootRedirect() {
   return (
     <Navigate
-      id="registration"
+      to="/$locale"
       params={{ locale: preferredBrowserLocale() }}
-      search={{}}
       replace
     />
+  )
+}
+
+function RouteError() {
+  return (
+    <main>
+      <Heading level={1}>No hemos podido abrir esta página</Heading>
+    </main>
   )
 }

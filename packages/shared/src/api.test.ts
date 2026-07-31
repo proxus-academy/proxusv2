@@ -33,10 +33,12 @@ describe("API roots", () => {
 
     expect(publicPaths).toMatchInlineSnapshot(`
       [
+        "GET /auth/availability/email",
+        "GET /auth/availability/username",
         "GET /auth/google/callback",
-        "GET /auth/google/start",
         "GET /auth/session",
         "POST /auth/google/register",
+        "POST /auth/google/start",
         "POST /auth/login",
         "POST /auth/logout",
         "POST /auth/password-reset/confirm",

@@ -1,19 +1,20 @@
 import { useAtomValue } from "@effect/atom-react"
 import { currentSessionQuery } from "@proxus/frontend-core/auth"
 import { Heading, Text } from "@proxus/ui"
-import { currentLocale } from "../../routes/navigation.js"
-import { Navigate, Outlet } from "../../routes/router.js"
+import { Navigate, Outlet, useParams } from "@tanstack/react-router"
 
 export function PublicOnlyLayout() {
   const session = useAtomValue(currentSessionQuery)
+  const { locale } = useParams({ from: "/$locale" })
   if (session._tag === "Success" && session.value !== null) {
-    return <Navigate id="home" params={{ locale: currentLocale() }} search={{}} replace />
+    return <Navigate to="/$locale/app" params={{ locale }} search={{}} replace />
   }
   return session._tag === "Success" ? <Outlet /> : null
 }
 
 export function AuthenticatedLayout() {
   const session = useAtomValue(currentSessionQuery)
+  const { locale } = useParams({ from: "/$locale" })
   if (session._tag === "Failure") {
     return (
       <main>
@@ -26,6 +27,6 @@ export function AuthenticatedLayout() {
     return <main aria-busy="true"><Heading level={1}>Comprobando tu sesión…</Heading></main>
   }
   return session.value === null
-    ? <Navigate id="login" params={{ locale: currentLocale() }} search={{}} replace />
+    ? <Navigate to="/$locale/login" params={{ locale }} search={{}} replace />
     : <Outlet />
 }

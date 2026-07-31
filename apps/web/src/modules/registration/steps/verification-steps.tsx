@@ -1,11 +1,10 @@
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { RegistrationDraft, RegistrationState } from "@proxus/frontend-core/registration"
-import { Button, Heading, Input, Text } from "@proxus/ui"
-import type { FormEvent } from "react"
+import { Button, Checkbox, Heading, OtpInput, Text } from "@proxus/ui"
+import { useEffect, useState, type FormEvent } from "react"
 import { DraftSummary, RegistrationFailure } from "../registration-summary.js"
 import {
   confirmGoogleRegistrationAction,
-  googleRegistrationDraftAtom,
   registrationBusyAtom,
   resendRegistrationCodeAction,
   verifyRegistrationCodeAction,
@@ -16,41 +15,78 @@ export function EmailVerification({ state }: {
 }) {
   const verify = useAtomSet(verifyRegistrationCodeAction)
   const resend = useAtomSet(resendRegistrationCodeAction)
+  const resendResult = useAtomValue(resendRegistrationCodeAction)
   const busy = useAtomValue(registrationBusyAtom)
+  const [code, setCode] = useState("")
+  // Registration has just issued a code and the server enforces the same cooldown.
+  const [cooldown, setCooldown] = useState(60)
+  useEffect(() => {
+    if (cooldown <= 0) return
+    // UI-only countdown synchronized with wall time.
+    // @effect-diagnostics-next-line globalTimers:off
+    const timeout = globalThis.setTimeout(() => setCooldown((value) => Math.max(0, value - 1)), 1_000)
+    return () => globalThis.clearTimeout(timeout)
+  }, [cooldown])
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     verify({ code: String(new FormData(event.currentTarget).get("code")) })
   }
   return (
-    <main>
+    <main className="mx-auto flex max-w-xl flex-col items-center gap-5 text-center">
       <Heading level={1}>Verifica tu cuenta</Heading>
       <Text>Hemos enviado un código a {state.maskedEmail}.</Text>
       <RegistrationFailure />
-      <form onSubmit={onSubmit}>
-        <label>
-          Código de seis dígitos
-          <Input name="code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required autoComplete="one-time-code" />
-        </label>
-        <Button disabled={busy} type="submit">Confirmar código</Button>
+      <form onSubmit={onSubmit} className="flex w-full flex-col items-center gap-5">
+        <OtpInput value={code} onChange={setCode} loading={busy} />
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <Button loading={busy} disabled={code.length !== 6} type="submit">Confirmar código</Button>
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={busy || cooldown > 0}
+            onClick={() => {
+              resend()
+              setCooldown(60)
+            }}
+          >
+            {cooldown > 0 ? `Reenviar en ${cooldown}s` : "Reenviar código"}
+          </Button>
+        </div>
       </form>
-      <Button variant="ghost" disabled={busy} onClick={() => resend()}>Reenviar código</Button>
+      {resendResult._tag === "Success"
+        ? <Text role="status">Te hemos enviado un código nuevo.</Text>
+        : null}
+      <Text tone="muted">Si no lo encuentras, revisa también la carpeta de spam.</Text>
     </main>
   )
 }
 
-export function ConfirmGoogle({ draft }: { readonly draft: RegistrationDraft }) {
-  const googleDraft = useAtomValue(googleRegistrationDraftAtom)
+export function ConfirmGoogle({ state }: {
+  readonly state: Extract<RegistrationState, { readonly _tag: "ConfirmingGoogle" }>
+}) {
+  const draft = state.draft
   const confirm = useAtomSet(confirmGoogleRegistrationAction)
   const busy = useAtomValue(registrationBusyAtom)
+  const [accepted, setAccepted] = useState(false)
   return (
     <main>
       <Heading level={1}>Confirma tus datos de Google</Heading>
-      <Text>Email verificado: {googleDraft?.email ?? "Cuenta de Google"}</Text>
+      <Text>Email verificado: {state.googleRegistration.email}</Text>
       <DraftSummary draft={draft} />
       <RegistrationFailure />
-      <label><input type="checkbox" required form="google-confirm" /> Acepto los términos y la privacidad</label>
       <form id="google-confirm" onSubmit={(event) => { event.preventDefault(); confirm() }}>
-        <Button disabled={busy} type="submit">Confirmar alta</Button>
+        <label className="flex items-start gap-2">
+          <Checkbox
+            checked={accepted}
+            onCheckedChange={(checked) => setAccepted(checked === true)}
+            aria-required="true"
+          />
+          <span>
+            Acepto los <a className="text-primary underline" href="https://proxus.es/terms" target="_blank" rel="noreferrer">términos</a>
+            {" "}y la <a className="text-primary underline" href="https://proxus.es/privacy" target="_blank" rel="noreferrer">política de privacidad</a>.
+          </span>
+        </label>
+        <Button loading={busy} disabled={!accepted} type="submit">Confirmar alta</Button>
       </form>
     </main>
   )

@@ -1,6 +1,7 @@
 import { HttpApiEndpoint, HttpApiError, HttpApiGroup, HttpApiSchema, OpenApi } from "effect/unstable/httpapi"
 import {
   AuthRequestAccepted,
+  AuthAvailability,
   CompleteGoogleRegistrationInput,
   GoogleAuthorization,
   GoogleCallbackInput,
@@ -11,6 +12,8 @@ import {
   ResendVerificationInput,
   ResetPasswordInput,
   VerifyEmailInput,
+  EmailAvailabilityInput,
+  UsernameAvailabilityInput,
 } from "./contract.js"
 import {
   AuthCodeInvalid,
@@ -25,6 +28,16 @@ const internalError = HttpApiError.InternalServerErrorNoContent
 
 export class AuthApi extends HttpApiGroup.make("auth")
   .add(
+    HttpApiEndpoint.get("emailAvailability", "/availability/email", {
+      query: EmailAvailabilityInput.fields,
+      success: AuthAvailability,
+      error: internalError,
+    }),
+    HttpApiEndpoint.get("usernameAvailability", "/availability/username", {
+      query: UsernameAvailabilityInput.fields,
+      success: AuthAvailability,
+      error: internalError,
+    }),
     HttpApiEndpoint.post("registerWithEmail", "/register/email", {
       payload: RegisterWithEmailInput,
       success: AuthRequestAccepted.pipe(HttpApiSchema.status("Accepted")),
@@ -55,7 +68,7 @@ export class AuthApi extends HttpApiGroup.make("auth")
       success: AuthRequestAccepted,
       error: [AuthCodeInvalid, internalError],
     }),
-    HttpApiEndpoint.get("startGoogle", "/google/start", {
+    HttpApiEndpoint.post("startGoogle", "/google/start", {
       success: GoogleAuthorization,
       error: internalError,
     }),

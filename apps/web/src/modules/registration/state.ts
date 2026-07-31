@@ -19,27 +19,23 @@ import {
   ResendVerificationInput,
   VerifyEmailInput,
 } from "@proxus/shared/auth"
-import { Effect, Schema } from "effect"
+import { Cause, Effect, Option, Schema } from "effect"
 import * as Atom from "effect/unstable/reactivity/Atom"
 import * as KeyValueStore from "effect/unstable/persistence/KeyValueStore"
 import {
+  currentSearch,
   replaceSearch,
+  navigateAction,
 } from "../../routes/navigation.js"
 import { navigationRuntime } from "../../routes/navigation-runtime.js"
-import { router } from "../../routes/router.js"
 import { changeRegistrationStep } from "../../platform/registration/wizard-url.js"
 import {
   registrationCompletedAnalyticsAction,
   registrationStartedAnalyticsAction,
 } from "./feature-flags.js"
 
-export interface GoogleRegistrationDraft {
-  readonly registrationId: string
-  readonly email: string
-}
-
 export const registrationDraftStorageLayer = KeyValueStore.layerStorage(
-  () => sessionStorage,
+  () => localStorage,
 )
 const registrationFlow = makeRegistrationFlowAtoms({
   storageLayer: registrationDraftStorageLayer,
@@ -56,32 +52,28 @@ const registrationFlow = makeRegistrationFlowAtoms({
 export const registrationStateAtom = registrationFlow.stateAtom
 export const registrationDraftRestoreLifecycleAtom = registrationFlow.restoreLifecycleAtom
 export const dispatchRegistrationAction = registrationFlow.dispatchAtom
-export const verificationEmailAtom = Atom.make("")
-export const googleRegistrationDraftAtom = Atom.make<GoogleRegistrationDraft | undefined>(undefined)
 const processedGoogleCallbackAtom = Atom.make<string | undefined>(undefined)
 
 const onboardingOf = (draft: RegistrationDraft) => {
-  const [country, studyType, university, degree, subject] = draft.path
+  const subject = draft.path.at(-1)
   if (
     draft.username === undefined
     || draft.birthYear === undefined
     || draft.problemKind === undefined
-    || country === undefined
-    || studyType === undefined
-    || university === undefined
-    || degree === undefined
+    || draft.acquisitionSource === undefined
     || subject === undefined
+    || subject.kind !== "subject"
   ) return undefined
   return {
     username: draft.username,
     birthYear: draft.birthYear,
     problemKind: draft.problemKind,
-    ...(draft.problemOtherText === undefined ? {} : { problemOtherText: draft.problemOtherText }),
+    ...(typeof draft.problemOtherText === "string" ? { problemOtherText: draft.problemOtherText } : {}),
+    acquisitionSource: draft.acquisitionSource,
+    ...(typeof draft.acquisitionOtherText === "string"
+      ? { acquisitionOtherText: draft.acquisitionOtherText }
+      : {}),
     study: {
-      countryId: country.id,
-      studyTypeId: studyType.id,
-      universityId: university.id,
-      degreeId: degree.id,
       subjectId: subject.id,
     },
   }
@@ -92,11 +84,14 @@ export const beginEmailRegistrationAction = Atom.fn<void>()((_input, get) => Eff
   yield* get.setResult(dispatchRegistrationAction, { _tag: "EmailStarted" })
 }))
 
-export const beginGoogleRegistrationAction = navigationRuntime.fn((_input: void, get) => Effect.gen(function*() {
+export const beginGoogleRegistrationAction = navigationRuntime.fn((
+  request: { readonly requestId: string },
+  get,
+) => Effect.gen(function*() {
   const documentNavigation = yield* DocumentNavigation
   yield* get.setResult(registrationStartedAnalyticsAction, undefined)
   yield* get.setResult(dispatchRegistrationAction, { _tag: "GoogleStarted" })
-  const authorization = yield* get.setResult(startGoogleAuthorizationAction, undefined)
+  const authorization = yield* get.setResult(startGoogleAuthorizationAction, request)
   yield* documentNavigation.assign(authorization.authorizationUrl)
 }))
 
@@ -105,12 +100,15 @@ export const submitEmailRegistrationAction = Atom.fn<{
   readonly password: string
 }>()((credentials, get) => Effect.gen(function*() {
   const state = get(registrationStateAtom)
-  if (state._tag !== "CollectingOnboarding") return
+  if (state._tag !== "CollectingOnboarding") {
+    return yield* Effect.fail({ _tag: "RegistrationStateNotCollecting" as const })
+  }
   const onboarding = onboardingOf(state.draft)
-  if (onboarding === undefined) return
+  if (onboarding === undefined) {
+    return yield* Effect.fail({ _tag: "RegistrationDraftIncomplete" as const })
+  }
   const input = yield* Schema.decodeUnknownEffect(RegisterWithEmailInput)({ ...credentials, onboarding })
   yield* get.setResult(registerWithEmailAction, input)
-  get.set(verificationEmailAtom, credentials.email)
   yield* get.setResult(dispatchRegistrationAction, {
     _tag: "EmailSubmitted",
     draftId: credentials.email,
@@ -119,35 +117,42 @@ export const submitEmailRegistrationAction = Atom.fn<{
 }))
 
 export const verifyRegistrationCodeAction = Atom.fn<{ readonly code: string }>()((input, get) => Effect.gen(function*() {
+  const state = get(registrationStateAtom)
+  if (state._tag !== "EmailVerificationPending") {
+    return yield* Effect.fail({ _tag: "RegistrationVerificationNotPending" as const })
+  }
   const request = yield* Schema.decodeUnknownEffect(VerifyEmailInput)({
-    email: get(verificationEmailAtom),
+    email: state.draftId,
     code: input.code,
   })
   const session = yield* get.setResult(verifyEmailAction, request)
   yield* get.setResult(dispatchRegistrationAction, { _tag: "CodeVerified", session })
   yield* get.setResult(registrationCompletedAnalyticsAction, undefined)
+  yield* get.setResult(navigateAction, { id: "home", replace: true })
 }))
 
 export const resendRegistrationCodeAction = Atom.fn<void>()((_input, get) => Effect.gen(function*() {
-  const email = get(verificationEmailAtom)
-  if (email === "") return
-  const request = yield* Schema.decodeUnknownEffect(ResendVerificationInput)({ email })
+  const state = get(registrationStateAtom)
+  if (state._tag !== "EmailVerificationPending") {
+    return yield* Effect.fail({ _tag: "RegistrationVerificationNotPending" as const })
+  }
+  const request = yield* Schema.decodeUnknownEffect(ResendVerificationInput)({ email: state.draftId })
   yield* get.setResult(resendVerificationAction, request)
 }))
 
 export const confirmGoogleRegistrationAction = Atom.fn<void>()((_input, get) => Effect.gen(function*() {
   const state = get(registrationStateAtom)
-  const googleDraft = get(googleRegistrationDraftAtom)
-  if (state._tag !== "ConfirmingGoogle" || googleDraft === undefined) return
+  if (state._tag !== "ConfirmingGoogle") return
   const onboarding = onboardingOf(state.draft)
   if (onboarding === undefined) return
   const input = yield* Schema.decodeUnknownEffect(CompleteGoogleRegistrationInput)({
-    registrationId: googleDraft.registrationId,
+    registrationId: state.googleRegistration.registrationId,
     onboarding,
   })
   const session = yield* get.setResult(completeGoogleRegistrationAction, input)
   yield* get.setResult(dispatchRegistrationAction, { _tag: "GoogleConfirmed", session })
   yield* get.setResult(registrationCompletedAnalyticsAction, undefined)
+  yield* get.setResult(navigateAction, { id: "home", replace: true })
 }))
 
 export const resolveGoogleCallbackAction = navigationRuntime.fn((query: {
@@ -159,7 +164,7 @@ export const resolveGoogleCallbackAction = navigationRuntime.fn((query: {
   const input = yield* Schema.decodeUnknownEffect(GoogleCallbackInput)(query)
   const result = yield* get.setResult(completeGoogleCallbackAction, input)
   get.set(processedGoogleCallbackAtom, key)
-  const search = new URLSearchParams(router.location().search)
+  const search = currentSearch()
   search.delete("code")
   search.delete("state")
   yield* replaceSearch(Object.fromEntries(search))
@@ -173,20 +178,21 @@ export const resolveGoogleCallbackAction = navigationRuntime.fn((query: {
       _tag: "GoogleResolved",
       result: { _tag: "Existing", session: result.session },
     })
+    yield* get.setResult(navigateAction, { id: "home", replace: true })
     return
   }
-  get.set(googleRegistrationDraftAtom, {
-    registrationId: result.registrationId,
-    email: result.email,
-  })
   yield* get.setResult(dispatchRegistrationAction, {
     _tag: "GoogleResolved",
-    result: { _tag: "New" },
+    result: {
+      _tag: "New",
+      registrationId: result.registrationId,
+      email: result.email,
+    },
   })
 }))
 
 export const googleCallbackLifecycleAtom = Atom.make((get) => {
-  const search = new URLSearchParams(router.location().search)
+  const search = currentSearch()
   const code = search.get("code")
   const state = search.get("state")
   return code === null || state === null
@@ -202,6 +208,9 @@ export const editRegistrationStepAction = Atom.fn<RegistrationStep>()((step, get
   return changeRegistrationStep("push", step, path)
 })
 
+export const changeRegistrationStudyPathAction = Atom.fn<RegistrationDraft["path"]>()((path, get) =>
+  get.setResult(dispatchRegistrationAction, { _tag: "StudyPathChanged", path }))
+
 const operationResults = (get: Atom.FnContext) => [
   get(beginGoogleRegistrationAction),
   get(submitEmailRegistrationAction),
@@ -212,4 +221,18 @@ const operationResults = (get: Atom.FnContext) => [
 ]
 
 export const registrationBusyAtom = Atom.make((get) => operationResults(get).some((result) => result.waiting))
-export const registrationFailedAtom = Atom.make((get) => operationResults(get).some((result) => result._tag === "Failure"))
+export const registrationErrorMessageAtom = Atom.make((get) => {
+  const errors = operationResults(get).flatMap((result) => {
+    if (result._tag !== "Failure") return []
+    const error = Cause.findErrorOption(result.cause as Cause.Cause<unknown>)
+    return Option.isSome(error) ? [error.value] : []
+  })
+  const tags = errors.flatMap((error) =>
+    typeof error === "object" && error !== null && "_tag" in error && typeof error._tag === "string"
+      ? [error._tag]
+      : [])
+  if (tags.includes("AuthRegistrationConflict")) return "Ese email o nombre de usuario ya está registrado."
+  if (tags.includes("AuthCodeInvalid")) return "El código es incorrecto o ha caducado."
+  if (tags.includes("HttpClientError")) return "No hemos podido conectar con el servidor. Revisa tu conexión."
+  return errors.length > 0 ? "No hemos podido completar la operación. Inténtalo de nuevo." : undefined
+})

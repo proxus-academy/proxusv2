@@ -21,7 +21,7 @@ describe("registration landing atoms", () => {
   it("keeps milestone coordinates at the last assignment exposed before loading and revision changes", () => Effect.runPromise(Effect.gen(function*() {
     const events: Array<{
       readonly assignment: RegistrationLandingAssignment
-      readonly tag: "feature_flag_exposed" | "registration_started" | "registration_completed"
+      readonly tag: "feature_flag_exposed" | "registration_started" | "registration_completed" | "registration_step_viewed" | "registration_step_completed"
     }> = []
     const exposed = yield* Deferred.make<void>()
     const milestones = yield* Deferred.make<void>()

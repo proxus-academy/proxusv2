@@ -1,13 +1,9 @@
 import { PublicApi } from "@proxus/shared/public-api"
 import { Context, Effect, Layer } from "effect"
 import { HttpApiClient } from "effect/unstable/httpapi"
+import { PublicApiClient } from "../public-api/client.js"
 
 type PublicClient = HttpApiClient.ForApi<typeof PublicApi>
-
-export class PublicHttpClient extends Context.Service<
-  PublicHttpClient,
-  PublicClient
->()("@proxus/frontend-core/study-catalog/client/PublicHttpClient") {}
 
 export class PublicStudyCatalogClient extends Context.Service<
   PublicStudyCatalogClient,
@@ -23,20 +19,16 @@ export class PublicStudyCatalogClient extends Context.Service<
   }
 >()("@proxus/frontend-core/study-catalog/client/PublicStudyCatalogClient") {}
 
-export const makePublicStudyCatalogClientLayer = (baseUrl: string) => {
-  const httpLayer = Layer.effect(
-    PublicHttpClient,
-    HttpApiClient.make(PublicApi, { baseUrl }),
-  )
+export const PublicStudyCatalogClientLive = Layer.effect(
+  PublicStudyCatalogClient,
+  Effect.gen(function*() {
+    const client = yield* PublicApiClient
+    return {
+      listRoots: client.publicStudyCatalog.listRoots,
+      listChildren: client.publicStudyCatalog.listChildren,
+    }
+  }),
+)
 
-  return Layer.effect(
-    PublicStudyCatalogClient,
-    Effect.gen(function*() {
-      const client = yield* PublicHttpClient
-      return {
-        listRoots: client.publicStudyCatalog.listRoots,
-        listChildren: client.publicStudyCatalog.listChildren,
-      }
-    }),
-  ).pipe(Layer.provide(httpLayer))
-}
+/** @deprecated Stable queries consume PublicApiClient directly. */
+export const makePublicStudyCatalogClientLayer = () => PublicStudyCatalogClientLive

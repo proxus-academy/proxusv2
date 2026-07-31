@@ -92,7 +92,7 @@ describe("registration graph path", () => {
     expect(registry.get(registrationPathAtom)).toEqual([])
   })
 
-  it("rejects nodes that do not match the current level", () => {
+  it("does not impose a fixed kind on a graph root", () => {
     const registry = AtomRegistry.make()
     const { registrationPathAtom, selectRegistrationNodeAtom } =
       makeRegistrationAtoms(
@@ -102,7 +102,7 @@ describe("registration graph path", () => {
 
     registry.set(selectRegistrationNodeAtom, studyType)
 
-    expect(registry.get(registrationPathAtom)).toEqual([])
+    expect(registry.get(registrationPathAtom)).toEqual([studyType])
   })
 
   it("runs milestones only after the replacement publishes the next path", () => {

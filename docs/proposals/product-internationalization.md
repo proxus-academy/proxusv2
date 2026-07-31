@@ -2,7 +2,16 @@
 
 ## Estado
 
-Implementada parcialmente en las aplicaciones de producto. La decisión inicial de evaluar Paraglide fue reemplazada tras el spike por catálogos TypeScript explícitos: resultan más simples, más seguros para parámetros y coherentes con la arquitectura atom-first actual.
+Implementada parcialmente en las aplicaciones de producto. La decisión inicial
+de usar catálogos TypeScript explícitos ha sido reemplazada por la decisión de
+adoptar i18next. El plan previo a implementación, sus gates y la estrategia de
+migración incremental están en
+[`../plans/product-i18next-migration.md`](../plans/product-i18next-migration.md).
+
+El contenido de esta propuesta permanece como registro de la decisión anterior
+y como fuente de requisitos que siguen vigentes. Sus secciones que prescriben
+`MessagesCatalog`, `catalogFor()` o la ausencia de runtime global no describen
+el estado objetivo.
 
 Permanecen fuera de esta entrega la traducción de `StudyNode.name`, las superficies no alcanzables del wizard y la internacionalización del admin.
 

@@ -27,7 +27,7 @@ const current = new CurrentSession({
   expiresAt: DateTime.makeUnsafe(expires.getTime()),
 })
 
-const makeWeb = (rotate: boolean) => {
+const makeWeb = (rotate: boolean, secure = true) => {
   const authentication = Layer.succeed(AuthenticationService, AuthenticationService.of({
     loginWithPassword: () => Effect.succeed(issued("new-secret")),
     requestPasswordReset: () => Effect.void,
@@ -40,7 +40,7 @@ const makeWeb = (rotate: boolean) => {
     fromIssued: () => Effect.succeed(current),
     account: () => Effect.succeed(current.account),
   }))
-  const dependencies = Layer.mergeAll(authentication, view, makeAuthSessionCookies({ secure: true, sameSite: "lax" }))
+  const dependencies = Layer.mergeAll(authentication, view, makeAuthSessionCookies({ secure, sameSite: "lax" }))
   const routes = HttpApiBuilder.layer(SessionTestApi).pipe(
     Layer.provide(PublicSessionHandlers),
     Layer.provide(SessionAuthorizationLive),
@@ -75,6 +75,17 @@ describe("public auth session transport", () => {
     expect(cookie).toContain("Secure")
     expect(cookie).toContain("SameSite=Lax")
     expect(await response.text()).not.toContain("rotated-secret")
+    await web.dispose()
+  })
+
+  test("supports an HttpOnly SameSite development cookie over HTTP", async () => {
+    const web = makeWeb(true, false)
+    const response = await web.handler(new Request("http://proxus.test/auth/session", { headers: { cookie: "proxus_session=valid-secret" } }))
+    const cookie = response.headers.get("set-cookie") ?? ""
+    expect(response.status).toBe(200)
+    expect(cookie).toContain("HttpOnly")
+    expect(cookie).toContain("SameSite=Lax")
+    expect(cookie).not.toContain("Secure")
     await web.dispose()
   })
 })

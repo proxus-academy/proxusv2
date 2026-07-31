@@ -26,8 +26,29 @@ export class RegistrationCompleted extends Schema.TaggedClass<RegistrationComple
   { ...EventBase, ...AssignmentContext },
 ) {}
 
+const RegistrationStepContext = {
+  step: Schema.NonEmptyString,
+  stepIndex: Schema.Int.pipe(Schema.check(Schema.isGreaterThanOrEqualTo(1))),
+  totalSteps: Schema.Int.pipe(Schema.check(Schema.isGreaterThanOrEqualTo(1))),
+  provider: Schema.Literals(["email", "google"]),
+} as const
+
+export class RegistrationStepViewed extends Schema.TaggedClass<RegistrationStepViewed>()(
+  "registration_step_viewed",
+  { ...EventBase, ...AssignmentContext, ...RegistrationStepContext },
+) {}
+
+export class RegistrationStepCompleted extends Schema.TaggedClass<RegistrationStepCompleted>()(
+  "registration_step_completed",
+  { ...EventBase, ...AssignmentContext, ...RegistrationStepContext },
+) {}
+
 /** Events accepted from an untrusted browser. Identity and consent are transport context. */
 export const PublicProductAnalyticsEvent = Schema.Union([
-  FeatureFlagExposed, RegistrationStarted, RegistrationCompleted,
+  FeatureFlagExposed,
+  RegistrationStarted,
+  RegistrationCompleted,
+  RegistrationStepViewed,
+  RegistrationStepCompleted,
 ])
 export type PublicProductAnalyticsEvent = typeof PublicProductAnalyticsEvent.Type

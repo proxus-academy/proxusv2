@@ -20,11 +20,10 @@ const user = (n: number, overrides: Partial<User> = {}): User => ({
   id: `00000000-0000-4000-8000-${String(n).padStart(12, "0")}` as UserId,
   email: `user${n}@example.com`, status: "pending", emailVerifiedAt: null, passwordHash: "hash",
   googleSubject: null, usernameNormalized: `user_${n}`, birthYear: 2000,
-  problemKind: "organize-study", problemOther: null, subjectId,
-  validatedNodeIds: [
-    "00000000-0000-4000-8000-000000000001", "00000000-0000-4000-8000-000000000002",
-    "00000000-0000-4000-8000-000000000003", "00000000-0000-4000-8000-000000000004", subjectId,
-  ], createdAt: at("2026-01-01T00:00:00Z"), updatedAt: at("2026-01-01T00:00:00Z"), ...overrides,
+  problemKind: "organize-study", problemOther: null,
+  acquisitionSource: "friend", acquisitionOther: null,
+  studyId: "00000000-0000-4000-8000-000000000004", subjectId,
+  createdAt: at("2026-01-01T00:00:00Z"), updatedAt: at("2026-01-01T00:00:00Z"), ...overrides,
 })
 const challenge = (n: number, purpose: AuthChallenge["purpose"] = "verify-email"): AuthChallenge => ({
   id: `10000000-0000-4000-8000-${String(n).padStart(12, "0")}` as AuthChallengeId,

@@ -1,11 +1,5 @@
 import { Schema } from "effect"
-import {
-  CountryNodeId,
-  DegreeNodeId,
-  StudyTypeNodeId,
-  SubjectNodeId,
-  UniversityNodeId,
-} from "../study-catalog/schema.js"
+import { SubjectNodeId } from "../study-catalog/schema.js"
 
 const uuidId = (brand: string) => Schema.String.pipe(
   Schema.check(Schema.isUUID(4)),
@@ -34,8 +28,10 @@ export const EmailAddress = Schema.String.pipe(
 )
 export type EmailAddress = typeof EmailAddress.Type
 
+export const PASSWORD_MIN_LENGTH = 8
+
 export const Password = Schema.String.pipe(
-  Schema.check(Schema.isMinLength(12)),
+  Schema.check(Schema.isMinLength(PASSWORD_MIN_LENGTH)),
   Schema.check(Schema.isMaxLength(128)),
 )
 
@@ -66,13 +62,21 @@ export const ProblemKind = Schema.Literals([
 ])
 export type ProblemKind = typeof ProblemKind.Type
 
+export const AcquisitionSource = Schema.Literals([
+  "friend",
+  "tiktok",
+  "instagram",
+  "whatsapp",
+  "google",
+  "ai",
+  "event",
+  "other",
+])
+export type AcquisitionSource = typeof AcquisitionSource.Type
+
 export class StudySelectionInput extends Schema.Class<StudySelectionInput>(
   "StudySelectionInput",
 )({
-  countryId: CountryNodeId,
-  studyTypeId: StudyTypeNodeId,
-  universityId: UniversityNodeId,
-  degreeId: DegreeNodeId,
   subjectId: SubjectNodeId,
 }) {}
 
@@ -84,6 +88,10 @@ export class OnboardingInput extends Schema.Class<OnboardingInput>(
   problemKind: ProblemKind,
   problemOtherText: Schema.optional(
     Schema.String.pipe(Schema.check(Schema.isMinLength(1)), Schema.check(Schema.isMaxLength(280))),
+  ),
+  acquisitionSource: AcquisitionSource,
+  acquisitionOtherText: Schema.optional(
+    Schema.String.pipe(Schema.check(Schema.isMinLength(1)), Schema.check(Schema.isMaxLength(200))),
   ),
   study: StudySelectionInput,
 }) {}
