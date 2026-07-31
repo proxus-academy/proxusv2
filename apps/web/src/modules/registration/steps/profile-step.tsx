@@ -8,6 +8,7 @@ import {
   registrationUsernameAvailabilityAtom,
 } from "../forms.js"
 import { dispatchRegistrationAction } from "../state.js"
+import { useTranslation } from "react-i18next"
 
 export function ProfileStep({ draft }: { readonly draft: RegistrationDraft }) {
   const dispatch = useAtomSet(dispatchRegistrationAction)
@@ -23,6 +24,7 @@ export function ProfileStep({ draft }: { readonly draft: RegistrationDraft }) {
     && parsedBirthYear <= currentYear - 13
   const usernameAvailable = availability.username === username && availability.available === true
   const canContinue = usernameValid && usernameAvailable && birthYearValid && !availability.checking
+  const { t } = useTranslation("registration", { keyPrefix: "profile" })
 
   useEffect(() => {
     if (!usernameValid) return
@@ -41,12 +43,12 @@ export function ProfileStep({ draft }: { readonly draft: RegistrationDraft }) {
   return (
     <main className="space-y-6">
       <div>
-        <Heading level={1}>¿Cómo quieres que te llamemos?</Heading>
-        <Text className="mt-2" tone="muted">Elige un nombre de usuario único y dinos tu año de nacimiento.</Text>
+        <Heading level={1}>{t("title")}</Heading>
+        <Text className="mt-2" tone="muted">{t("description")}</Text>
       </div>
       <form className="space-y-5" onSubmit={submit}>
         <label className="block space-y-2 font-medium">
-          <span>Nombre de usuario</span>
+          <span>{t("username")}</span>
           <Input
             aria-busy={availability.checking || undefined}
             aria-invalid={username.length > 0 && (!usernameValid || availability.available === false)}
@@ -56,16 +58,16 @@ export function ProfileStep({ draft }: { readonly draft: RegistrationDraft }) {
           />
         </label>
         {username.length > 0 && !usernameValid
-          ? <Text className="text-sm" tone="destructive">Usa entre 3 y 30 letras, números o guiones bajos.</Text>
+          ? <Text className="text-sm" tone="destructive">{t("invalidUsername")}</Text>
           : availability.username === username && availability.checking
-          ? <Text className="text-sm" tone="muted">Comprobando disponibilidad…</Text>
+          ? <Text className="text-sm" tone="muted">{t("checking")}</Text>
           : availability.username === username && availability.available !== undefined
           ? <Text className="text-sm" tone={availability.available ? "muted" : "destructive"}>
-            {availability.available ? "Nombre de usuario disponible." : "Ese nombre de usuario ya está en uso."}
+            {availability.available ? t("available") : t("unavailable")}
           </Text>
           : null}
         <label className="block space-y-2 font-medium">
-          <span>Año de nacimiento</span>
+          <span>{t("birthYear")}</span>
           <Input
             aria-invalid={birthYear.length > 0 && !birthYearValid}
             inputMode="numeric"
@@ -76,7 +78,7 @@ export function ProfileStep({ draft }: { readonly draft: RegistrationDraft }) {
             onChange={(event) => setBirthYear(event.currentTarget.value)}
           />
         </label>
-        <Button disabled={!canContinue} type="submit">Continuar</Button>
+        <Button disabled={!canContinue} type="submit">{t("continue")}</Button>
       </form>
     </main>
   )

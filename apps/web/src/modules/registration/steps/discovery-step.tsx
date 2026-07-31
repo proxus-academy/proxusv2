@@ -5,22 +5,15 @@ import { Button, ChoiceCard, Heading, Text, Textarea } from "@proxus/ui"
 import { useState, type FormEvent } from "react"
 import { DiscoverySourceIcon } from "./discovery-source-icon.js"
 import { dispatchRegistrationAction } from "../state.js"
+import { useTranslation } from "react-i18next"
 
-const sources: ReadonlyArray<readonly [AcquisitionSource, string]> = [
-  ["friend", "Amigo o compañero"],
-  ["tiktok", "TikTok"],
-  ["instagram", "Instagram"],
-  ["whatsapp", "WhatsApp"],
-  ["google", "Google"],
-  ["ai", "ChatGPT u otra IA"],
-  ["event", "Evento"],
-  ["other", "Otro"],
-]
+const sources: ReadonlyArray<AcquisitionSource> = ["friend", "tiktok", "instagram", "whatsapp", "google", "ai", "event", "other"]
 
 export function DiscoveryStep({ draft }: { readonly draft: RegistrationDraft }) {
   const dispatch = useAtomSet(dispatchRegistrationAction)
   const [other, setOther] = useState(draft.acquisitionSource === "other")
   const [otherText, setOtherText] = useState(draft.acquisitionOtherText ?? "")
+  const { t } = useTranslation("registration", { keyPrefix: "discovery" })
   const select = (source: AcquisitionSource) => {
     if (source === "other") {
       setOther(true)
@@ -35,11 +28,11 @@ export function DiscoveryStep({ draft }: { readonly draft: RegistrationDraft }) 
   if (other) {
     return (
       <main className="space-y-7">
-        <Heading level={1}>¿Dónde nos conociste?</Heading>
-        <Text className="-mt-4" tone="muted">Cuéntanos brevemente dónde descubriste Proxus.</Text>
+        <Heading level={1}>{t("otherTitle")}</Heading>
+        <Text className="-mt-4" tone="muted">{t("otherDescription")}</Text>
         <form className="space-y-4" onSubmit={submitOther}>
           <Textarea
-            aria-label="Dónde conociste Proxus"
+            aria-label={t("otherLabel")}
             autoFocus
             className="min-h-32 bg-white"
             maxLength={200}
@@ -48,7 +41,7 @@ export function DiscoveryStep({ draft }: { readonly draft: RegistrationDraft }) 
             onChange={(event) => setOtherText(event.currentTarget.value)}
           />
           <div className="flex justify-end">
-            <Button disabled={otherText.trim().length === 0} type="submit">Continuar</Button>
+            <Button disabled={otherText.trim().length === 0} type="submit">{t("continue")}</Button>
           </div>
         </form>
       </main>
@@ -56,15 +49,15 @@ export function DiscoveryStep({ draft }: { readonly draft: RegistrationDraft }) 
   }
   return (
     <main className="space-y-7">
-      <Heading level={1}>¿Cómo nos conociste?</Heading>
-      <Text className="-mt-4" tone="muted">Tu respuesta nos ayuda a entender qué canales son más útiles.</Text>
+      <Heading level={1}>{t("title")}</Heading>
+      <Text className="-mt-4" tone="muted">{t("description")}</Text>
       <div className="grid gap-3 sm:grid-cols-2">
-        {sources.map(([source, label]) => (
+        {sources.map((source) => (
           <ChoiceCard
             className="p-4"
             key={source}
             leading={<DiscoverySourceIcon source={source} />}
-            title={label}
+            title={t(`sources.${source}`)}
             onClick={() => select(source)}
           />
         ))}

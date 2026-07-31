@@ -7,25 +7,21 @@ import { makeRetryableCommands } from "../navigation/index.js"
 import { makeProductLocaleAtoms } from "./atoms.js"
 
 describe("product locale atoms", () => {
-  it("derives the typed messages catalog from the active locale", () => {
+  it("replaces the active locale through the navigation port", () => {
     const source = Atom.make<"es" | "en">("es")
     const localeAtom = Atom.writable(
       (get) => get(source),
       (get, locale: "es" | "en") => get.set(source, locale),
     )
-    const { messagesCatalogAtom, selectLocaleAtom } = makeProductLocaleAtoms({
+    const { selectLocaleAtom } = makeProductLocaleAtoms({
       localeAtom,
       replaceLocale: (locale, get) => Effect.sync(() => get.set(localeAtom, locale)),
     }, makeRetryableCommands())
     const registry = AtomRegistry.make()
 
-    expect(registry.get(messagesCatalogAtom).common.back).toBe("Atrás")
-    expect(registry.get(messagesCatalogAtom).auth.login.failed).toBe("No se ha podido iniciar sesión")
-    expect(registry.get(messagesCatalogAtom).validation["validation.email.required"]).toBe("Introduce tu email")
+    expect(registry.get(localeAtom)).toBe("es")
     registry.set(selectLocaleAtom, "en")
     expect(AsyncResult.getOrThrow(registry.get(selectLocaleAtom))).toBeUndefined()
-    expect(registry.get(messagesCatalogAtom).common.back).toBe("Back")
-    expect(registry.get(messagesCatalogAtom).auth.login.failed).toBe("Unable to sign in")
-    expect(registry.get(messagesCatalogAtom).validation["validation.email.required"]).toBe("Enter your email")
+    expect(registry.get(localeAtom)).toBe("en")
   })
 })

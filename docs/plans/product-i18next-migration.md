@@ -2,7 +2,7 @@
 
 ## Estado
 
-Plan previo a implementación.
+Implementada para las superficies de producto de `apps/web`.
 
 Este documento reemplaza la decisión de usar catálogos TypeScript ejecutables
 descrita en `docs/proposals/product-internationalization.md`. Conserva las
@@ -10,8 +10,9 @@ decisiones todavía válidas de aquella propuesta: ownership del locale,
 separación por plataforma, errores semánticos, accesibilidad y exclusión del
 contenido de dominio localizado.
 
-La implementación no comenzará hasta completar el spike y cerrar los gates de
-la fase 0.
+El spike, la migración de auth y registro, la retirada del catálogo anterior y
+los gates de validación se han completado. Astro y React Native permanecen como
+contratos preparados; no se han creado aplicaciones vacías.
 
 ## Objetivo
 
@@ -654,20 +655,19 @@ loading hasta que tamaño y número de locales lo justifiquen.
 **Mitigación:** declarar requisitos por formato y validar el runtime real antes
 de añadir polyfills.
 
-## Decisiones pendientes antes de implementar
+## Decisiones cerradas durante la implementación
 
-1. Confirmar `en-GB` frente a `en-US`.
-2. Confirmar si el selector reemplaza la entrada actual o crea historial. La
-   propuesta es `replace`.
-3. Confirmar si la preferencia seguirá siendo local al dispositivo hasta que
-   exista una cuenta. La propuesta es sí.
-4. Definir si se adoptará un TMS durante esta migración. La propuesta es no,
-   dejando recursos preparados.
-5. Definir política de cambio de idioma con formularios parcialmente editados.
-   La propuesta es conservar su estado.
-6. **Cerrada:** admin continúa fuera de alcance y se mantiene únicamente en
-   español. No cargará i18next, no expondrá selector de idioma y no condicionará la
-   completitud de los catálogos de producto.
+1. Los tags de formato son `es-ES` y `en-GB`.
+2. El futuro selector reemplazará el locale de la ruta sin crear una entrada de
+   historial adicional.
+3. La preferencia permanece local al dispositivo mientras no exista una
+   decisión de producto sobre sincronización con cuenta.
+4. No se adopta un TMS en esta migración; los recursos quedan preparados para
+   integrarlo posteriormente.
+5. Cambiar de locale conserva el estado de formularios parcialmente editados.
+6. Admin continúa fuera de alcance y se mantiene únicamente en español. No
+   carga i18next, no expone selector de idioma y no condiciona la completitud de
+   los catálogos de producto.
 
 ## Definición de terminado
 

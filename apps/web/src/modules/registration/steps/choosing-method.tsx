@@ -11,6 +11,7 @@ import {
   registrationBusyAtom,
 } from "../state.js"
 import { navigateAction } from "../../../routes/navigation.js"
+import { useTranslation } from "react-i18next"
 
 export function ChoosingMethod() {
   const beginGoogle = useAtomSet(beginGoogleRegistrationAction)
@@ -19,19 +20,20 @@ export function ChoosingMethod() {
   const busy = useAtomValue(registrationBusyAtom)
   const assignment = useAtomValue(registrationLandingAssignmentAtom)
   useAtomValue(registrationLandingExposureLifecycleAtom)
+  const { t } = useTranslation("registration", { keyPrefix: "chooseMethod" })
   return (
     <main className="registration-hero">
       <Text className="mb-4 inline-flex rounded-full border border-primary/15 bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
-        Tu espacio de estudio con IA
+        {t("badge")}
       </Text>
       <Heading level={1} className="max-w-2xl text-4xl leading-[1.08] md:text-6xl">
-        Estudia mejor, <span className="brand-gradient-text">a tu manera.</span>
+        {t("title")}
       </Heading>
       <Text className="mt-5 max-w-xl text-lg leading-relaxed" tone="muted">
-        Cuéntanos qué necesitas y qué estudias. Prepararemos Proxus para ti en menos de dos minutos.
+        {t("description")}
       </Text>
       {assignment._tag === "Success" && assignment.value.variant === "long"
-        ? <Text className="mt-2" tone="muted">Personaliza tu experiencia para encontrar antes los contenidos que necesitas.</Text>
+        ? <Text className="mt-2" tone="muted">{t("longDescription")}</Text>
         : null}
       <RegistrationFailure />
       <div className="mt-8 flex max-w-xl flex-col gap-3 sm:flex-row">
@@ -43,11 +45,11 @@ export function ChoosingMethod() {
             requestId: `${globalThis.performance.timeOrigin}:${globalThis.performance.now()}`,
           })}
         >
-          Continuar con Google
+          {t("google")}
         </Button>
-        <Button className="flex-1" size="lg" variant="secondary" loading={busy} onClick={() => beginEmail()}>Empezar con email</Button>
+        <Button className="flex-1" size="lg" variant="secondary" loading={busy} onClick={() => beginEmail()}>{t("email")}</Button>
       </div>
-      <Button className="mt-3" variant="ghost" onClick={() => navigate({ id: "login" })}>Ya tengo cuenta</Button>
+      <Button className="mt-3" variant="ghost" onClick={() => navigate({ id: "login" })}>{t("login")}</Button>
     </main>
   )
 }

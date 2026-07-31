@@ -221,7 +221,9 @@ const operationResults = (get: Atom.FnContext) => [
 ]
 
 export const registrationBusyAtom = Atom.make((get) => operationResults(get).some((result) => result.waiting))
-export const registrationErrorMessageAtom = Atom.make((get) => {
+export type RegistrationErrorCode = "conflict" | "invalidCode" | "network" | "unexpected"
+
+export const registrationErrorCodeAtom = Atom.make<RegistrationErrorCode | undefined>((get) => {
   const errors = operationResults(get).flatMap((result) => {
     if (result._tag !== "Failure") return []
     const error = Cause.findErrorOption(result.cause as Cause.Cause<unknown>)
@@ -231,8 +233,8 @@ export const registrationErrorMessageAtom = Atom.make((get) => {
     typeof error === "object" && error !== null && "_tag" in error && typeof error._tag === "string"
       ? [error._tag]
       : [])
-  if (tags.includes("AuthRegistrationConflict")) return "Ese email o nombre de usuario ya está registrado."
-  if (tags.includes("AuthCodeInvalid")) return "El código es incorrecto o ha caducado."
-  if (tags.includes("HttpClientError")) return "No hemos podido conectar con el servidor. Revisa tu conexión."
-  return errors.length > 0 ? "No hemos podido completar la operación. Inténtalo de nuevo." : undefined
+  if (tags.includes("AuthRegistrationConflict")) return "conflict"
+  if (tags.includes("AuthCodeInvalid")) return "invalidCode"
+  if (tags.includes("HttpClientError")) return "network"
+  return errors.length > 0 ? "unexpected" : undefined
 })

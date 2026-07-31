@@ -9,6 +9,7 @@ import {
   registrationBusyAtom,
   submitEmailRegistrationAction,
 } from "../state.js"
+import { Trans, useTranslation } from "react-i18next"
 
 export function AccountStep({ draft }: { readonly draft: RegistrationDraft }) {
   return (
@@ -38,11 +39,12 @@ function AccountFormContent({ draft: _draft }: { readonly draft: RegistrationDra
       && terms
     ),
   })
+  const { t } = useTranslation("registration", { keyPrefix: "account" })
   return (
     <main className="mx-auto max-w-2xl space-y-6">
       <div className="space-y-2">
-        <Heading level={1}>Crea tu cuenta</Heading>
-        <Text tone="muted">Usa un email al que tengas acceso para verificar tu cuenta.</Text>
+        <Heading level={1}>{t("title")}</Heading>
+        <Text tone="muted">{t("description")}</Text>
       </div>
       <RegistrationFailure />
       <form className="space-y-5" onSubmit={(event) => {
@@ -51,16 +53,15 @@ function AccountFormContent({ draft: _draft }: { readonly draft: RegistrationDra
             submit: ({ email, password }) => submitAccount({ email, password }),
           })
         }}>
-          <RegistrationAccountForm.email label="Email" type="email" />
-          <RegistrationAccountForm.password label="Contraseña" type="password" />
-          <RegistrationAccountForm.confirmation label="Confirmar contraseña" type="password" />
-          <RegistrationAccountForm.terms label="Acepto los términos y la privacidad" />
+          <RegistrationAccountForm.email label={t("email")} type="email" />
+          <RegistrationAccountForm.password label={t("password")} type="password" />
+          <RegistrationAccountForm.confirmation label={t("confirmation")} type="password" />
+          <RegistrationAccountForm.terms label={t("accept")} />
           <Text className="text-sm leading-relaxed" tone="muted">
-            Consulta los <a className="text-primary underline" href="https://proxus.es/terms" target="_blank" rel="noreferrer">términos</a>
-            {" "}y la <a className="text-primary underline" href="https://proxus.es/privacy" target="_blank" rel="noreferrer">política de privacidad</a>.
+            <Trans t={t} i18nKey="legal" components={{ terms: <a className="text-primary underline" href="https://proxus.es/terms" target="_blank" rel="noreferrer" />, privacy: <a className="text-primary underline" href="https://proxus.es/privacy" target="_blank" rel="noreferrer" /> }} />
           </Text>
         <div className="flex justify-end pt-1">
-          <Button type="submit" loading={busy} disabled={!canSubmit}>Crear cuenta</Button>
+          <Button type="submit" loading={busy} disabled={!canSubmit}>{t("submit")}</Button>
         </div>
       </form>
     </main>

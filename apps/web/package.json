@@ -17,8 +17,10 @@
     "@proxus/ui": "workspace:*",
     "@tanstack/react-router": "^1.170.18",
     "effect": "4.0.0-beta.98",
+    "i18next": "^26.3.6",
     "react": "^19.2.3",
-    "react-dom": "^19.2.3"
+    "react-dom": "^19.2.3",
+    "react-i18next": "^17.0.11"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.2",

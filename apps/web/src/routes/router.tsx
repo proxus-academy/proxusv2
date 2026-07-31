@@ -9,7 +9,7 @@ import {
   type RouterHistory,
   useRouterState,
 } from "@tanstack/react-router"
-import { catalogFor, Locale } from "@proxus/product-messages"
+import { Locale } from "@proxus/product-messages"
 import { Heading } from "@proxus/ui"
 import { Option, Schema } from "effect"
 import { AuthenticatedLayout, PublicOnlyLayout } from "../modules/auth/layouts.js"
@@ -20,10 +20,10 @@ import { PasswordUpdatedPage } from "../pages/auth/password-updated-page.js"
 import { RecoveryCodePage } from "../pages/auth/recovery-code-page.js"
 import { HomePage } from "../pages/home-page.js"
 import { RegistrationPage } from "../pages/registration/registration-page.js"
-import { FormMessagesProvider } from "../platform/form/index.js"
-import { preferredBrowserLocale } from "../platform/product-locale/index.js"
+import { preferredBrowserLocale, productI18nFor } from "../platform/product-locale/index.js"
 import { useDesktopViewport } from "../platform/viewport/index.js"
 import { DownloadAppPage } from "../patterns/download-app-page.js"
+import { I18nextProvider, useTranslation } from "react-i18next"
 
 const rootRoute = createRootRoute({
   component: Outlet,
@@ -142,7 +142,11 @@ declare module "@tanstack/react-router" {
 }
 
 export function RouterProvider() {
-  return <TanStackRouterProvider router={router} />
+  return (
+    <I18nextProvider i18n={productI18nFor(preferredBrowserLocale())}>
+      <TanStackRouterProvider router={router} />
+    </I18nextProvider>
+  )
 }
 
 export { Navigate, Outlet }
@@ -153,9 +157,9 @@ function LocaleLayout() {
   document.documentElement.lang = locale
   document.documentElement.dir = "ltr"
   return (
-    <FormMessagesProvider value={catalogFor(locale)}>
+    <I18nextProvider i18n={productI18nFor(locale)}>
       {desktop ? <Outlet /> : <DownloadAppPage />}
-    </FormMessagesProvider>
+    </I18nextProvider>
   )
 }
 
@@ -170,9 +174,10 @@ function RootRedirect() {
 }
 
 function RouteError() {
+  const { t } = useTranslation("common")
   return (
     <main>
-      <Heading level={1}>No hemos podido abrir esta página</Heading>
+      <Heading level={1}>{t("routeError")}</Heading>
     </main>
   )
 }

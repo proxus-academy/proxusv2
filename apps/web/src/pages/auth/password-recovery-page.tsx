@@ -1,11 +1,11 @@
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { recoveryStateAtom } from "@proxus/frontend-core/auth"
-import { useFormMessages } from "../../platform/form/index.js"
 import { Button, Text } from "@proxus/ui"
 import { AuthError, BackToLoginButton } from "../../modules/auth/auth-controls.js"
 import { backToLoginAction, submitPasswordRecoveryAction } from "../../modules/auth/actions.js"
 import { ForgotPasswordForm } from "../../modules/auth/forms.js"
 import { AuthPage } from "../../patterns/auth-page.js"
+import { useTranslation } from "react-i18next"
 
 export function PasswordRecoveryPage() {
   const recovery = useAtomValue(recoveryStateAtom)
@@ -13,12 +13,11 @@ export function PasswordRecoveryPage() {
   const submitForm = useAtomSet(ForgotPasswordForm.submit)
   const result = useAtomValue(submitPasswordRecoveryAction)
   const back = useAtomSet(backToLoginAction)
-  const messages = useFormMessages()
-  const copy = messages.auth.forgotPassword
+  const { t } = useTranslation("auth")
 
   return (
-    <AuthPage title={copy.title}>
-      <Text tone="muted">{copy.description}</Text>
+    <AuthPage title={t("forgotPassword.title")}>
+      <Text tone="muted">{t("forgotPassword.description")}</Text>
       <ForgotPasswordForm.Initialize defaultValues={{ email: recovery.email }}>
         <form
           className="space-y-4"
@@ -28,13 +27,13 @@ export function PasswordRecoveryPage() {
           }}
         >
           <ForgotPasswordForm.email
-            label={messages.auth.login.email}
+            label={t("login.email")}
             name="email"
             type="email"
             autoComplete="email"
           />
           <AuthError visible={result._tag === "Failure"} />
-          <Button type="submit" disabled={result.waiting}>{copy.submit}</Button>
+          <Button type="submit" disabled={result.waiting}>{t("forgotPassword.submit")}</Button>
         </form>
       </ForgotPasswordForm.Initialize>
       <BackToLoginButton onClick={() => back()} />

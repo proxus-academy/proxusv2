@@ -2,18 +2,20 @@ import { useAtomSet } from "@effect/atom-react"
 import type { RegistrationDraft } from "@proxus/frontend-core/registration"
 import { Button, Heading, Text, Textarea } from "@proxus/ui"
 import { useState, type FormEvent } from "react"
-import { problemLabels } from "../registration-copy.js"
+import { problemKinds, problemLabelKeys } from "../registration-copy.js"
 import { dispatchRegistrationAction, editRegistrationStepAction } from "../state.js"
+import { useTranslation } from "react-i18next"
 
 export function ProblemStep() {
   const dispatch = useAtomSet(dispatchRegistrationAction)
   const edit = useAtomSet(editRegistrationStepAction)
+  const { t } = useTranslation("registration")
   return (
     <main className="space-y-7">
-      <Heading level={1}>¿Qué quieres resolver?</Heading>
-      <Text className="-mt-4" tone="muted">Elige tu objetivo principal.</Text>
+      <Heading level={1}>{t("problem.title")}</Heading>
+      <Text className="-mt-4" tone="muted">{t("problem.description")}</Text>
       <div className="grid gap-3 sm:grid-cols-2">
-        {problemLabels.map(([kind, label]) => (
+        {problemKinds.map((kind) => (
           <button
             className="problem-choice"
             key={kind}
@@ -22,7 +24,7 @@ export function ProblemStep() {
               ? edit("problem-other")
               : dispatch({ _tag: "ProblemSelected", kind })}
           >
-            <span>{label}</span>
+            <span>{t(problemLabelKeys[kind])}</span>
           </button>
         ))}
       </div>
@@ -33,17 +35,18 @@ export function ProblemStep() {
 export function ProblemOtherStep({ draft }: { readonly draft: RegistrationDraft }) {
   const dispatch = useAtomSet(dispatchRegistrationAction)
   const [otherText, setOtherText] = useState(draft.problemOtherText ?? "")
+  const { t } = useTranslation("registration", { keyPrefix: "problem" })
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     dispatch({ _tag: "ProblemSelected", kind: "other", otherText })
   }
   return (
     <main className="space-y-7">
-      <Heading level={1}>Cuéntanos qué necesitas</Heading>
-      <Text className="-mt-4" tone="muted">Describe brevemente qué te gustaría resolver con Proxus.</Text>
+      <Heading level={1}>{t("otherTitle")}</Heading>
+      <Text className="-mt-4" tone="muted">{t("otherDescription")}</Text>
       <form className="space-y-4" onSubmit={onSubmit}>
         <Textarea
-          aria-label="Qué quieres resolver"
+          aria-label={t("otherLabel")}
           autoFocus
           className="min-h-36 bg-white"
           maxLength={280}
@@ -53,7 +56,7 @@ export function ProblemOtherStep({ draft }: { readonly draft: RegistrationDraft 
         />
         <div className="flex items-center justify-between">
           <Text className="text-sm" tone="muted">{otherText.length}/280</Text>
-          <Button disabled={otherText.trim().length === 0} type="submit">Continuar</Button>
+          <Button disabled={otherText.trim().length === 0} type="submit">{t("continue")}</Button>
         </div>
       </form>
     </main>

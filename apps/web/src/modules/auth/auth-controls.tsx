@@ -1,19 +1,19 @@
-import { useFormMessages } from "../../platform/form/index.js"
 import { Button, Text } from "@proxus/ui"
+import { useTranslation } from "react-i18next"
 
 export function AuthError({ visible, message }: {
   readonly visible: boolean
   readonly message?: string
 }) {
-  const messages = useFormMessages()
+  const { t } = useTranslation(["errors", "common"])
   return visible
-    ? <Text role="alert" tone="muted">{message ?? messages.errors.unexpected}</Text>
+    ? <Text role="alert" tone="muted">{message ?? t("unexpected", { ns: "errors" })}</Text>
     : null
 }
 
 export function BackToLoginButton({ onClick }: { readonly onClick: () => void }) {
-  const messages = useFormMessages()
-  return <Button variant="ghost" onClick={onClick}>{messages.common.back}</Button>
+  const { t } = useTranslation("common")
+  return <Button variant="ghost" onClick={onClick}>{t("back")}</Button>
 }
 
 export function LogoutButton({ busy, error, onLogout }: {
@@ -21,10 +21,11 @@ export function LogoutButton({ busy, error, onLogout }: {
   readonly error?: boolean
   readonly onLogout: () => void
 }) {
+  const { t } = useTranslation("auth", { keyPrefix: "session" })
   return (
     <div>
       <Button variant="ghost" disabled={busy === true} onClick={onLogout}>
-        {busy === true ? "Cerrando sesión…" : "Cerrar sesión"}
+        {busy === true ? t("signingOut") : t("signOut")}
       </Button>
       <AuthError visible={error === true} />
     </div>

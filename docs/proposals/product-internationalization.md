@@ -2,10 +2,9 @@
 
 ## Estado
 
-Implementada parcialmente en las aplicaciones de producto. La decisión inicial
+Implementada en las superficies de producto de `apps/web`. La decisión inicial
 de usar catálogos TypeScript explícitos ha sido reemplazada por la decisión de
-adoptar i18next. El plan previo a implementación, sus gates y la estrategia de
-migración incremental están en
+adoptar i18next. La arquitectura resultante y sus verificaciones están en
 [`../plans/product-i18next-migration.md`](../plans/product-i18next-migration.md).
 
 El contenido de esta propuesta permanece como registro de la decisión anterior
@@ -13,7 +12,8 @@ y como fuente de requisitos que siguen vigentes. Sus secciones que prescriben
 `MessagesCatalog`, `catalogFor()` o la ausencia de runtime global no describen
 el estado objetivo.
 
-Permanecen fuera de esta entrega la traducción de `StudyNode.name`, las superficies no alcanzables del wizard y la internacionalización del admin.
+Permanecen fuera de esta entrega la traducción de `StudyNode.name` y la
+internacionalización del admin. Admin continúa exclusivamente en español.
 
 ## Objetivo
 

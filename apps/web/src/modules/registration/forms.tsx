@@ -10,6 +10,7 @@ import { Text } from "@proxus/ui"
 import { Effect } from "effect"
 import * as Atom from "effect/unstable/reactivity/Atom"
 import { useEffect } from "react"
+import { useTranslation } from "react-i18next"
 
 export interface UsernameAvailabilityState {
   readonly username: string
@@ -37,6 +38,7 @@ export const checkRegistrationUsernameAction = Atom.fn<string>()((username, get)
 const EmailAvailabilityField: EffectFormReact.FieldComponent<string, TextFieldProps> = ({ field, props }) => {
   const check = useAtomSet(emailAvailabilityAction)
   const result = useAtomValue(emailAvailabilityAction)
+  const { t } = useTranslation("registration", { keyPrefix: "account" })
   useEffect(() => {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(field.value)) return
     // React debounce is a browser synchronization concern at this adapter boundary.
@@ -47,7 +49,7 @@ const EmailAvailabilityField: EffectFormReact.FieldComponent<string, TextFieldPr
   return <>
     <TextField field={field} props={{ ...props, "aria-busy": result.waiting || undefined }} />
     {result._tag === "Success" ? <Text className="text-sm" tone={result.value.available ? "muted" : "destructive"}>
-      {result.value.available ? "Email disponible." : "Ese email ya está registrado."}
+      {result.value.available ? t("emailAvailable") : t("emailUnavailable")}
     </Text> : null}
   </>
 }

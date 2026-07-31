@@ -107,8 +107,9 @@ conserva los valores de query ajenos al wizard y es el único escritor de
 History.
 
 El locale es siempre el primer segmento (`/:locale/...`). El layout lo valida
-con `Locale`, proporciona el catálogo de mensajes y actualiza los atributos del
-documento.
+con `Locale`, proporciona una instancia i18next aislada y actualiza los atributos
+del documento. i18next no escribe History, preferencias ni atoms; cada app crea
+su instancia en la composition root y selecciona sus adapters de plataforma.
 
 ## Composition roots
 

@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react"
 import * as Option from "effect/Option"
 import { describe, expect, it, vi } from "vitest"
 import { CheckboxField, NumberField, TextField } from "./fields.js"
+import { ProductI18nTestProvider } from "../../testing/product-i18n.js"
 
 const state = <A,>(value: A, error: Option.Option<string> = Option.none()) => ({
   path: "field", value, error, isTouched: false, isValidating: false, isDirty: false,
@@ -12,7 +13,7 @@ const state = <A,>(value: A, error: Option.Option<string> = Option.none()) => ({
 describe("web form field adapters", () => {
   it("connects text value, change, blur and accessible error", () => {
     const field = state("", Option.some("validation.email.required"))
-    render(<TextField field={field} props={{ label: "Email" }} />)
+    render(<ProductI18nTestProvider><TextField field={field} props={{ label: "Email" }} /></ProductI18nTestProvider>)
     const input = screen.getByRole("textbox", { name: "Email" })
     expect(input.getAttribute("aria-invalid")).toBe("true")
     expect(screen.getByRole("alert").textContent).toBe("Introduce tu email")
@@ -24,14 +25,14 @@ describe("web form field adapters", () => {
 
   it("maps number values", () => {
     const field = state(2000)
-    render(<NumberField field={field} props={{ label: "Year" }} />)
+    render(<ProductI18nTestProvider><NumberField field={field} props={{ label: "Year" }} /></ProductI18nTestProvider>)
     fireEvent.change(screen.getByLabelText("Year"), { target: { value: "1999" } })
     expect(field.onChange).toHaveBeenCalledWith(1999)
   })
 
   it("maps checkbox values and disabled", () => {
     const field = state(false)
-    render(<CheckboxField field={field} props={{ label: "Terms", disabled: true }} />)
+    render(<ProductI18nTestProvider><CheckboxField field={field} props={{ label: "Terms", disabled: true }} /></ProductI18nTestProvider>)
     expect((screen.getByRole("checkbox", { name: "Terms" }) as HTMLButtonElement).disabled).toBe(true)
   })
 })
