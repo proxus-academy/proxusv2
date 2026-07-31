@@ -25,3 +25,6 @@
 [submodule ".repos/effect-form"]
 	path = .repos/effect-form
 	url = https://github.com/lucas-barake/effect-form.git
+[submodule ".repos/t3code"]
+	path = .repos/t3code
+	url = https://github.com/pingdotgg/t3code.git
