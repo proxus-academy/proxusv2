@@ -15,6 +15,10 @@
       // Tailwind is resolved indirectly by Vite/shared theme CSS.
       "ignoreDependencies": ["tailwindcss"]
     },
+    "apps/web-fsm": {
+      // Tailwind is resolved indirectly by Vite/shared theme CSS.
+      "ignoreDependencies": ["tailwindcss"]
+    },
     "apps/*": {},
     "packages/*": {}
   }

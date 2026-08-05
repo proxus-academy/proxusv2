@@ -1,0 +1,21 @@
+@import "@proxus/ui/theme.css";
+@source "../../../packages/ui/src/**/*.{ts,tsx}";
+
+body { min-width: 320px; }
+
+.fsm-shell {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  background:
+    radial-gradient(circle at 80% 10%, rgba(121, 62, 249, 0.15), transparent 35%),
+    radial-gradient(circle at 10% 90%, rgba(153, 0, 161, 0.1), transparent 35%),
+    #f9f9ff;
+}
+
+.fsm-card { width: min(100%, 34rem); background: rgba(255, 255, 255, 0.94); box-shadow: 0 28px 80px rgba(49, 30, 96, 0.1); }
+.fsm-form { display: grid; gap: 1.25rem; }
+.fsm-dashboard-section { display: grid; gap: 0.75rem; margin-top: 1.5rem; }
+.fsm-studies { display: grid; gap: 0.5rem; padding-left: 1.25rem; list-style: disc; }
+.fsm-actions { flex-wrap: wrap; gap: 0.75rem; }

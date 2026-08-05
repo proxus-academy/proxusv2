@@ -1,0 +1,30 @@
+{
+  "name": "@proxus/web-fsm",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 5175 --strictPort",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@effect/atom-react": "4.0.0-beta.98",
+    "@proxus/ui": "workspace:*",
+    "effect": "4.0.0-beta.98",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
+  },
+  "devDependencies": {
+    "@storybook/react-vite": "^10.5.0",
+    "@tailwindcss/vite": "^4.3.2",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "storybook": "^10.5.0",
+    "tailwindcss": "^4.3.2",
+    "typescript": "^5.8.3",
+    "vite": "^7.2.7",
+    "vitest": "3.2.7"
+  }
+}
