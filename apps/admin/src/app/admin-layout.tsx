@@ -14,9 +14,9 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { adminNavigation } from "./navigation.js"
+import { adminNavigation, type AdminSection } from "./navigation.js"
 
-export function AdminLayout({ children }: { readonly children: ReactNode }) {
+export function AdminLayout({ activeSection, onNavigate, children }: { readonly activeSection: AdminSection; readonly onNavigate: (section: AdminSection) => void; readonly children: ReactNode }) {
   return (
     <TooltipProvider>
       <SidebarProvider className="admin-shell [--sidebar-width:18rem]">
@@ -35,10 +35,10 @@ export function AdminLayout({ children }: { readonly children: ReactNode }) {
               <SidebarGroupLabel className="px-2 text-[11px] font-semibold uppercase tracking-wider">Datos</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {adminNavigation.map(({ label, icon: Icon, active }) => (
+                  {adminNavigation.map(({ id, label, icon: Icon }) => (
                     <SidebarMenuItem key={label}>
-                      <SidebarMenuButton asChild isActive={active} tooltip={label} className="font-medium data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground">
-                        <a href="#nodes"><Icon aria-hidden="true" /><span>{label}</span></a>
+                      <SidebarMenuButton asChild isActive={activeSection === id} tooltip={label} className="font-medium data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground">
+                        <a href={`#${id}`} onClick={() => onNavigate(id)}><Icon aria-hidden="true" /><span>{label}</span></a>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   ))}

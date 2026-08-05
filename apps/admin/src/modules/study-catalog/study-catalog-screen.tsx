@@ -81,6 +81,7 @@ import { Spinner } from "@/components/ui/spinner"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   connectNodesMutationFamily,
+  createNodeMutation,
   disconnectEdgeMutationFamily,
   renameNodeMutationFamily,
   updateEdgeMutationFamily,
@@ -691,6 +692,11 @@ export function StudyCatalogScreen({ permissions }: { readonly permissions: Read
   const nodes = useAtomValue(nodesFamily(filterKey))
   const selectedNodeId = useAtomValue(selectedNodeIdAtom)
   const selectNode = useAtomSet(selectNodeAtom)
+  const [search, setSearch] = useState("")
+  const [createOpen, setCreateOpen] = useState(false)
+  const [newName, setNewName] = useState("")
+  const createNode = useAtomSet(createNodeMutation)
+  const createResult = useAtomValue(createNodeMutation)
   const selectKind = (value: string) => {
     if (isStudyNodeKind(value)) {
       setKind(value)
@@ -701,6 +707,9 @@ export function StudyCatalogScreen({ permissions }: { readonly permissions: Read
       setStatus(value)
     }
   }
+  const visibleNodes = nodes._tag === "Success"
+    ? nodes.value.filter((node) => node.name.toLocaleLowerCase("es").includes(search.trim().toLocaleLowerCase("es")))
+    : []
 
   return (
     <PermissionContext.Provider value={permissions}>
@@ -717,6 +726,30 @@ export function StudyCatalogScreen({ permissions }: { readonly permissions: Read
             <p className="text-sm text-muted-foreground">
               Gestiona el catálogo y sus relaciones.
             </p>
+          </div>
+          <div className="ml-auto">
+            <PermissionControl permission="studyCatalog:createNode">
+              <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+                <DialogTrigger asChild><Button><Plus />Crear nodo</Button></DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Crear {kindLabel[kind].toLocaleLowerCase("es")}</DialogTitle>
+                    <DialogDescription>Se creará como borrador para que puedas conectarlo y revisarlo antes de publicarlo.</DialogDescription>
+                  </DialogHeader>
+                  <Field data-invalid={createResult._tag === "Failure"}>
+                    <FieldLabel htmlFor="new-node-name">Nombre</FieldLabel>
+                    <Input id="new-node-name" autoFocus value={newName} onChange={(event) => setNewName(event.target.value)} />
+                    {createResult._tag === "Failure" ? <FieldError>No se ha podido crear el nodo.</FieldError> : null}
+                  </Field>
+                  <DialogFooter>
+                    <DialogClose asChild><Button type="button" variant="outline">Cancelar</Button></DialogClose>
+                    <Button type="button" disabled={newName.trim().length === 0 || waiting(createResult)} onClick={() => createNode({ kind, name: newName })}>
+                      {waiting(createResult) ? <Spinner /> : null}Crear borrador
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </PermissionControl>
           </div>
         </header>
         <div className="grid min-h-0 flex-1 gap-6 lg:grid-cols-[22rem_minmax(0,1fr)] lg:grid-rows-1">
@@ -744,11 +777,12 @@ export function StudyCatalogScreen({ permissions }: { readonly permissions: Read
                   </SelectContent>
                 </Select>
               </div>
+              <Input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre…" aria-label="Buscar nodos" />
               {nodes._tag === "Failure" ? (
                 <ErrorAlert title="No se ha podido cargar el catálogo" />
               ) : nodes._tag !== "Success" ? (
                 <LoadingRows />
-              ) : nodes.value.length === 0 ? (
+              ) : visibleNodes.length === 0 ? (
                 <Empty className="border">
                   <EmptyHeader>
                     <EmptyMedia variant="icon"><SearchX /></EmptyMedia>
@@ -758,7 +792,7 @@ export function StudyCatalogScreen({ permissions }: { readonly permissions: Read
               ) : (
                 <ScrollArea className="min-h-0 flex-1">
                   <div className="space-y-2 pr-3">
-                    {nodes.value.map((node) => (
+                    {visibleNodes.map((node) => (
                       <Item
                         key={node.id}
                         asChild

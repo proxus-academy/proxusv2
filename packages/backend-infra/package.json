@@ -18,6 +18,7 @@
     "./study-catalog/pglite": "./src/modules/study-catalog/repository.pglite.layer.ts",
     "./study-catalog/postgres": "./src/modules/study-catalog/repository.postgres.layer.ts",
     "./product-analytics/memory": "./src/modules/product-analytics/repository.memory.ts",
+    "./product-analytics/pglite": "./src/modules/product-analytics/repository.pglite.layer.ts",
     "./product-analytics/bigquery": "./src/modules/product-analytics/repository.bigquery.ts"
   },
   "scripts": {

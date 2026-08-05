@@ -20,8 +20,10 @@ export class UserRepository extends Context.Service<UserRepository, {
   /** Atomically links only an active, email-verified account. */
   readonly linkGoogle: (id: UserId, subject: string, linkedAt: Date) => Effect.Effect<User, UserConflict | InvalidRepositoryState | UserNotFound | AuthRepositoryError>
   readonly getById: (id: UserId) => Effect.Effect<Option.Option<User>, AuthRepositoryError>
+  readonly listAll: () => Effect.Effect<ReadonlyArray<User>, AuthRepositoryError>
   readonly activate: (id: UserId, verifiedAt: Date) => Effect.Effect<User, UserNotFound | InvalidRepositoryState | AuthRepositoryError>
   readonly disable: (id: UserId, disabledAt: Date) => Effect.Effect<User, UserNotFound | AuthRepositoryError>
+  readonly enable: (id: UserId, enabledAt: Date) => Effect.Effect<User, UserNotFound | InvalidRepositoryState | AuthRepositoryError>
   readonly usernameExists: (normalizedUsername: string) => Effect.Effect<boolean, AuthRepositoryError>
   readonly updatePasswordHash: (id: UserId, passwordHash: string, updatedAt: Date) => Effect.Effect<User, UserNotFound | AuthRepositoryError>
 }>()("@proxus/backend-domain/modules/auth/repositories/UserRepository") {}

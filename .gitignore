@@ -6,6 +6,7 @@ apps/**/dist
 apps/server/.data
 apps/server/.data.stale-*/
 apps/admin-server/.data/
+apps/dev-server/.data/
 packages/backend-infra/.data/
 coverage
 .env
@@ -15,3 +16,7 @@ coverage
 *.tsbuildinfo
 *storybook.log
 storybook-static
+.pi/
+artifacts/
+test-results/
+nohup.out

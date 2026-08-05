@@ -48,6 +48,12 @@ Un snapshot del piloto tiene esta forma:
 
 No se deben interpretar estos datos como autorización ni como evidencia de causalidad por sí solos. El cierre de analytics deja de admitir, interrumpe el worker y drena trabajo en vuelo/pendiente dentro de un único `shutdownTimeout`; repository bloqueado y backoff de retries también consumen ese presupuesto. El adapter BigQuery desactiva los retries parciales internos del SDK (`partialRetries: 0`) y el servicio solo reintenta índices únicos, acotados y contenidos en el conjunto de filas fallidas. Antes de decodificar batches, el composition root público aplica el límite raw común de 256 KiB y responde 413 si se excede.
 
+En desarrollo, el repository de analytics persiste en una tabla append-only de
+la misma PGlite configurada por `PGLITE_DATA_DIR`; no se pierde al reiniciar el
+servidor. El adapter de memoria queda reservado a tests y composiciones
+explícitas. `event_id` es la clave idempotente de reintento y el payload se
+guarda codificado con el Schema público. Esta telemetría sigue sin ser auditoría.
+
 La publicación operativa corre en un proceso separado y activa cada revisión en
 PostgreSQL. La revisión `0` queda reservada al snapshot sintético vacío; el Schema
 de publicación y el constraint SQL exigen revisiones persistidas `>= 1`. La

@@ -40,6 +40,7 @@ const isGlobalAdmin = (assignment: Pick<RoleAssignment, "role" | "scope">) =>
   assignment.role === "admin" && assignment.scope.type === globalScope.type && assignment.scope.id === globalScope.id
 
 export interface AccessControlServiceShape {
+  readonly requireAdministrator: (subject: Subject) => Effect.Effect<void, Forbidden | RoleStoreError>
   readonly capabilities: (subject: Subject, resource?: Resource<AccessScopeType>) => Effect.Effect<ReadonlySet<AccessPermission>, RoleStoreError>
   readonly require: (subject: Subject, permission: AccessPermission, resource: Resource<AccessScopeType>) => Effect.Effect<void, Forbidden | RoleStoreError>
   readonly grantRole: (actor: Subject, assignment: Omit<RoleAssignment, "grantedBy" | "grantedAt">, grantedAt: Date) => Effect.Effect<void, Forbidden | RoleStoreError | InvalidRoleScope | DuplicateRoleAssignment | RoleAssignmentStoreError>
@@ -69,6 +70,7 @@ export const AccessControlServiceLive = Layer.effect(AccessControlService, Effec
     validScope(assignment.role, assignment.scope) ? Effect.void : Effect.fail(new InvalidRoleScope(assignment))
 
   return AccessControlService.of({
+    requireAdministrator: (subject) => withStore(requireAdministrator(subject)),
     capabilities: (subject, resource = adminResource) => withStore(Effect.gen(function* () {
       const store = yield* Access.RoleStore
       // effectiveScopes preserves the resource's scope union although the vendored helper exposes its broad base type.

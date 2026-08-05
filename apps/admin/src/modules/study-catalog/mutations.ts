@@ -1,4 +1,5 @@
 import {
+  CreateStudyNodePayload,
   CreateStudyEdgePayload,
   RenameStudyNodePayload,
   UpdateStudyEdgePayload,
@@ -16,6 +17,34 @@ import { studyCatalogRuntime } from "./runtime.js"
 import { renameValueFamily } from "./state.js"
 
 export interface RenameNodeInput { readonly name: string; readonly filterKey: NodeFilterKey }
+
+export const createNodeMutation = studyCatalogRuntime.fn(
+  Effect.fnUntraced(function*(input: { readonly kind: StudyNodeKind; readonly name: string }, get) {
+    const tags = {
+      country: "CreateCountry",
+      type: "CreateStudyType",
+      university: "CreateUniversity",
+      degree: "CreateDegree",
+      subject: "CreateSubject",
+    } as const
+    const payload = yield* Schema.decodeUnknownEffect(CreateStudyNodePayload)({
+      _tag: tags[input.kind],
+      name: input.name.trim(),
+    })
+    const catalog = yield* AdminStudyCatalogClient
+    const node = yield* (() => {
+      switch (payload._tag) {
+        case "CreateCountry": return catalog.createNode({ payload })
+        case "CreateStudyType": return catalog.createNode({ payload })
+        case "CreateUniversity": return catalog.createNode({ payload })
+        case "CreateDegree": return catalog.createNode({ payload })
+        case "CreateSubject": return catalog.createNode({ payload })
+      }
+    })()
+    get.refresh(nodesFamily(`${node.kind}:${node.status}`))
+    return node
+  }),
+)
 
 export const renameNodeMutationFamily = Atom.family((nodeId: StudyNodeId) =>
   studyCatalogRuntime.fn(

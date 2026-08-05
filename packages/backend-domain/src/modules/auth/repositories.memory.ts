@@ -32,8 +32,15 @@ export const makeMemoryUserRepository = (initial: ReadonlyArray<User> = []) => L
       yield* Ref.update(users, (value) => new Map(value).set(id, next)); return next
     }),
     getById: (id) => Ref.get(users).pipe(Effect.map((all) => Option.fromUndefinedOr(all.get(id)))),
+    listAll: () => Ref.get(users).pipe(Effect.map((all) => [...all.values()])),
     activate: (id, now) => update(id, (user) => ({ ...user, status: "active", emailVerifiedAt: now, updatedAt: now })),
     disable: (id, now) => update(id, (user) => ({ ...user, status: "disabled", updatedAt: now })),
+    enable: (id, now) => Effect.gen(function*() {
+      const all = yield* Ref.get(users); const user = all.get(id)
+      if (user === undefined) return yield* new UserNotFound({ userId: id })
+      if (user.status !== "disabled" || user.emailVerifiedAt === null) return yield* new InvalidRepositoryState({ entity: "user" })
+      return yield* update(id, (current) => ({ ...current, status: "active", updatedAt: now }))
+    }),
     usernameExists: () => Effect.succeed(false),
     updatePasswordHash: (id, passwordHash, now) => update(id, (user) => ({ ...user, passwordHash, updatedAt: now })),
   })

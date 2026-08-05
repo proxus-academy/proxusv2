@@ -175,8 +175,9 @@ product presentation and are never authorization evidence.
 | --- | --- | --- |
 | POST | `/product-analytics/events` | Best-effort batch ingestion (1–50 browser events) |
 
-The public contract accepts only `feature_flag_exposed`, `registration_started`
-and `registration_completed` for the registration landing vertical. The latter
+The public contract accepts `feature_flag_exposed`, `registration_started`,
+`registration_completed`, `registration_step_viewed` and
+`registration_step_completed` for the registration vertical. Completion
 means only “the browser UI reached its completion step”; it is non-authoritative
 telemetry and does not assert that a backend registration succeeded. Every event
 carries immutable `flagKey`, `variant` and `revision`; the envelope adds the subject
@@ -203,6 +204,10 @@ in each server, including analytics.
 
 Analytics is intentionally best-effort: it must not affect product behavior and
 is not suitable for audit, authorization, billing, or exactly-once workflows.
+In development the queue writes append-only rows to the same persistent PGlite
+database used by the application (`product_analytics_events`); tests may still
+provide the memory adapter explicitly. Production uses BigQuery and never falls
+back silently to memory.
 
 ## Control de acceso administrativo
 
@@ -211,6 +216,8 @@ is not suitable for audit, authorization, billing, or exactly-once workflows.
 | GET | `/admin/access-control/capabilities` | Permisos efectivos del subject autenticado |
 | POST | `/admin/access-control/roles` | Conceder una asignación (solo admin global) |
 | DELETE | `/admin/access-control/roles` | Revocar una asignación (solo admin global) |
+| GET | `/admin/users` | Listar cuentas sin exponer credenciales (solo admin global) |
+| PATCH | `/admin/users/:userId/status` | Desactivar o reactivar una cuenta verificada (solo admin global) |
 
 Toda `AdminApi` requiere sesión. Las mutaciones de catálogo se autorizan además dentro del service contra el recurso persistido: ausencia de identidad produce `401`, falta de permiso `403` y fallo del role store un `500` seguro. Capabilities son una ayuda de presentación, no evidencia que el cliente pueda reenviar.
 

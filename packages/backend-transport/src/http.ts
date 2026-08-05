@@ -7,8 +7,8 @@ import { PublicFeatureFlagHandlers } from "./modules/feature-flags/http.js"
 import { PublicProductAnalyticsHandlers } from "./modules/product-analytics/http.js"
 import { PublicStudyCatalogHandlers } from "./modules/study-catalog/http.js"
 
-export const PublicApiRoutes = HttpApiBuilder.layer(PublicApi, {
-  openapiPath: "/openapi.json",
+export const makePublicApiRoutes = (openapiPath: `/${string}` = "/openapi.json") => HttpApiBuilder.layer(PublicApi, {
+  openapiPath,
 }).pipe(
   Layer.provide(PublicAuthHandlers),
   Layer.provide(PublicSessionHandlers),
@@ -17,6 +17,7 @@ export const PublicApiRoutes = HttpApiBuilder.layer(PublicApi, {
   Layer.provide(PublicFeatureFlagHandlers),
   Layer.provide(PublicProductAnalyticsHandlers),
 )
+export const PublicApiRoutes = makePublicApiRoutes()
 
 /** Runtime roots may merge this route layer and narrow allowed origins for their environment. */
 export const PublicCorsCredentials = HttpRouter.cors({

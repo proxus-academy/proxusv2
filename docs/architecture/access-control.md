@@ -51,7 +51,7 @@ Todas las rutas de `AdminApi` protegidas resuelven la misma sesión opaca que la
 
 ## Persistencia y procesos
 
-La sesión y las asignaciones deben proceder de la misma base lógica para los servidores público y administrativo. PGlite es adecuado para tests o un único proceso; dos servidores con directorios PGlite separados no comparten identidad. Para QA integrada con ambos servidores se usa PostgreSQL 17.
+La sesión y las asignaciones deben proceder de la misma base lógica para las APIs pública y administrativa. En desarrollo, `apps/dev-server` monta ambas en un único proceso sobre una sola PGlite y siembra fixtures QA de forma idempotente. Dos procesos no abren el mismo directorio PGlite. En producción, los servidores separados comparten PostgreSQL 17.
 
 ## Amenazas y controles
 

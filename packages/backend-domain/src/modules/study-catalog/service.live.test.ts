@@ -73,6 +73,7 @@ type ContextRandom = typeof Random.Random.Service
 
 const testSubject = Access.subject("user", "catalog-test-user")
 const allowAccess = Layer.succeed(AccessControlService, AccessControlService.of({
+  requireAdministrator: () => Effect.void,
   capabilities: () => Effect.succeed(Access.permissions.all),
   require: () => Effect.void,
   grantRole: () => Effect.void,
@@ -137,6 +138,7 @@ const withCatalog = <A, E>(
         listSources: () => Effect.succeed([]),
       })
       const access = Layer.succeed(AccessControlService, AccessControlService.of({
+        requireAdministrator: () => Effect.void,
         capabilities: () => Effect.succeed(Access.permissions.all),
         require: (subject, permission, resource) => {
           if (options?.expectedPermission !== undefined) {

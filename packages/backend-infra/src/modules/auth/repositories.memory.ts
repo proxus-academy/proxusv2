@@ -49,6 +49,7 @@ export const makeAuthUserRepositoryMemory = (initial: ReadonlyArray<User> = []) 
         return [linked, new Map(users).set(id, linked)]
       }).pipe(Effect.flatMap((result) => result instanceof UserNotFound || result instanceof InvalidRepositoryState || result instanceof UserConflict ? Effect.fail(result) : Effect.succeed(result))),
       getById: (id) => Ref.get(state).pipe(Effect.map((users) => Option.fromUndefinedOr(users.get(id)))),
+      listAll: () => Ref.get(state).pipe(Effect.map((users) => [...users.values()])),
       activate: (id, verifiedAt) => Ref.modify(state, (users): readonly [User | UserNotFound | InvalidRepositoryState, Map<UserId, User>] => {
         const user = users.get(id)
         if (user === undefined) return [new UserNotFound({ userId: id }), users]
@@ -57,6 +58,13 @@ export const makeAuthUserRepositoryMemory = (initial: ReadonlyArray<User> = []) 
         return [active, new Map(users).set(id, active)]
       }).pipe(Effect.flatMap((result) => result instanceof UserNotFound || result instanceof InvalidRepositoryState ? Effect.fail(result) : Effect.succeed(result))),
       disable: (id, disabledAt) => update(id, (user) => ({ ...user, status: "disabled", updatedAt: disabledAt })),
+      enable: (id, enabledAt) => Ref.modify(state, (users): readonly [User | UserNotFound | InvalidRepositoryState, Map<UserId, User>] => {
+        const user = users.get(id)
+        if (user === undefined) return [new UserNotFound({ userId: id }), users]
+        if (user.status !== "disabled" || user.emailVerifiedAt === null) return [new InvalidRepositoryState({ entity: "user" }), users]
+        const enabled: User = { ...user, status: "active", updatedAt: enabledAt }
+        return [enabled, new Map(users).set(id, enabled)]
+      }).pipe(Effect.flatMap((result) => result instanceof UserNotFound || result instanceof InvalidRepositoryState ? Effect.fail(result) : Effect.succeed(result))),
       usernameExists: (username) => Ref.get(state).pipe(Effect.map((users) => [...users.values()].some((user) => user.usernameNormalized === username))),
       updatePasswordHash: (id, passwordHash, updatedAt) => update(id, (user) => ({ ...user, passwordHash, updatedAt })),
     })

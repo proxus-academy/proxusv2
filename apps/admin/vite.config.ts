@@ -14,6 +14,7 @@ export default defineConfig({
   },
   server: {
     port: 5175,
+    allowedHosts: ["javi-remote-work.tail11debb.ts.net"],
     proxy: {
       "/api": {
         target: "http://localhost:3000",
@@ -21,7 +22,7 @@ export default defineConfig({
         rewrite: (requestPath) => requestPath.replace(/^\/api/, "")
       },
       "/admin-api": {
-        target: "http://localhost:3001",
+        target: "http://localhost:3000",
         changeOrigin: true,
         rewrite: (requestPath) => requestPath.replace(/^\/admin-api/, "")
       }

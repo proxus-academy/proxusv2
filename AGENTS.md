@@ -9,6 +9,7 @@ Proxus v2 es un workspace `pnpm` full-stack basado en TypeScript, Effect v4 y Re
 - `apps/server`: API HTTP tipada y backend Effect. Usa PGlite durante el desarrollo y PostgreSQL en producción, con persistencia y migraciones Drizzle.
 - `apps/web`: aplicación web pública y propietaria de sus adapters de navegador.
 - `apps/admin`: aplicación administrativa.
+- `apps/dev-server`: composition root exclusivo de desarrollo; monta las APIs pública y administrativa sobre una sola PGlite.
 - `apps/storybook`: entorno Storybook del sistema de diseño.
 - `packages/shared`: contratos, schemas y modelos compartidos entre clientes y servidor.
 - `packages/frontend-core`: estado y lógica frontend independientes de una plataforma concreta.

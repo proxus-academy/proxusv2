@@ -3,7 +3,9 @@ import { Layer } from "effect"
 import { HttpApiBuilder } from "effect/unstable/httpapi"
 import { AdminAccessControlHandlers } from "./modules/access-control/http.js"
 import { AdminStudyCatalogHandlers } from "./modules/study-catalog/http.js"
+import { AdminUsersHandlers } from "./modules/admin-users/http.js"
 
-export const AdminApiRoutes = HttpApiBuilder.layer(AdminApi, {
-  openapiPath: "/openapi.json",
-}).pipe(Layer.provide(Layer.merge(AdminStudyCatalogHandlers, AdminAccessControlHandlers)))
+export const makeAdminApiRoutes = (openapiPath: `/${string}` = "/openapi.json") => HttpApiBuilder.layer(AdminApi, {
+  openapiPath,
+}).pipe(Layer.provide(Layer.mergeAll(AdminStudyCatalogHandlers, AdminAccessControlHandlers, AdminUsersHandlers)))
+export const AdminApiRoutes = makeAdminApiRoutes()

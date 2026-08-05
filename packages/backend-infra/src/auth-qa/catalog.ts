@@ -4,7 +4,7 @@ import type { EffectPgQueryEffectHKT, EffectPgQueryResultHKT } from "drizzle-orm
 import type { EffectPgQueryEffectHKT as PostgresEffectHKT, EffectPgQueryResultHKT as PostgresResultHKT } from "drizzle-orm/effect-postgres"
 import { sql } from "drizzle-orm"
 import type { PgEffectDatabase } from "drizzle-orm/pg-core/effect"
-import { Effect } from "effect"
+import { Effect, Schema } from "effect"
 import { studyCatalogSeed } from "../database/study-catalog.seed.js"
 
 export type AuthQaFixtureName = "admin" | "catalog-editor" | "student-email" | "student-google" | "pending-email"
@@ -70,7 +70,15 @@ export const resolveAuthQaStudyPathPostgres = (db: PostgresDatabase) => Effect.g
       (select id::text from study_nodes where kind = 'degree' order by id limit 1) degree,
       (select id::text from study_nodes where kind = 'subject' order by id limit 1) subject
   `)
-  const row = result[0]
+  const row = Schema.decodeUnknownSync(Schema.Struct({
+    rows: Schema.Array(Schema.Struct({
+      country: Schema.NullOr(Schema.String),
+      type: Schema.NullOr(Schema.String),
+      university: Schema.NullOr(Schema.String),
+      degree: Schema.NullOr(Schema.String),
+      subject: Schema.NullOr(Schema.String),
+    })),
+  }))(result).rows[0]
   if (row === undefined || row.country === null || row.type === null || row.university === null || row.degree === null || row.subject === null) return yield* Effect.die(new Error("QA catalog branch could not be reconciled"))
   return [row.country, row.type, row.university, row.degree, row.subject] as const
 })

@@ -1,5 +1,6 @@
 import { AccessControlServiceLive } from "@proxus/backend-domain/access-control"
 import { StudyCatalogLive } from "@proxus/backend-domain/study-catalog"
+import { AdminUsersServiceLive } from "@proxus/backend-domain/auth"
 import { RoleAssignmentsRepositoryPostgresLive } from "@proxus/backend-infra/access-control/postgres"
 import { PasswordsLive, ProductionEmailDeliveryUnavailable, SecureVerificationCodeGeneratorLive, makeAuthPersistencePostgresLive, makeAuthenticationLive, makeOpaqueSessionsLive } from "@proxus/backend-infra/auth"
 import { PostgresMigrationCheckLive, makePostgresProductionLive } from "@proxus/backend-infra/database/postgres"
@@ -14,4 +15,5 @@ const Authentication = makeAuthenticationLive({ passwordResetTtlMillis: 15 * 60_
   Layer.provide(Layer.mergeAll(Persistence, Opaque, PasswordsLive, SecureVerificationCodeGeneratorLive, ProductionEmailDeliveryUnavailable)),
 )
 const AccessControl = AccessControlServiceLive.pipe(Layer.provide(Persistence))
-export const AdminProdLive = Layer.mergeAll(Persistence, Authentication, AccessControl, StudyCatalogLive.pipe(Layer.provide(Layer.merge(Persistence, AccessControl))))
+const AdminUsers = AdminUsersServiceLive.pipe(Layer.provide(Layer.merge(Persistence, AccessControl)))
+export const AdminProdLive = Layer.mergeAll(Persistence, Authentication, AccessControl, AdminUsers, StudyCatalogLive.pipe(Layer.provide(Layer.merge(Persistence, AccessControl))))

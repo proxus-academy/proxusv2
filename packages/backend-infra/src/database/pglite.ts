@@ -3,6 +3,7 @@ import * as PgDrizzle from "drizzle-orm/effect-pglite"
 import { migrate } from "drizzle-orm/effect-pglite/migrator"
 import { Config, Effect, Layer } from "effect"
 import { defaultMigrationsFolder } from "./paths.js"
+export { defaultMigrationsFolder } from "./paths.js"
 import { seedStudyCatalog } from "./study-catalog.seed.js"
 
 export const PgliteDevelopmentLive = PgliteClient.layerConfig({

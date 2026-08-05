@@ -17,6 +17,7 @@ export class AdminStudyCatalogClient extends Context.Service<
     readonly listIncomingEdges: (input: Parameters<AdminClient["adminStudyCatalog"]["listIncomingEdges"]>[0]) => ReturnType<AdminClient["adminStudyCatalog"]["listIncomingEdges"]>
     readonly listTargets: (input: Parameters<AdminClient["adminStudyCatalog"]["listTargets"]>[0]) => ReturnType<AdminClient["adminStudyCatalog"]["listTargets"]>
     readonly listSources: (input: Parameters<AdminClient["adminStudyCatalog"]["listSources"]>[0]) => ReturnType<AdminClient["adminStudyCatalog"]["listSources"]>
+    readonly createNode: (input: Parameters<AdminClient["adminStudyCatalog"]["createNode"]>[0]) => ReturnType<AdminClient["adminStudyCatalog"]["createNode"]>
     readonly renameNode: (input: Parameters<AdminClient["adminStudyCatalog"]["renameNode"]>[0]) => ReturnType<AdminClient["adminStudyCatalog"]["renameNode"]>
     readonly updateNodeStatus: (input: Parameters<AdminClient["adminStudyCatalog"]["updateNodeStatus"]>[0]) => ReturnType<AdminClient["adminStudyCatalog"]["updateNodeStatus"]>
     readonly connect: (input: Parameters<AdminClient["adminStudyCatalog"]["connect"]>[0]) => ReturnType<AdminClient["adminStudyCatalog"]["connect"]>
@@ -42,6 +43,7 @@ export const makeAdminStudyCatalogClientLayer = (adminBaseUrl: string) => {
         listIncomingEdges: adminClient.adminStudyCatalog.listIncomingEdges,
         listTargets: adminClient.adminStudyCatalog.listTargets,
         listSources: adminClient.adminStudyCatalog.listSources,
+        createNode: adminClient.adminStudyCatalog.createNode,
         renameNode: adminClient.adminStudyCatalog.renameNode,
         updateNodeStatus: adminClient.adminStudyCatalog.updateNodeStatus,
         connect: adminClient.adminStudyCatalog.connect,

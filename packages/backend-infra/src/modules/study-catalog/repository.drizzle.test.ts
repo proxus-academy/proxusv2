@@ -541,6 +541,7 @@ describe("StudyCatalogRepository Drizzle contract", () => {
           const allowAllAccess = Layer.succeed(
             AccessControlService,
             AccessControlService.of({
+              requireAdministrator: () => Effect.void,
               capabilities: () => Effect.succeed(Access.permissions.all),
               require: () => Effect.void,
               grantRole: () => Effect.void,

@@ -53,6 +53,6 @@ export function AdminGuard({ children }: { readonly children: (permissions: Read
   }, [session])
   if (session._tag === "Initial" || AsyncResult.isWaiting(session)) return <p role="status">Comprobando sesión…</p>
   if (session._tag === "Failure") return <p role="alert">No se pudo comprobar la sesión.</p>
-  if (session.value === null || window.location.pathname === "/admin/login") return <LoginScreen />
+  if (session.value === null) return <LoginScreen />
   return <Authorized>{children}</Authorized>
 }

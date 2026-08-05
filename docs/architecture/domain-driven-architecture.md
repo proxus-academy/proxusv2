@@ -133,6 +133,15 @@ Los handlers adaptan transporte, invocan servicios y convierten errores internos
 
 `backend-infra` es el propietario único de database, schema Drizzle, migraciones, checks y seeds. Los adapters implementan ports de Domain sin introducir decisiones de producto. PGlite cubre desarrollo y tests rápidos dentro de un único proceso; PostgreSQL cubre producción y cualquier desarrollo con dos procesos que deban compartir datos. No se ejecutan servidor y publisher simultáneamente contra un mismo `PGLITE_DATA_DIR`.
 
+El desarrollo integrado usa `apps/dev-server`: un composition root no desplegable
+que monta `PublicApi` y `AdminApi` en el mismo proceso y proporciona una única
+`PgliteDevelopmentLive` a todos los repositories. Web y Admin siguen siendo
+frontends independientes y conservan sus contratos/transports; únicamente
+comparten lifecycle de base y servicios en esta composición. Los entrypoints
+productivos `apps/server` y `apps/admin-server` permanecen separados y usan
+PostgreSQL. Cada worktree posee naturalmente `apps/dev-server/.data`; no se
+comparte ese directorio entre procesos.
+
 Email y Google son puertos requeridos por Domain. Desarrollo usa adapters consola/fake; producción los rechaza y falla cerrada hasta que existan adapters reales, según [`identity-and-authentication.md`](./identity-and-authentication.md). Object storage permanece local al ejecutable mientras no implemente un port requerido por Domain. No se extrae una abstracción sin un consumidor real.
 
 ## Frontend

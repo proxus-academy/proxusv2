@@ -9,7 +9,7 @@ import {
   type AuthChallenge,
   type User,
 } from "@proxus/backend-domain/auth"
-import { and, desc, eq, gt, isNull, lt, or, sql } from "drizzle-orm"
+import { and, desc, eq, gt, isNotNull, isNull, lt, or, sql } from "drizzle-orm"
 import type { EffectPgQueryEffectHKT, EffectPgQueryResultHKT } from "drizzle-orm/effect-pglite"
 import type { PgEffectDatabase } from "drizzle-orm/pg-core/effect"
 import { Effect, Option, Semaphore } from "effect"
@@ -116,6 +116,8 @@ export const makeUserRepositoryDrizzle = (db: AuthDatabase) => {
       ? error : conflict(error) ?? repositoryError("linkGoogle", error))),
     getById: (id) => db.select().from(users).where(eq(users.id, id)).limit(1).pipe(
       Effect.map((rows) => Option.map(first(rows), userFromRow)), Effect.mapError((cause) => repositoryError("getById", cause))),
+    listAll: () => db.select().from(users).orderBy(desc(users.createdAt)).pipe(
+      Effect.map((rows) => rows.map(userFromRow)), Effect.mapError((cause) => repositoryError("listUsers", cause))),
     activate: (id, verifiedAt) => Effect.gen(function*() {
       const rows = yield* db.update(users).set({ status: "active", emailVerifiedAt: verifiedAt, updatedAt: verifiedAt })
         .where(and(eq(users.id, id), eq(users.status, "pending"))).returning()
@@ -128,6 +130,14 @@ export const makeUserRepositoryDrizzle = (db: AuthDatabase) => {
       ? error
       : repositoryError("activate", error))),
     disable: (id, disabledAt) => updateOne("disable", id, { status: "disabled", updatedAt: disabledAt }),
+    enable: (id, enabledAt) => db.update(users).set({ status: "active", updatedAt: enabledAt }).where(and(
+      eq(users.id, id), eq(users.status, "disabled"), isNotNull(users.emailVerifiedAt),
+    )).returning().pipe(
+      Effect.flatMap((rows) => rows[0] === undefined
+        ? Effect.fail(new InvalidRepositoryState({ entity: "user" }))
+        : Effect.succeed(userFromRow(rows[0]))),
+      Effect.mapError((error: unknown) => error instanceof InvalidRepositoryState ? error : repositoryError("enable", error)),
+    ),
     usernameExists: (username) => db.select({ id: users.id }).from(users).where(eq(users.usernameNormalized, username)).limit(1).pipe(
       Effect.map((rows) => rows.length > 0), Effect.mapError((cause) => repositoryError("usernameExists", cause))),
     updatePasswordHash: (id, passwordHash, updatedAt) => updateOne("updatePasswordHash", id, { passwordHash, updatedAt }),
