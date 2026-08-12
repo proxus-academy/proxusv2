@@ -49,18 +49,28 @@ describe("frontend architecture boundaries", () => {
     }
   })
 
-  it("keeps browser History writes in the router adapter", () => {
+  it("leaves browser History writes to TanStack Router", () => {
     const writers = appFiles
       .filter(([, source]) => /history\.(?:pushState|replaceState)\(/.test(source))
       .map(([path]) => path.replace(/^\.\.\/\.\.\/\.\.\//, ""))
-    expect(writers).toEqual(["./platform/routing/browser-history.web.ts"])
+    expect(writers).toEqual([])
   })
 
-  it("keeps route definitions free of data loaders", () => {
+  it("keeps route definitions free of router-owned data lifecycles", () => {
     const routeFiles = appFiles.filter(([path]) => path.endsWith("/routes/router.tsx"))
     expect(routeFiles).toHaveLength(1)
     for (const [path, source] of routeFiles) {
       expect(source, path).not.toMatch(/\b(?:loader|beforeLoad)\s*:/)
     }
+  })
+
+  it("keeps TanStack Router behind the web routing boundary", () => {
+    const importers = appFiles
+      .filter(([, source]) => /from ["']@tanstack\/react-router["']/.test(source))
+      .map(([path]) => path.replace(/^\.\//, ""))
+    expect(importers).toEqual([
+      "modules/auth/layouts.tsx",
+      "routes/router.tsx",
+    ])
   })
 })

@@ -445,8 +445,8 @@ Se adoptan:
 
 Se adapta:
 
-- `@proxus/effect-router` se usa solo para URL, layouts y renderizado de
-  páginas; los loaders y el estado remoto del router no se usan;
+- TanStack Router se usa solo para URL, layouts y renderizado de páginas; los
+  loaders, `beforeLoad` y el estado remoto del router no se usan;
 - su separación container/presentation se reemplaza por identidad → atom family → módulo visual;
 - Effect Atom, no un screen central, posee el estado de aplicación.
 

@@ -14,14 +14,14 @@ import {
   openPasswordRecoveryAction,
 } from "./modules/auth/actions.js"
 import { registrationDraftStorageLayer } from "./modules/registration/state.js"
-import { browserHistory } from "./platform/routing/browser-history.web.js"
 import { router } from "./routes/router.js"
 import { navigateAction } from "./routes/navigation.js"
 
 describe("web application bootstrap", () => {
-  it("uses the Effect router from application workflows", () => Effect.runPromise(Effect.gen(function*() {
+  it("uses TanStack Router through Effect application workflows", () => Effect.runPromise(Effect.gen(function*() {
+    router.history.replace("/es")
+    yield* Effect.promise(() => router.load())
     const registry = AtomRegistry.make()
-    const stop = router.start(registry, browserHistory)
 
     registry.set(openPasswordRecoveryAction, { email: "student@example.com" })
     yield* AtomRegistry.getResult(registry, openPasswordRecoveryAction, { suspendOnWaiting: true })
@@ -30,18 +30,17 @@ describe("web application bootstrap", () => {
     registry.set(backToLoginAction, undefined)
     yield* AtomRegistry.getResult(registry, backToLoginAction, { suspendOnWaiting: true })
     expect(location.pathname).toMatch(/^\/(es|en)\/login$/)
-    stop()
   })))
 
   it("navigates from the single typed action atom", () => Effect.runPromise(Effect.gen(function*() {
+    router.history.replace("/es")
+    yield* Effect.promise(() => router.load())
     const registry = AtomRegistry.make()
-    const stop = router.start(registry, browserHistory)
 
     registry.set(navigateAction, { id: "home" })
     yield* AtomRegistry.getResult(registry, navigateAction, { suspendOnWaiting: true })
 
     expect(location.pathname).toMatch(/^\/(es|en)\/app$/)
-    stop()
   })))
 
   it("persists an unexpired onboarding draft in the Effect session storage layer", () => {

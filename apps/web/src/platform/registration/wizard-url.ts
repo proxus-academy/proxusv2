@@ -4,9 +4,12 @@ import {
   type RegistrationPath,
   type RegistrationStep,
 } from "@proxus/frontend-core/registration"
-import type { RouterNavigationError } from "@proxus/effect-router"
 import { Effect, Option, Schema } from "effect"
-import { router } from "../../routes/router.js"
+import {
+  currentSearch,
+  setSearch,
+  type WebNavigationError,
+} from "../../routes/navigation.js"
 
 export interface RegistrationUrlState {
   readonly step: RegistrationStep
@@ -31,15 +34,13 @@ const encodeQuery = (current: string, step: RegistrationStep, path: Registration
 }
 
 export const registrationUrlState = (): RegistrationUrlState =>
-  decodeRegistrationQuery(router.location().search)
+  decodeRegistrationQuery(currentSearch().toString())
 
 export const changeRegistrationStep = (
   operation: "push" | "replace",
   step: RegistrationStep,
   path: RegistrationPath,
-): Effect.Effect<void, RouterNavigationError> => {
-  const search = encodeQuery(router.location().search, step, path)
-  return operation === "replace"
-    ? router.replaceSearch(search)
-    : router.pushSearch(search)
-}
+): Effect.Effect<void, WebNavigationError> =>
+  setSearch(operation, new URLSearchParams(
+    encodeQuery(currentSearch().toString(), step, path),
+  ))

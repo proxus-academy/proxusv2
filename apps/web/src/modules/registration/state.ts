@@ -23,10 +23,10 @@ import { Effect, Schema } from "effect"
 import * as Atom from "effect/unstable/reactivity/Atom"
 import * as KeyValueStore from "effect/unstable/persistence/KeyValueStore"
 import {
+  currentSearch,
   replaceSearch,
 } from "../../routes/navigation.js"
 import { navigationRuntime } from "../../routes/navigation-runtime.js"
-import { router } from "../../routes/router.js"
 import { changeRegistrationStep } from "../../platform/registration/wizard-url.js"
 import {
   registrationCompletedAnalyticsAction,
@@ -159,7 +159,7 @@ export const resolveGoogleCallbackAction = navigationRuntime.fn((query: {
   const input = yield* Schema.decodeUnknownEffect(GoogleCallbackInput)(query)
   const result = yield* get.setResult(completeGoogleCallbackAction, input)
   get.set(processedGoogleCallbackAtom, key)
-  const search = new URLSearchParams(router.location().search)
+  const search = currentSearch()
   search.delete("code")
   search.delete("state")
   yield* replaceSearch(Object.fromEntries(search))
@@ -186,7 +186,7 @@ export const resolveGoogleCallbackAction = navigationRuntime.fn((query: {
 }))
 
 export const googleCallbackLifecycleAtom = Atom.make((get) => {
-  const search = new URLSearchParams(router.location().search)
+  const search = currentSearch()
   const code = search.get("code")
   const state = search.get("state")
   return code === null || state === null

@@ -34,10 +34,12 @@ mediante el atom `submit`.
 
 ## Routing
 
-`@proxus/effect-router` es el único owner de URL e History. El árbol tipado
-selecciona páginas y layouts sin loaders; la ubicación es un atom serializable y
-los matches son derivados. Las páginas usan Effect Atom para datos, mutaciones y
-formularios. Los módulos de feature no leen ni escriben `window.history`.
+TanStack Router es el único owner de URL e History. El árbol tipado selecciona
+páginas y layouts sin `loader` ni `beforeLoad`; TanStack mantiene la ubicación y
+los matches sin copiarlos a otro store. Las páginas usan Effect Atom para datos,
+mutaciones y formularios. Los módulos de feature no leen ni escriben
+`window.history`: los workflows navegan mediante el adapter Effect de
+`apps/web/src/routes/navigation.ts`.
 
 ## Revisión
 
