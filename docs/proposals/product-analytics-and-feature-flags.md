@@ -45,8 +45,8 @@ packages/shared/src/modules/feature-flags/
 packages/frontend-core/src/feature-flags/
   atoms.ts
 
-packages/frontend-web/src/feature-flags/
-  overrides.web.ts       # solo si el piloto necesita persistencia dev
+apps/web/src/platform/feature-flags/
+  local-storage.web.ts   # persistencia específica del navegador
 ```
 
 `packages/shared` no importa React, Effect Atom, navegador, Node ni configuración. Si aparece una flag exclusivamente servidor, vivirá en un entrypoint server-only que no sea alcanzable desde el bundle cliente. No se introducirá desde el inicio un DSL genérico de scopes, segmentos o providers.
@@ -119,7 +119,7 @@ snapshot distribuido + identidad de instalación
                     vista
 ```
 
-La decisión es estado derivado. No se copia a `useState` ni se sincroniza con `useEffect`. La composition root proporciona el bootstrap y habilita overrides únicamente en desarrollo. Si el override necesita persistencia, el atom depende de un port de plataforma pequeño y `packages/frontend-web` implementa `localStorage`; si solo se necesita durante la sesión, un atom local evita crear ese seam.
+La decisión es estado derivado. No se copia a `useState` ni se sincroniza con `useEffect`. La composition root proporciona el bootstrap y habilita overrides únicamente en desarrollo. Si el override necesita persistencia, el atom depende de un port de plataforma pequeño y `apps/web/src/platform` implementa `localStorage`; si solo se necesita durante la sesión, un atom local evita crear ese seam.
 
 No se diseñará SSR antes de que una app del piloto lo use. En las apps CSR actuales, un query atom obtiene el bootstrap same-origin antes de mostrar la superficie flaggeada y conserva loading/error/default explícitos. Si más adelante existe SSR, el snapshot verificado del servidor será la entrada inicial de hydration y no se reevaluará con otra identidad durante hydration.
 
@@ -313,8 +313,8 @@ pnpm --filter @proxus/shared test
 pnpm --filter @proxus/shared typecheck
 pnpm --filter @proxus/frontend-core test
 pnpm --filter @proxus/frontend-core typecheck
-pnpm --filter @proxus/frontend-web test
-pnpm --filter @proxus/frontend-web typecheck
+pnpm --filter @proxus/web test
+pnpm --filter @proxus/web typecheck
 pnpm --filter @proxus/server test
 pnpm --filter @proxus/server typecheck
 pnpm --filter @proxus/web test

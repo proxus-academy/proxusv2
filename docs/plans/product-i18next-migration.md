@@ -5,7 +5,7 @@
 Implementada para las superficies de producto de `apps/web`.
 
 Este documento reemplaza la decisión de usar catálogos TypeScript ejecutables
-descrita en `docs/proposals/product-internationalization.md`. Conserva las
+adoptada inicialmente para la internacionalización del producto. Conserva las
 decisiones todavía válidas de aquella propuesta: ownership del locale,
 separación por plataforma, errores semánticos, accesibilidad y exclusión del
 contenido de dominio localizado.
@@ -467,7 +467,6 @@ apps/web/src/platform/form/fields.tsx
 4. Retirar compatibilidad temporal y dependencias ya innecesarias.
 5. Ejecutar Knip y dependency-cruiser para detectar exports o límites muertos.
 6. Actualizar:
-   - `docs/proposals/product-internationalization.md`;
    - `docs/webapp-architecture.md`;
    - `docs/architecture/client-platform-ports-and-adapters.md`;
    - documentación de testing si cambia el harness.

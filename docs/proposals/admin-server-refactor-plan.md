@@ -447,7 +447,6 @@ Modificar previsiblemente:
 packages/frontend-core/src/study-catalog/client.ts
 apps/admin/src/modules/study-catalog/api.ts
 apps/web/vite.config.ts
-apps/mobile-web/vite.config.ts
 apps/admin/vite.config.ts
 ```
 

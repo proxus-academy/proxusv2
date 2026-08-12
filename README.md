@@ -2,6 +2,33 @@
 
 Monorepo pnpm con backend Effect, aplicaciones React/Vite, contratos compartidos y PGlite embebido para desarrollo.
 
+## Organización del workspace
+
+Los workspaces se mantienen en un único nivel para que la ruta física coincida con el nombre de cada package.
+
+```text
+apps/
+├── web                  producto público y adapters de navegador
+├── admin                frontend administrativo
+├── server               servidor público de producción
+├── admin-server         servidor administrativo de producción
+├── dev-server           composición integrada exclusiva de desarrollo
+└── storybook            entorno del sistema de diseño
+
+packages/
+├── shared               contratos compartidos y APIs HTTP
+├── backend-domain       modelo, casos de uso y repository ports
+├── backend-infra        persistencia y adapters de infraestructura
+├── backend-transport    transporte HTTP público
+├── backend-admin-transport
+│                        transporte HTTP administrativo
+├── frontend-core        estado y lógica frontend neutrales de plataforma
+├── product-messages     recursos y configuración de internacionalización
+└── ui                   primitives y sistema de diseño
+```
+
+Los prefijos agrupan conceptualmente los packages sin añadir directorios puramente taxonómicos. Los adapters específicos del navegador pertenecen a `apps/web/src/platform`.
+
 ## Requisitos
 
 ### Opción recomendada: Nix
