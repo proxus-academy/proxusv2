@@ -19,7 +19,7 @@ import {
   registrationStepViewedAnalyticsAction,
 } from "./feature-flags.js"
 import { useEffect, useMemo, useRef } from "react"
-import { useTranslation } from "react-i18next"
+import { useTranslation } from "../../platform/product-locale/paraglide-react.js"
 
 const onboardingSteps = new Set<RegistrationStep>([
   "problem",

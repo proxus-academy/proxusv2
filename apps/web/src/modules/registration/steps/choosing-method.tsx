@@ -10,7 +10,7 @@ import {
   beginGoogleRegistrationAction,
   registrationBusyAtom,
 } from "../state.js"
-import { useTranslation } from "react-i18next"
+import { useTranslation } from "../../../platform/product-locale/paraglide-react.js"
 
 export function ChoosingMethod({ onOpenLogin }: { readonly onOpenLogin: () => void }) {
   const beginGoogle = useAtomSet(beginGoogleRegistrationAction)

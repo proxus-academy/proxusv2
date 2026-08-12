@@ -7,7 +7,7 @@ import { AuthError } from "../../../modules/auth/auth-controls.js"
 import { openPasswordRecoveryAction, startGoogleLoginAction } from "../../../modules/auth/actions.js"
 import { LoginForm } from "../../../modules/auth/forms.js"
 import { AuthPage } from "../../../modules/auth/auth-shell.js"
-import { useTranslation } from "react-i18next"
+import { useTranslation } from "../../../platform/product-locale/paraglide-react.js"
 
 export function LoginPage() {
   const loginResult = useAtomValue(LoginForm.submit)

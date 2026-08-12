@@ -8,7 +8,7 @@ import {
   registrationUsernameAvailabilityAtom,
 } from "../forms.js"
 import { dispatchRegistrationAction } from "../state.js"
-import { useTranslation } from "react-i18next"
+import { useTranslation } from "../../../platform/product-locale/paraglide-react.js"
 
 export function ProfileStep({ draft }: { readonly draft: RegistrationDraft }) {
   const dispatch = useAtomSet(dispatchRegistrationAction)

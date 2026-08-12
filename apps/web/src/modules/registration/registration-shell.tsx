@@ -1,6 +1,6 @@
 import { Button, Progress, Text } from "@proxus/ui"
 import type { ReactNode } from "react"
-import { useTranslation } from "react-i18next"
+import { useTranslation } from "../../platform/product-locale/paraglide-react.js"
 
 export function RegistrationPageShell({ children, wide = false, step, totalSteps, provider, onBack }: {
   readonly children: ReactNode

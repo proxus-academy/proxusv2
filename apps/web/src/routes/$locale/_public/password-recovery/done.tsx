@@ -5,7 +5,7 @@ import { Text } from "@proxus/ui"
 import { BackToLoginButton } from "../../../../modules/auth/auth-controls.js"
 import { backToLoginAction } from "../../../../modules/auth/actions.js"
 import { AuthPage } from "../../../../modules/auth/auth-shell.js"
-import { useTranslation } from "react-i18next"
+import { useTranslation } from "../../../../platform/product-locale/paraglide-react.js"
 
 export function PasswordUpdatedPage() {
   const back = useAtomSet(backToLoginAction, { mode: "promiseExit" })

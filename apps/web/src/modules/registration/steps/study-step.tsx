@@ -11,7 +11,7 @@ import { ChoiceCard, EmptyState, Heading, Input, Pagination, Skeleton } from "@p
 import { useEffect, useMemo, useState } from "react"
 import { nodeLabelKeys } from "../registration-copy.js"
 import { changeRegistrationStudyPathAction, dispatchRegistrationAction } from "../state.js"
-import { useTranslation } from "react-i18next"
+import { useTranslation } from "../../../platform/product-locale/paraglide-react.js"
 
 function StudyOptions({ state }: {
   readonly state: StudyCatalogViewState<ReadonlyArray<StudyNode>>

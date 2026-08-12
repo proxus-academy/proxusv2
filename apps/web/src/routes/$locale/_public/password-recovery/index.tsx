@@ -7,7 +7,7 @@ import { AuthError, BackToLoginButton } from "../../../../modules/auth/auth-cont
 import { backToLoginAction, submitPasswordRecoveryAction } from "../../../../modules/auth/actions.js"
 import { ForgotPasswordForm } from "../../../../modules/auth/forms.js"
 import { AuthPage } from "../../../../modules/auth/auth-shell.js"
-import { useTranslation } from "react-i18next"
+import { useTranslation } from "../../../../platform/product-locale/paraglide-react.js"
 
 export function PasswordRecoveryPage() {
   const recovery = useAtomValue(recoveryStateAtom)

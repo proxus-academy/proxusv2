@@ -4,7 +4,7 @@ import { Button, Heading, Text, Textarea } from "@proxus/ui"
 import { useState, type FormEvent } from "react"
 import { problemKinds, problemLabelKeys } from "../registration-copy.js"
 import { dispatchRegistrationAction, editRegistrationStepAction } from "../state.js"
-import { useTranslation } from "react-i18next"
+import { useTranslation } from "../../../platform/product-locale/paraglide-react.js"
 
 export function ProblemStep() {
   const dispatch = useAtomSet(dispatchRegistrationAction)

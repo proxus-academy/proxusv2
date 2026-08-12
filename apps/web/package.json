@@ -5,11 +5,13 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 5173 --strictPort",
     "build": "vite build",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "paraglide": "paraglide-js compile --project ./project.inlang --outdir ./src/paraglide --emit-ts-declarations",
+    "typecheck": "pnpm paraglide && tsc --noEmit",
+    "test": "pnpm paraglide && vitest run"
   },
   "dependencies": {
     "@effect/atom-react": "4.0.0-beta.98",
+    "@inlang/paraglide-js": "^2.23.2",
     "@lucas-barake/effect-form-react": "0.26.0-beta.5",
     "@proxus/frontend-core": "workspace:*",
     "@proxus/product-messages": "workspace:*",
@@ -17,10 +19,8 @@
     "@proxus/ui": "workspace:*",
     "@tanstack/react-router": "^1.170.27",
     "effect": "4.0.0-beta.98",
-    "i18next": "^26.3.6",
     "react": "^19.2.3",
-    "react-dom": "^19.2.3",
-    "react-i18next": "^17.0.11"
+    "react-dom": "^19.2.3"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.2",

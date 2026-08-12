@@ -12,8 +12,10 @@
       "ignoreDependencies": ["@effect/atom-react", "@proxus/shared", "effect", "tailwindcss"]
     },
     "apps/web": {
-      // Tailwind is resolved indirectly by Vite/shared theme CSS.
-      "ignoreDependencies": ["tailwindcss"]
+      // Tailwind is resolved indirectly by Vite/shared theme CSS. Paraglide's
+      // generated module surface intentionally exports framework-neutral helpers.
+      "ignoreDependencies": ["tailwindcss"],
+      "ignore": ["src/paraglide/**"]
     },
     "apps/*": {},
     "packages/*": {}

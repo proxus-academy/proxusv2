@@ -2,7 +2,7 @@ import { Locale } from "@proxus/product-messages"
 import { Heading } from "@proxus/ui"
 import { createRootRoute, Navigate, notFound, Outlet } from "@tanstack/react-router"
 import { Option, Schema } from "effect"
-import { useTranslation } from "react-i18next"
+import { useTranslation } from "../platform/product-locale/paraglide-react.js"
 import { preferredBrowserLocale } from "../platform/product-locale/index.js"
 
 export const Route = createRootRoute({

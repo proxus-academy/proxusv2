@@ -3,13 +3,14 @@ import { isValidationMessageCode } from "@proxus/product-messages"
 import { Checkbox, Field, FieldControl, FieldError, FieldLabel, Input } from "@proxus/ui"
 import * as Option from "effect/Option"
 import * as React from "react"
-import { useTranslation } from "react-i18next"
+import { useTranslation } from "../product-locale/paraglide-react.js"
 
 const useLocalizedError = (error: string | undefined) => {
-  const { i18n, t: common } = useTranslation("common")
+  const { t: common } = useTranslation("common")
+  const { t: validation } = useTranslation("validation")
   if (error === undefined) return undefined
   return isValidationMessageCode(error)
-    ? i18n.t(error, { ns: "validation", keySeparator: false })
+    ? validation(error)
     : common("unexpectedError")
 }
 

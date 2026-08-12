@@ -9,7 +9,7 @@ import {
   registrationBusyAtom,
   submitEmailRegistrationAction,
 } from "../state.js"
-import { Trans, useTranslation } from "react-i18next"
+import { Trans, useTranslation } from "../../../platform/product-locale/paraglide-react.js"
 
 export function AccountStep({ draft }: { readonly draft: RegistrationDraft }) {
   return (

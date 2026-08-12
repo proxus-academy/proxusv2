@@ -3,7 +3,7 @@ import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { currentSessionQuery, logoutAction } from "@proxus/frontend-core/auth"
 import { Heading, Text } from "@proxus/ui"
 import { LogoutButton } from "../../../modules/auth/auth-controls.js"
-import { useTranslation } from "react-i18next"
+import { useTranslation } from "../../../platform/product-locale/paraglide-react.js"
 
 export const Route = createFileRoute("/$locale/_authenticated/app")({
   component: HomePage,

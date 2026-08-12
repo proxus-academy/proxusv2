@@ -1,5 +1,5 @@
 import { Button, Heading, Text } from "@proxus/ui"
-import { useTranslation } from "react-i18next"
+import { useTranslation } from "../platform/product-locale/paraglide-react.js"
 
 const withCurrentSearch = (url: string) => {
   if (url === "") return ""

@@ -6,7 +6,7 @@ import { AuthError, BackToLoginButton } from "../../../../modules/auth/auth-cont
 import { backToLoginAction, submitNewPasswordAction } from "../../../../modules/auth/actions.js"
 import { NewPasswordForm } from "../../../../modules/auth/forms.js"
 import { AuthPage } from "../../../../modules/auth/auth-shell.js"
-import { useTranslation } from "react-i18next"
+import { useTranslation } from "../../../../platform/product-locale/paraglide-react.js"
 
 export function NewPasswordPage() {
   const submit = useAtomSet(submitNewPasswordAction, { mode: "promiseExit" })

@@ -6,7 +6,7 @@ import {
   editRegistrationStepAction,
   registrationErrorCodeAtom,
 } from "./state.js"
-import { useTranslation } from "react-i18next"
+import { useTranslation } from "../../platform/product-locale/paraglide-react.js"
 
 export function DraftSummary({ draft }: { readonly draft: RegistrationDraft }) {
   const edit = useAtomSet(editRegistrationStepAction)

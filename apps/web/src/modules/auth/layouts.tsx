@@ -2,7 +2,7 @@ import { useAtomValue } from "@effect/atom-react"
 import { currentSessionQuery } from "@proxus/frontend-core/auth"
 import { Heading, Text } from "@proxus/ui"
 import { Navigate, Outlet, useParams } from "@tanstack/react-router"
-import { useTranslation } from "react-i18next"
+import { useTranslation } from "../../platform/product-locale/paraglide-react.js"
 
 export function PublicOnlyLayout() {
   const session = useAtomValue(currentSessionQuery)

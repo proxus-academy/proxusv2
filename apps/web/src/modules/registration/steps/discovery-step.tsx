@@ -5,7 +5,7 @@ import { Button, ChoiceCard, Heading, Text, Textarea } from "@proxus/ui"
 import { useState, type FormEvent } from "react"
 import { DiscoverySourceIcon } from "./discovery-source-icon.js"
 import { dispatchRegistrationAction } from "../state.js"
-import { useTranslation } from "react-i18next"
+import { useTranslation } from "../../../platform/product-locale/paraglide-react.js"
 
 const sources: ReadonlyArray<AcquisitionSource> = ["friend", "tiktok", "instagram", "whatsapp", "google", "ai", "event", "other"]
 

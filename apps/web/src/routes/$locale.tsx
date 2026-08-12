@@ -1,7 +1,6 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router"
-import { I18nextProvider } from "react-i18next"
+import { ProductLocaleProvider } from "../platform/product-locale/paraglide-react.js"
 import { DownloadAppPage } from "../modules/download-app-screen.js"
-import { productI18nFor } from "../platform/product-locale/index.js"
 import { useDesktopViewport } from "../platform/viewport/index.js"
 import { parseLocaleParam } from "./__root.js"
 
@@ -19,8 +18,8 @@ function LocaleLayout() {
   document.documentElement.lang = locale
   document.documentElement.dir = "ltr"
   return (
-    <I18nextProvider i18n={productI18nFor(locale)}>
+    <ProductLocaleProvider locale={locale}>
       {desktop ? <Outlet /> : <DownloadAppPage />}
-    </I18nextProvider>
+    </ProductLocaleProvider>
   )
 }

@@ -12,7 +12,7 @@ import {
   submitRecoveryCodeAction,
 } from "../../../../modules/auth/actions.js"
 import { AuthPage } from "../../../../modules/auth/auth-shell.js"
-import { useTranslation } from "react-i18next"
+import { useTranslation } from "../../../../platform/product-locale/paraglide-react.js"
 
 export function RecoveryCodePage() {
   const recovery = useAtomValue(recoveryStateAtom)

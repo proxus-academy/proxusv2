@@ -1,5 +1,6 @@
 import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react"
+import { paraglideVitePlugin } from "@inlang/paraglide-js"
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite"
 import { defineConfig } from "vite"
 
@@ -17,6 +18,12 @@ export default defineConfig({
     }),
     tailwindcss(),
     react(),
+    paraglideVitePlugin({
+      project: "./project.inlang",
+      outdir: "./src/paraglide",
+      emitTsDeclarations: true,
+      strategy: ["url", "preferredLanguage", "baseLocale"],
+    }),
   ],
   server: {
     host: "0.0.0.0",
