@@ -1,5 +1,6 @@
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { RegistrationDraft, RegistrationState } from "@proxus/frontend-core/registration"
+import { Exit } from "effect"
 import { Button, Checkbox, Heading, OtpInput, Text } from "@proxus/ui"
 import { useEffect, useState, type FormEvent } from "react"
 import { DraftSummary, RegistrationFailure } from "../registration-summary.js"
@@ -11,10 +12,11 @@ import {
 } from "../state.js"
 import { Trans, useTranslation } from "react-i18next"
 
-export function EmailVerification({ state }: {
+export function EmailVerification({ state, onComplete = () => Promise.resolve() }: {
   readonly state: Extract<RegistrationState, { readonly _tag: "EmailVerificationPending" }>
+  readonly onComplete?: () => Promise<void>
 }) {
-  const verify = useAtomSet(verifyRegistrationCodeAction)
+  const verify = useAtomSet(verifyRegistrationCodeAction, { mode: "promiseExit" })
   const resend = useAtomSet(resendRegistrationCodeAction)
   const resendResult = useAtomValue(resendRegistrationCodeAction)
   const busy = useAtomValue(registrationBusyAtom)
@@ -31,7 +33,9 @@ export function EmailVerification({ state }: {
   }, [cooldown])
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    verify({ code: String(new FormData(event.currentTarget).get("code")) })
+    void verify({ code: String(new FormData(event.currentTarget).get("code")) }).then((exit) => {
+      if (Exit.isSuccess(exit)) void onComplete()
+    })
   }
   return (
     <main className="mx-auto flex max-w-xl flex-col items-center gap-5 text-center">
@@ -63,11 +67,12 @@ export function EmailVerification({ state }: {
   )
 }
 
-export function ConfirmGoogle({ state }: {
+export function ConfirmGoogle({ state, onComplete = () => Promise.resolve() }: {
   readonly state: Extract<RegistrationState, { readonly _tag: "ConfirmingGoogle" }>
+  readonly onComplete?: () => Promise<void>
 }) {
   const draft = state.draft
-  const confirm = useAtomSet(confirmGoogleRegistrationAction)
+  const confirm = useAtomSet(confirmGoogleRegistrationAction, { mode: "promiseExit" })
   const busy = useAtomValue(registrationBusyAtom)
   const [accepted, setAccepted] = useState(false)
   const { t } = useTranslation("registration", { keyPrefix: "verification" })
@@ -77,7 +82,12 @@ export function ConfirmGoogle({ state }: {
       <Text>{t("verifiedEmail", { email: state.googleRegistration.email })}</Text>
       <DraftSummary draft={draft} />
       <RegistrationFailure />
-      <form id="google-confirm" onSubmit={(event) => { event.preventDefault(); confirm() }}>
+      <form id="google-confirm" onSubmit={(event) => {
+        event.preventDefault()
+        void confirm().then((exit) => {
+          if (Exit.isSuccess(exit)) void onComplete()
+        })
+      }}>
         <label className="flex items-start gap-2">
           <Checkbox
             checked={accepted}

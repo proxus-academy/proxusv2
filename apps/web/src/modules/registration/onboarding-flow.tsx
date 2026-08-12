@@ -12,7 +12,7 @@ import { StudyStepPage } from "./steps/study-step.js"
 import { DiscoveryStep } from "./steps/discovery-step.js"
 import { ConfirmGoogle, EmailVerification } from "./steps/verification-steps.js"
 import { RegistrationFailure } from "./registration-summary.js"
-import { RegistrationPageShell } from "../../patterns/registration-page.js"
+import { RegistrationPageShell } from "./registration-shell.js"
 import { changeRegistrationStudyPathAction, dispatchRegistrationAction, editRegistrationStepAction } from "./state.js"
 import {
   registrationStepCompletedAnalyticsAction,
@@ -32,9 +32,10 @@ const onboardingSteps = new Set<RegistrationStep>([
   "confirm-google",
 ])
 
-function OnboardingSteps({ state, requestedStep }: {
+function OnboardingSteps({ state, requestedStep, onComplete }: {
   readonly state: Extract<RegistrationState, { readonly _tag: "CollectingOnboarding" | "ConfirmingGoogle" }>
   readonly requestedStep?: RegistrationStep
+  readonly onComplete: () => Promise<void>
 }) {
   const edit = useAtomSet(editRegistrationStepAction)
   const dispatch = useAtomSet(dispatchRegistrationAction)
@@ -60,7 +61,7 @@ function OnboardingSteps({ state, requestedStep }: {
     : step === "account"
     ? <AccountStep draft={draft} />
     : state._tag === "ConfirmingGoogle"
-    ? <ConfirmGoogle state={state} />
+    ? <ConfirmGoogle state={state} onComplete={onComplete} />
     : null
   return (
     <RegistrationPageShell
@@ -84,8 +85,10 @@ function OnboardingSteps({ state, requestedStep }: {
 }
 
 /** Connected registration feature. It consumes stable atoms directly instead of an action bag. */
-export function RegistrationOnboarding({ url = { step: "start", nodeIds: [], valid: true } }: {
+export function RegistrationOnboarding({ url = { step: "start", nodeIds: [], valid: true }, onOpenLogin, onComplete = () => Promise.resolve() }: {
   readonly url?: RegistrationUrlState
+  readonly onOpenLogin?: () => void
+  readonly onComplete?: () => Promise<void>
 }) {
   const state = useAtomValue(registrationStateAtom)
   const requestedStep = onboardingSteps.has(url.step) ? url.step : undefined
@@ -129,15 +132,15 @@ export function RegistrationOnboarding({ url = { step: "start", nodeIds: [], val
   }, [currentStep, recordCompleted, recordViewed])
 
   switch (state._tag) {
-    case "ChoosingMethod": return <RegistrationPageShell><ChoosingMethod /></RegistrationPageShell>
+    case "ChoosingMethod": return <RegistrationPageShell><ChoosingMethod onOpenLogin={onOpenLogin ?? (() => undefined)} /></RegistrationPageShell>
     case "ResolvingGoogle": return <RegistrationPageShell><main aria-busy="true">
       <Heading level={1}>{t("chooseMethod.connectingGoogle")}</Heading>
       <RegistrationFailure />
     </main></RegistrationPageShell>
-    case "EmailVerificationPending": return <RegistrationPageShell step={6} totalSteps={6} provider="email"><EmailVerification state={state} /></RegistrationPageShell>
+    case "EmailVerificationPending": return <RegistrationPageShell step={6} totalSteps={6} provider="email"><EmailVerification state={state} onComplete={onComplete} /></RegistrationPageShell>
     case "Completed": return <RegistrationPageShell><main><Heading level={1}>{t("completed.title")}</Heading><Text>{t("completed.active")}</Text></main></RegistrationPageShell>
     case "CollectingOnboarding":
     case "ConfirmingGoogle":
-      return <OnboardingSteps state={state} {...(requestedStep === undefined ? {} : { requestedStep })} />
+      return <OnboardingSteps state={state} onComplete={onComplete} {...(requestedStep === undefined ? {} : { requestedStep })} />
   }
 }

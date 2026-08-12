@@ -1,5 +1,6 @@
 import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react"
+import { TanStackRouterVite } from "@tanstack/router-plugin/vite"
 import { defineConfig } from "vite"
 
 export const apiProxyConfig = {
@@ -10,6 +11,10 @@ export const apiProxyConfig = {
 
 export default defineConfig({
   plugins: [
+    TanStackRouterVite({
+      routeFileIgnorePrefix: "-",
+      routeFileIgnorePattern: "(?:router|navigation(?:-runtime)?|.*\\.test)\\.[jt]sx?$",
+    }),
     tailwindcss(),
     react(),
   ],

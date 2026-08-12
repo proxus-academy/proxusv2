@@ -22,13 +22,7 @@ import {
 import { Cause, Effect, Option, Schema } from "effect"
 import * as Atom from "effect/unstable/reactivity/Atom"
 import * as KeyValueStore from "effect/unstable/persistence/KeyValueStore"
-import {
-  currentSearch,
-  replaceSearch,
-  navigateAction,
-} from "../../routes/navigation.js"
-import { navigationRuntime } from "../../routes/navigation-runtime.js"
-import { changeRegistrationStep } from "../../platform/registration/wizard-url.js"
+import { documentNavigationRuntime } from "../../platform/routing/document-navigation-runtime.js"
 import {
   registrationCompletedAnalyticsAction,
   registrationStartedAnalyticsAction,
@@ -40,13 +34,6 @@ export const registrationDraftStorageLayer = KeyValueStore.layerStorage(
 const registrationFlow = makeRegistrationFlowAtoms({
   storageLayer: registrationDraftStorageLayer,
   now: () => performance.timeOrigin + performance.now(),
-  navigate: (step, state) => changeRegistrationStep(
-      "push",
-      step,
-      state._tag === "CollectingOnboarding" || state._tag === "ConfirmingGoogle"
-        ? state.draft.path
-        : [],
-    ),
 })
 
 export const registrationStateAtom = registrationFlow.stateAtom
@@ -84,7 +71,7 @@ export const beginEmailRegistrationAction = Atom.fn<void>()((_input, get) => Eff
   yield* get.setResult(dispatchRegistrationAction, { _tag: "EmailStarted" })
 }))
 
-export const beginGoogleRegistrationAction = navigationRuntime.fn((
+export const beginGoogleRegistrationAction = documentNavigationRuntime.fn((
   request: { readonly requestId: string },
   get,
 ) => Effect.gen(function*() {
@@ -128,7 +115,6 @@ export const verifyRegistrationCodeAction = Atom.fn<{ readonly code: string }>()
   const session = yield* get.setResult(verifyEmailAction, request)
   yield* get.setResult(dispatchRegistrationAction, { _tag: "CodeVerified", session })
   yield* get.setResult(registrationCompletedAnalyticsAction, undefined)
-  yield* get.setResult(navigateAction, { id: "home", replace: true })
 }))
 
 export const resendRegistrationCodeAction = Atom.fn<void>()((_input, get) => Effect.gen(function*() {
@@ -152,22 +138,14 @@ export const confirmGoogleRegistrationAction = Atom.fn<void>()((_input, get) => 
   const session = yield* get.setResult(completeGoogleRegistrationAction, input)
   yield* get.setResult(dispatchRegistrationAction, { _tag: "GoogleConfirmed", session })
   yield* get.setResult(registrationCompletedAnalyticsAction, undefined)
-  yield* get.setResult(navigateAction, { id: "home", replace: true })
 }))
 
-export const resolveGoogleCallbackAction = navigationRuntime.fn((query: {
-  readonly code: string
-  readonly state: string
-}, get) => Effect.gen(function*() {
+export const resolveGoogleCallbackAction = Atom.fn<{ readonly code: string; readonly state: string }>()((query, get) => Effect.gen(function*() {
   const key = `${query.code}:${query.state}`
-  if (get(processedGoogleCallbackAtom) === key) return
+  if (get(processedGoogleCallbackAtom) === key) return "duplicate" as const
   const input = yield* Schema.decodeUnknownEffect(GoogleCallbackInput)(query)
   const result = yield* get.setResult(completeGoogleCallbackAction, input)
   get.set(processedGoogleCallbackAtom, key)
-  const search = currentSearch()
-  search.delete("code")
-  search.delete("state")
-  yield* replaceSearch(Object.fromEntries(search))
   // OAuth returns through a full document navigation, so the in-memory state
   // starts at ChoosingMethod even though the user already initiated Google.
   if (get(registrationStateAtom)._tag === "ChoosingMethod") {
@@ -178,8 +156,7 @@ export const resolveGoogleCallbackAction = navigationRuntime.fn((query: {
       _tag: "GoogleResolved",
       result: { _tag: "Existing", session: result.session },
     })
-    yield* get.setResult(navigateAction, { id: "home", replace: true })
-    return
+      return "existing" as const
   }
   yield* get.setResult(dispatchRegistrationAction, {
     _tag: "GoogleResolved",
@@ -189,24 +166,11 @@ export const resolveGoogleCallbackAction = navigationRuntime.fn((query: {
       email: result.email,
     },
   })
+  return "new" as const
 }))
 
-export const googleCallbackLifecycleAtom = Atom.make((get) => {
-  const search = currentSearch()
-  const code = search.get("code")
-  const state = search.get("state")
-  return code === null || state === null
-    ? Effect.void
-    : get.setResult(resolveGoogleCallbackAction, { code, state })
-})
-
-export const editRegistrationStepAction = Atom.fn<RegistrationStep>()((step, get) => {
-  const state = get(registrationStateAtom)
-  const path: RegistrationDraft["path"] = state._tag === "CollectingOnboarding" || state._tag === "ConfirmingGoogle"
-    ? state.draft.path
-    : []
-  return changeRegistrationStep("push", step, path)
-})
+export const editRegistrationStepAction = Atom.fn<RegistrationStep>()((step, get) =>
+  get.setResult(dispatchRegistrationAction, { _tag: "StepEdited", step }))
 
 export const changeRegistrationStudyPathAction = Atom.fn<RegistrationDraft["path"]>()((path, get) =>
   get.setResult(dispatchRegistrationAction, { _tag: "StudyPathChanged", path }))

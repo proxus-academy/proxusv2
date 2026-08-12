@@ -7,16 +7,15 @@ import {
   loadRegistrationDraft,
   saveRegistrationDraft,
 } from "./draft-storage.js"
-import { restoredRegistrationState, transitionRegistration, type RegistrationEvent, type RegistrationState, type RegistrationStep } from "./wizard.js"
+import { restoredRegistrationState, transitionRegistration, type RegistrationEvent, type RegistrationState } from "./wizard.js"
 
-export interface RegistrationFlowCapabilities<E> {
+export interface RegistrationFlowCapabilities {
   readonly storageLayer: Layer.Layer<KeyValueStore.KeyValueStore>
   readonly now: () => number
-  readonly navigate: (step: RegistrationStep, state: RegistrationState, get: Atom.FnContext) => Effect.Effect<void, E>
 }
 
 /** Single observable owner of registration state and persisted draft. */
-export const makeRegistrationFlowAtoms = <E>(capabilities: RegistrationFlowCapabilities<E>) => {
+export const makeRegistrationFlowAtoms = (capabilities: RegistrationFlowCapabilities) => {
   const runtime = Atom.runtime(capabilities.storageLayer)
   const stateAtom = Atom.make<RegistrationState>({ _tag: "ChoosingMethod" })
   const restoreLifecycleAtom = runtime.atom(Effect.gen(function*() {
@@ -35,16 +34,6 @@ export const makeRegistrationFlowAtoms = <E>(capabilities: RegistrationFlowCapab
     if (next._tag === "Completed" || next._tag === "ChoosingMethod") {
       yield* Effect.ignore(clearRegistrationDraft)
     }
-    const step = next._tag === "CollectingOnboarding"
-      ? next.step
-      : next._tag === "ConfirmingGoogle"
-      ? "confirm-google"
-      : next._tag === "EmailVerificationPending"
-      ? "verify"
-      : next._tag === "ChoosingMethod"
-      ? "start"
-      : undefined
-    if (step !== undefined) yield* capabilities.navigate(step, next, get)
   }))
   return { stateAtom, restoreLifecycleAtom, dispatchAtom }
 }

@@ -39,7 +39,7 @@ páginas y layouts sin `loader` ni `beforeLoad`; TanStack mantiene la ubicación
 los matches sin copiarlos a otro store. Las páginas usan Effect Atom para datos,
 mutaciones y formularios. Los módulos de feature no leen ni escriben
 `window.history`: los workflows navegan mediante el adapter Effect de
-`apps/web/src/routes/navigation.ts`.
+las APIs tipadas de TanStack Router desde las rutas React.
 
 ## Revisión
 

@@ -10,13 +10,11 @@ import {
   beginGoogleRegistrationAction,
   registrationBusyAtom,
 } from "../state.js"
-import { navigateAction } from "../../../routes/navigation.js"
 import { useTranslation } from "react-i18next"
 
-export function ChoosingMethod() {
+export function ChoosingMethod({ onOpenLogin }: { readonly onOpenLogin: () => void }) {
   const beginGoogle = useAtomSet(beginGoogleRegistrationAction)
   const beginEmail = useAtomSet(beginEmailRegistrationAction)
-  const navigate = useAtomSet(navigateAction)
   const busy = useAtomValue(registrationBusyAtom)
   const assignment = useAtomValue(registrationLandingAssignmentAtom)
   useAtomValue(registrationLandingExposureLifecycleAtom)
@@ -49,7 +47,7 @@ export function ChoosingMethod() {
         </Button>
         <Button className="flex-1" size="lg" variant="secondary" loading={busy} onClick={() => beginEmail()}>{t("email")}</Button>
       </div>
-      <Button className="mt-3" variant="ghost" onClick={() => navigate({ id: "login" })}>{t("login")}</Button>
+      <Button className="mt-3" variant="ghost" onClick={onOpenLogin}>{t("login")}</Button>
     </main>
   )
 }

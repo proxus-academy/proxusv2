@@ -1,16 +1,20 @@
+import { createFileRoute } from "@tanstack/react-router"
+import { Exit } from "effect"
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { Button, Text } from "@proxus/ui"
-import { AuthError, BackToLoginButton } from "../../modules/auth/auth-controls.js"
-import { backToLoginAction, submitNewPasswordAction } from "../../modules/auth/actions.js"
-import { NewPasswordForm } from "../../modules/auth/forms.js"
-import { AuthPage } from "../../patterns/auth-page.js"
+import { AuthError, BackToLoginButton } from "../../../../modules/auth/auth-controls.js"
+import { backToLoginAction, submitNewPasswordAction } from "../../../../modules/auth/actions.js"
+import { NewPasswordForm } from "../../../../modules/auth/forms.js"
+import { AuthPage } from "../../../../modules/auth/auth-shell.js"
 import { useTranslation } from "react-i18next"
 
 export function NewPasswordPage() {
-  const submit = useAtomSet(submitNewPasswordAction)
+  const submit = useAtomSet(submitNewPasswordAction, { mode: "promiseExit" })
   const submitForm = useAtomSet(NewPasswordForm.submit)
   const result = useAtomValue(submitNewPasswordAction)
-  const back = useAtomSet(backToLoginAction)
+  const back = useAtomSet(backToLoginAction, { mode: "promiseExit" })
+  const navigate = Route.useNavigate()
+  const { locale } = Route.useParams()
   const { t } = useTranslation("auth", { keyPrefix: "newPassword" })
 
   return (
@@ -22,7 +26,13 @@ export function NewPasswordPage() {
           className="space-y-4"
           onSubmit={(event) => {
             event.preventDefault()
-            submitForm((value: { readonly password: string }) => submit({ password: value.password }))
+            submitForm((value: { readonly password: string }) => {
+              void submit({ password: value.password }).then((exit) => {
+                if (Exit.isSuccess(exit)) {
+                  void navigate({ to: "/$locale/password-recovery/done", params: { locale } })
+                }
+              })
+            })
           }}
         >
           <NewPasswordForm.password
@@ -41,7 +51,15 @@ export function NewPasswordPage() {
           <Button type="submit" disabled={result.waiting}>{t("submit")}</Button>
         </form>
       </NewPasswordForm.Initialize>
-      <BackToLoginButton onClick={() => back()} />
+      <BackToLoginButton onClick={() => {
+        void back().then((exit) => {
+          if (Exit.isSuccess(exit)) void navigate({ to: "/$locale/login", params: { locale } })
+        })
+      }} />
     </AuthPage>
   )
 }
+
+export const Route = createFileRoute("/$locale/_public/password-recovery/new-password")({
+  component: NewPasswordPage,
+})

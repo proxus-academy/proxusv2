@@ -55,6 +55,7 @@ export type RegistrationEvent =
   | { readonly _tag: "ProblemSelected"; readonly kind: ProblemKind; readonly otherText?: string }
   | { readonly _tag: "StudyNodeSelected"; readonly node: StudyNode }
   | { readonly _tag: "StudyPathChanged"; readonly path: RegistrationPath }
+  | { readonly _tag: "StepEdited"; readonly step: RegistrationStep }
   | { readonly _tag: "ProfileCompleted"; readonly username: string; readonly birthYear: number }
   | { readonly _tag: "AcquisitionSelected"; readonly source: AcquisitionSource; readonly otherText?: string }
   | { readonly _tag: "EmailSubmitted"; readonly draftId: string; readonly maskedEmail: string }
@@ -147,7 +148,10 @@ export const transitionRegistration = (state: RegistrationState, event: Registra
         )
       }
       if (event._tag === "StudyPathChanged" && Schema.is(RegistrationPath)(event.path)) {
-        return collecting({ ...state.draft, path: event.path }, state.googleRegistration)
+        return { ...state, draft: { ...state.draft, path: event.path }, step: "study" }
+      }
+      if (event._tag === "StepEdited") {
+        return { ...state, step: guardRegistrationStep(event.step, state.draft) }
       }
       if (event._tag === "ProfileCompleted") {
         const draft = { ...state.draft, username: event.username, birthYear: event.birthYear }

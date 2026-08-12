@@ -60,10 +60,11 @@ describe("web registration state", () => {
     registry.set(stateModule.resolveGoogleCallbackAction, { code: "oauth-code", state: "signed" })
     yield* AtomRegistry.getResult(registry, stateModule.resolveGoogleCallbackAction, { suspendOnWaiting: true })
 
-    expect(AsyncResult.getOrThrow(registry.get(stateModule.resolveGoogleCallbackAction))).toBeUndefined()
+    expect(AsyncResult.getOrThrow(registry.get(stateModule.resolveGoogleCallbackAction))).toBe("existing")
     expect(registry.get(stateModule.registrationStateAtom)).toEqual({ _tag: "Completed", session })
-    expect(location.pathname).toBe("/es/app")
-    expect(new URLSearchParams(location.search).get("code")).toBeNull()
-    expect(new URLSearchParams(location.search).get("state")).toBeNull()
+    // The route owns secret cleanup and navigation after observing this explicit result.
+    expect(location.pathname).toBe("/es")
+    expect(new URLSearchParams(location.search).get("code")).toBe("oauth-code")
+    expect(new URLSearchParams(location.search).get("state")).toBe("signed")
   })))
 })

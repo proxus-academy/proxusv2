@@ -75,8 +75,8 @@ Cuando hay ambas necesidades, el servicio ejecuta las operaciones y los atoms mo
 TanStack Router es el único propietario de URL e History en `apps/web`. Sus
 rutas seleccionan layouts y páginas, pero no usan loaders, `beforeLoad`, caché
 de datos ni invalidación. TanStack mantiene la ubicación fuente y los matches;
-no se duplican en un atom. React despacha la única `navigateAction`; los
-workflows Effect usan el adapter tipado de `apps/web/src/routes/navigation.ts`,
+no se duplican en un atom. React usa `Link` o espera el `Exit` de una mutación y navega con TanStack Router; los
+workflows Effect no escriben History SPA,
 que envuelve la promesa de navegación de TanStack en un `Effect`.
 
 Los parámetros y search params son detalles de la aplicación web. Sus codecs

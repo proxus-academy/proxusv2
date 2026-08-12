@@ -43,24 +43,6 @@ function StudyNodeRoute() {
 }
 ```
 
-### Page module
-
-Una page es el punto de composición de una superficie navegable. Decide qué módulos de feature y patterns forman la pantalla, pero no centraliza todos sus atoms ni distribuye un view model gigante.
-
-```tsx
-function StudyNodePage({ nodeId }: { readonly nodeId: StudyNodeId }) {
-  return (
-    <Page.Root>
-      <StudyNodeHeader nodeId={nodeId} />
-      <StudyNodeEditor nodeId={nodeId} />
-      <RelationExplorer nodeId={nodeId} />
-    </Page.Root>
-  )
-}
-```
-
-Una page puede consultar el mínimo estado necesario para decidir entre estados completos de página, por ejemplo autorización o identidad no encontrada. Los módulos descendientes consultan localmente el resto.
-
 ### Feature module conectado
 
 Un módulo conectado pertenece a un bounded context, recibe identidad estable y deriva sus atoms en el punto de uso.
@@ -89,7 +71,7 @@ function RelationRow(props: {
 }
 ```
 
-Los primitives de `@proxus/ui`, patterns compartidos y módulos que deban reutilizarse en Storybook pertenecen a esta categoría.
+Los primitives de `@proxus/ui`, shells visuales de feature y módulos que deban reutilizarse en Storybook pertenecen a esta categoría.
 
 ### Composition root
 
@@ -274,13 +256,11 @@ apps/web/src/platform/<feature>/
 
 apps/<client>/src/
 ├── routes/
-├── pages/
 ├── modules/
 │   └── <feature>/
 │       ├── components/
 │       ├── internal/
 │       └── index.ts
-├── patterns/
 ├── composition/
 └── main.tsx
 ```
@@ -337,11 +317,11 @@ No se extrae a un package mientras no tenga dos consumidores reales.
 
 ### `packages/ui`
 
-Posee primitives y patterns visuales sin conocimiento del dominio de producto. No importa atoms de auth, registration, catálogo o administración.
+Posee primitives visuales sin conocimiento del dominio de producto. No importa atoms de auth, registration, catálogo o administración.
 
 ### `apps/*`
 
-Poseen routes, pages, composition roots y UI específica de cada cliente. Consumen los atoms de `frontend-core` directamente en los módulos de feature. Una presentación diferente no justifica duplicar atoms, forms o workflows neutrales. Los atoms locales de aplicación son una excepción para comportamiento realmente exclusivo y deben justificar su ownership.
+Poseen routes, composition roots y UI específica de cada cliente. Consumen los atoms de `frontend-core` directamente en los módulos de feature. Una presentación diferente no justifica duplicar atoms, forms o workflows neutrales. Los atoms locales de aplicación son una excepción para comportamiento realmente exclusivo y deben justificar su ownership.
 
 ## Imports y dependencias prohibidas
 
@@ -390,11 +370,11 @@ Se eleva a atom cuando necesita persistencia, asincronía, coordinación entre m
 - añadir stories para estados visuales relevantes;
 - no requerir el composition root para importar una story.
 
-### Routes y pages
+### Routes y pantallas de feature
 
-- routes: decoding, identidad y selección de página;
-- pages: composición estructural y estados completos de página;
-- no repetir en pages los tests de comportamiento ya cubiertos por atoms.
+- routes: decoding, identidad, composición terminal y selección de pantalla;
+- pantallas de feature: comportamiento observable y estados completos de la superficie;
+- no repetir en rutas los tests de comportamiento ya cubiertos por atoms.
 
 ## Reglas ejecutables requeridas
 
@@ -402,7 +382,7 @@ La arquitectura debe protegerse mediante ESLint, dependency-cruiser o tests est�
 
 - imports profundos entre features;
 - imports de composition desde módulos;
-- imports de atoms desde `packages/ui` o patterns genéricos;
+- imports de atoms desde `packages/ui` o módulos visuales;
 - imports de React/DOM desde `frontend-core`;
 - acceso a browser globals fuera de adapters;
 - `Effect.runPromise` en módulos React;
@@ -437,7 +417,7 @@ No se copia:
 
 Se adoptan:
 
-- clasificación explícita de UI, patterns, modules, pages/screens y routing;
+- clasificación explícita de UI, módulos de feature y routing;
 - entry points de feature;
 - prohibición de imports profundos;
 - ownership del markup estructural;

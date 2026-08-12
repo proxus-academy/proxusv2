@@ -10,10 +10,9 @@ import { DocumentNavigation } from "@proxus/frontend-core/navigation"
 import { RequestPasswordResetInput, ResetPasswordInput } from "@proxus/shared/auth"
 import { Effect, Schema } from "effect"
 import * as Atom from "effect/unstable/reactivity/Atom"
-import { navigate } from "../../routes/navigation.js"
-import { navigationRuntime } from "../../routes/navigation-runtime.js"
+import { documentNavigationRuntime } from "../../platform/routing/document-navigation-runtime.js"
 
-export const startGoogleLoginAction = navigationRuntime.fn((
+export const startGoogleLoginAction = documentNavigationRuntime.fn((
   request: { readonly requestId: string },
   get,
 ) => Effect.gen(function*() {
@@ -22,24 +21,19 @@ export const startGoogleLoginAction = navigationRuntime.fn((
   yield* documentNavigation.assign(authorization.authorizationUrl)
 }))
 
-export const openPasswordRecoveryAction = navigationRuntime.fn((input: { readonly email: string }, get) => Effect.gen(function*() {
-  yield* get.setResult(dispatchRecoveryAction, { _tag: "ForgotRequested", email: input.email })
-  yield* navigate({ id: "password-recovery" })
-}))
+export const openPasswordRecoveryAction = Atom.fn<{ readonly email: string }>()((input, get) =>
+  get.setResult(dispatchRecoveryAction, { _tag: "ForgotRequested", email: input.email }))
 
-export const submitPasswordRecoveryAction = navigationRuntime.fn((input: { readonly email: string }, get) => Effect.gen(function*() {
+export const submitPasswordRecoveryAction = Atom.fn<{ readonly email: string }>()((input, get) => Effect.gen(function*() {
   const request = yield* Schema.decodeUnknownEffect(RequestPasswordResetInput)(input)
   yield* get.setResult(requestPasswordResetAction, request)
   yield* get.setResult(dispatchRecoveryAction, { _tag: "CodeRequested" })
-  yield* navigate({ id: "password-recovery-code" })
 }))
 
-export const submitRecoveryCodeAction = navigationRuntime.fn((input: { readonly code: string }, get) => Effect.gen(function*() {
-  yield* get.setResult(dispatchRecoveryAction, { _tag: "CodeAccepted", code: input.code })
-  yield* navigate({ id: "new-password" })
-}))
+export const submitRecoveryCodeAction = Atom.fn<{ readonly code: string }>()((input, get) =>
+  get.setResult(dispatchRecoveryAction, { _tag: "CodeAccepted", code: input.code }))
 
-export const submitNewPasswordAction = navigationRuntime.fn((input: { readonly password: string }, get) => Effect.gen(function*() {
+export const submitNewPasswordAction = Atom.fn<{ readonly password: string }>()((input, get) => Effect.gen(function*() {
   const state = get(recoveryStateAtom)
   if (state.screen !== "new-password") return
   const request = yield* Schema.decodeUnknownEffect(ResetPasswordInput)({
@@ -49,7 +43,6 @@ export const submitNewPasswordAction = navigationRuntime.fn((input: { readonly p
   })
   yield* get.setResult(resetPasswordAction, request)
   yield* get.setResult(dispatchRecoveryAction, { _tag: "PasswordReset" })
-  yield* navigate({ id: "password-updated" })
 }))
 
 export const resendRecoveryCodeAction = Atom.fn<void>()((_input, get) => Effect.gen(function*() {
@@ -60,10 +53,8 @@ export const resendRecoveryCodeAction = Atom.fn<void>()((_input, get) => Effect.
   yield* get.setResult(dispatchRecoveryAction, { _tag: "Resent", cooldownSeconds: 30 })
 }))
 
-export const backToLoginAction = navigationRuntime.fn((_input: void, get) => Effect.gen(function*() {
-  yield* get.setResult(dispatchRecoveryAction, { _tag: "BackToLogin" })
-  yield* navigate({ id: "login" })
-}))
+export const backToLoginAction = Atom.fn<void>()((_input, get) =>
+  get.setResult(dispatchRecoveryAction, { _tag: "BackToLogin" }))
 
 export const recoveryCooldownLifecycleAtom = Atom.make((get) => {
   const state = get(recoveryStateAtom)

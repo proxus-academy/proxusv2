@@ -127,8 +127,10 @@ state.
 
 `apps/web` is a client-only SPA and uses TanStack Router as the single owner of
 URL matching, browser history, nested layouts, parameters, search parameters and
-React rendering. The typed, code-based route tree lives in
-`apps/web/src/routes/router.tsx`. Proxus does not use route loaders,
+React rendering. The typed, file-based route definitions live in `apps/web/src/routes/`; the
+TanStack Router Vite plugin generates `apps/web/src/routeTree.gen.ts`, while
+`apps/web/src/routes/router.tsx` creates the router from that generated tree.
+Proxus does not use route loaders,
 `beforeLoad`, router-managed data caches or router invalidation.
 
 ```text
@@ -142,12 +144,13 @@ authenticated layouts render an `Outlet` or a typed redirect based on the
 session query. Loading and failure branches remain explicit in those React
 surfaces; navigation does not introduce another data lifecycle.
 
-React event handlers dispatch the single typed `navigateAction` atom. Effect
-workflows use the Effect function from the same small adapter in
-`apps/web/src/routes/navigation.ts`. Its discriminated destination union is
-exhaustive and maps to TanStack's typed imperative navigation API. The adapter
-converts the returned promise into a typed `Effect`. TanStack's location is the
-only source of URL state; it is not mirrored into an Effect Atom.
+React event handlers own SPA navigation. Declarative interactions prefer TanStack
+`Link`; navigation after a mutation uses `useAtomSet(action, { mode: "promiseExit" })`,
+checks `Exit.isSuccess`, and then calls `Route.useNavigate()`. A failed mutation does
+not navigate, and `useEffect` must not infer navigation by observing an `AsyncResult`.
+Atoms do not receive UI navigation callbacks and there is no parallel destination
+catalog. Full-document OAuth navigation remains the separate `DocumentNavigation`
+platform capability.
 
 The shared application runtime requires the typed `PublicApiClient` service.
 Each application composition root selects the public base URL and concrete HTTP

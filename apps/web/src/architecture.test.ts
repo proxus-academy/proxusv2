@@ -20,9 +20,11 @@ describe("frontend architecture boundaries", () => {
     }
   })
 
-  it("keeps visual patterns independent from atoms and Effect services", () => {
+  it("keeps visual shells independent from atoms and Effect services", () => {
     const visualModules = appFiles.filter(([path]) =>
-      path.includes("/patterns/") || path.endsWith("/auth-controls.tsx"))
+      path.endsWith("/auth-shell.tsx") ||
+      path.endsWith("/registration-shell.tsx") ||
+      path.endsWith("/auth-controls.tsx"))
     expect(visualModules.length).toBeGreaterThan(0)
     for (const [path, source] of visualModules) {
       expect(source, path).not.toMatch(/@effect\/atom-react|effect\/unstable\/reactivity\/Atom/)
@@ -42,10 +44,11 @@ describe("frontend architecture boundaries", () => {
     }
   })
 
-  it("uses one typed navigation interface instead of one action per destination", () => {
+  it("does not maintain a parallel SPA navigation abstraction", () => {
     for (const [path, source] of appFiles) {
       expect(source, path).not.toMatch(/export const navigateTo[A-Z]\w*Action/)
-      expect(source, path).not.toMatch(/get\.setResult\(navigateTo[A-Z]\w*Action/)
+      expect(source, path).not.toMatch(/\bnavigateAction\b|\bNavigationDestination\b|\bWebNavigationError\b/)
+      expect(source, path).not.toMatch(/routes\/navigation(?:\.js)?["']/)
     }
   })
 
@@ -57,20 +60,33 @@ describe("frontend architecture boundaries", () => {
   })
 
   it("keeps route definitions free of router-owned data lifecycles", () => {
-    const routeFiles = appFiles.filter(([path]) => path.endsWith("/routes/router.tsx"))
-    expect(routeFiles).toHaveLength(1)
+    const routeFiles = appFiles.filter(([path]) =>
+      path.includes("/routes/") && !/\.(?:test|spec)\.[cm]?[jt]sx?$/.test(path))
+    expect(routeFiles.length).toBeGreaterThan(1)
     for (const [path, source] of routeFiles) {
       expect(source, path).not.toMatch(/\b(?:loader|beforeLoad)\s*:/)
     }
+  })
+
+  it("keeps neutral atoms independent from URL and browser globals", () => {
+    for (const [path, source] of coreFiles) {
+      expect(source, path).not.toMatch(/@tanstack\/react-router/)
+      expect(source, path).not.toMatch(/\b(?:window|document|history|location)\./)
+    }
+  })
+
+  it("reserves DocumentNavigation for full-document navigation", () => {
+    const users = appFiles.filter(([, source]) => /\bDocumentNavigation\b/.test(source))
+    expect(users.length).toBeGreaterThan(0)
+    for (const [path] of users) expect(path, path).toMatch(/(?:modules\/(?:auth|registration)|platform\/routing)/)
   })
 
   it("keeps TanStack Router behind the web routing boundary", () => {
     const importers = appFiles
       .filter(([, source]) => /from ["']@tanstack\/react-router["']/.test(source))
       .map(([path]) => path.replace(/^\.\//, ""))
-    expect(importers).toEqual([
-      "modules/auth/layouts.tsx",
-      "routes/router.tsx",
-    ])
+    expect(importers.every((path) =>
+      path === "modules/auth/layouts.tsx" || path.startsWith("routes/"),
+    ), importers.join("\n")).toBe(true)
   })
 })

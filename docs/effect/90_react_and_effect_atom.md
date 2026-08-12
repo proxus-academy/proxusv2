@@ -31,7 +31,7 @@ view → atom → typed HTTP client or platform port → Effect/platform adapter
 
 Platform capabilities follow
 [`../architecture/client-platform-ports-and-adapters.md`](../architecture/client-platform-ports-and-adapters.md).
-Atoms use the shared typed HTTP API directly when the operation is already expressed by an endpoint. Do not create feature client services that merely duplicate generated endpoint methods. Use Effect's `KeyValueStore` service for ordinary key/value persistence and provide the platform backing store as a Layer; add a product-specific service only when `KeyValueStore` cannot express the capability. Capability ports remain appropriate for other non-Effect or platform-specific behavior such as browser redirects, React Native modules, and vendor SDKs. TanStack Router owns web SPA URL matching and History; Effect workflows navigate through the typed adapter in `apps/web/src/routes/navigation.ts` rather than browser History globals.
+Atoms use the shared typed HTTP API directly when the operation is already expressed by an endpoint. Do not create feature client services that merely duplicate generated endpoint methods. Use Effect's `KeyValueStore` service for ordinary key/value persistence and provide the platform backing store as a Layer; add a product-specific service only when `KeyValueStore` cannot express the capability. Capability ports remain appropriate for other non-Effect or platform-specific behavior such as browser redirects, React Native modules, and vendor SDKs. TanStack Router exclusively owns web SPA URL matching and History. React uses `Link` or awaits mutation atoms with `mode: "promiseExit"` before calling `Route.useNavigate()`. Effect atoms never write SPA history; `DocumentNavigation` is reserved for full-document external navigation.
 
 ## Runtime and Layers
 
@@ -91,11 +91,10 @@ do not contain Effect programs or anonymous transport calls. Successful
 mutations invalidate or refresh the narrow affected query families.
 
 Product transitions should be exposed through named mutation atoms rather than
-arbitrary setters spread through components. Routing itself is an Effect
-service: workflows obtain it from the Layer and call its fully typed `navigate`
-or `replace` methods directly. Do not model each destination as a separate
-action atom. React may use one generic binding to that service for plain links
-or buttons.
+arbitrary setters spread through components. SPA routing is a React/router concern:
+the event handler awaits the mutation `Exit` and navigates only on success. Do not
+embed navigation callbacks in atom inputs or observe mutation results from
+`useEffect` to infer navigation.
 
 Navigation workflows that promise explicit retry additionally run the Effect
 through the single `makeRetryableCommands` module composed from

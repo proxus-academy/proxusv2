@@ -5,16 +5,44 @@ import {
   registrationDraftTtlMs,
   saveRegistrationDraft,
 } from "@proxus/frontend-core/registration"
-import { Effect, Exit } from "effect"
+import { makeSubjectNodeId } from "@proxus/shared/study-catalog"
+import { DateTime, Effect, Exit } from "effect"
 import * as KeyValueStore from "effect/unstable/persistence/KeyValueStore"
 import { describe, expect, it } from "vitest"
-import { decodeRegistrationQuery } from "./wizard-url.js"
+import { decodeRegistrationQuery, encodeRegistrationQuery } from "./wizard-url.js"
 
 describe("registration web codecs and draft", () => {
   it("rejects invalid deep links without consuming campaign", () => {
     const decoded = decodeRegistrationQuery("campaign=summer&step=verify&path=not-json")
     expect(decoded).toEqual({ step: "verify", nodeIds: [], valid: false })
     expect(new URLSearchParams("campaign=summer&step=verify&path=not-json").get("campaign")).toBe("summer")
+  })
+
+  it("encodes wizard state while preserving attribution parameters", () => {
+    const encoded = encodeRegistrationQuery(
+      "campaign=summer&ref=teacher&code=secret",
+      "study",
+      [{
+        id: makeSubjectNodeId("20000000-0000-4000-8000-000000000005"),
+        kind: "subject",
+        name: "Math",
+        imageAssetId: null,
+        status: "published" as const,
+        createdAt: DateTime.makeUnsafe(0),
+        updatedAt: DateTime.makeUnsafe(0),
+      }],
+    )
+    const search = new URLSearchParams(encoded)
+    expect(search.get("campaign")).toBe("summer")
+    expect(search.get("ref")).toBe("teacher")
+    expect(search.get("code")).toBe("secret")
+    expect(search.get("step")).toBe("study")
+    expect(decodeRegistrationQuery(encoded)).toMatchObject({ step: "study", valid: true })
+  })
+
+  it("removes default wizard parameters without touching attribution", () => {
+    const encoded = encodeRegistrationQuery("campaign=summer&step=study&path=[]", "start", [])
+    expect(new URLSearchParams(encoded).toString()).toBe("campaign=summer")
   })
 
   it("round-trips a versioned session draft and expires it", () => {

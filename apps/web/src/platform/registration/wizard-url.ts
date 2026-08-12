@@ -5,12 +5,7 @@ import {
   type RegistrationPathParam as RegistrationNodeIds,
   type RegistrationStep,
 } from "@proxus/frontend-core/registration"
-import { Effect, Option, Schema } from "effect"
-import {
-  currentSearch,
-  setSearch,
-  type WebNavigationError,
-} from "../../routes/navigation.js"
+import { Option, Schema } from "effect"
 
 export interface RegistrationUrlState {
   readonly step: RegistrationStep
@@ -22,12 +17,14 @@ export const decodeRegistrationQuery = (searchValue: string): RegistrationUrlSta
   const search = new URLSearchParams(searchValue)
   const rawStep = search.get("step")
   const rawPath = search.get("path")
-  const step = rawStep === null ? "start" : Option.getOrElse(Schema.decodeUnknownOption(RegistrationStepParam)(rawStep), () => "start" as const)
-  const nodeIds: RegistrationNodeIds = rawPath === null ? [] : Option.getOrElse(Schema.decodeUnknownOption(RegistrationPathParam)(rawPath), (): RegistrationNodeIds => [])
-  return { step, nodeIds, valid: (rawStep === null || Schema.is(RegistrationStepParam)(rawStep)) && (rawPath === null || Schema.is(RegistrationPathParam)(rawPath)) }
+  const decodedStep = rawStep === null ? Option.some("start" as const) : Schema.decodeUnknownOption(RegistrationStepParam)(rawStep)
+  const decodedPath = rawPath === null ? Option.some([] as RegistrationNodeIds) : Schema.decodeUnknownOption(RegistrationPathParam)(rawPath)
+  const step = Option.getOrElse(decodedStep, () => "start" as const)
+  const nodeIds = Option.getOrElse(decodedPath, (): RegistrationNodeIds => [])
+  return { step, nodeIds, valid: Option.isSome(decodedStep) && Option.isSome(decodedPath) }
 }
 
-const encodeQuery = (current: string, step: RegistrationStep, path: RegistrationPath) => {
+export const encodeRegistrationQuery = (current: string, step: RegistrationStep, path: RegistrationPath) => {
   const search = new URLSearchParams(current)
   if (step === "start") search.delete("step"); else search.set("step", step)
   const nodeIds = path.map(({ id }) => id)
@@ -35,14 +32,3 @@ const encodeQuery = (current: string, step: RegistrationStep, path: Registration
   return search.toString()
 }
 
-export const registrationUrlState = (): RegistrationUrlState =>
-  decodeRegistrationQuery(currentSearch().toString())
-
-export const changeRegistrationStep = (
-  operation: "push" | "replace",
-  step: RegistrationStep,
-  path: RegistrationPath,
-): Effect.Effect<void, WebNavigationError> =>
-  setSearch(operation, new URLSearchParams(
-    encodeQuery(currentSearch().toString(), step, path),
-  ))
