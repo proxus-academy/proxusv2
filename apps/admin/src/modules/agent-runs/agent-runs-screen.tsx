@@ -1,0 +1,22 @@
+import { useAtomValue } from "@effect/atom-react"
+import { Activity, ExternalLink } from "lucide-react"
+import { runsAtom, runDetailFamily, tracePayloadFamily } from "./queries.js"
+
+export function AgentRunsScreen({ selectedRunId, onSelectRun }: { readonly selectedRunId?: string; readonly onSelectRun: (runId: string) => void }) {
+  if (selectedRunId !== undefined) return <RunDetail runId={selectedRunId} />
+  const runs = useAtomValue(runsAtom)
+  return <main className="flex-1 overflow-auto p-6"><div className="mx-auto max-w-6xl space-y-6"><header className="flex items-center gap-3"><Activity /><div><h1 className="text-2xl font-semibold">Agent runs</h1><p className="text-sm text-muted-foreground">Ejecuciones durables y metadata técnica segura.</p></div></header>{runs._tag === "Failure" ? <p role="alert">No se han podido cargar los runs.</p> : runs._tag !== "Success" ? <p>Loading…</p> : runs.value.length === 0 ? <p>No hay ejecuciones.</p> : <div className="overflow-hidden rounded-lg border"><table className="w-full text-left text-sm"><thead className="bg-muted"><tr><th className="p-3">Run</th><th>Estado</th><th>Inicio</th><th>Turns</th><th>Tokens</th></tr></thead><tbody>{runs.value.map((run) => <tr key={run.runId} className="border-t hover:bg-muted/40"><td className="p-3"><button className="font-mono text-xs text-primary underline" onClick={() => onSelectRun(run.runId)}>{run.runId}</button></td><td>{run.status}</td><td>{new Date(run.startedAt).toLocaleString()}</td><td>{run.turns}</td><td>{run.inputTokens + run.outputTokens}</td></tr>)}</tbody></table></div>}</div></main>
+}
+function Payload({ runId, traceId }: { readonly runId: string; readonly traceId: string }) {
+  const payload = useAtomValue(tracePayloadFamily(`${runId}:${traceId}`))
+  if (payload._tag !== "Success") return <span>{payload._tag === "Failure" ? "Payload no disponible" : "Preparando…"}</span>
+  return <a className="inline-flex items-center gap-1 text-primary underline" download={`${traceId}.json.gz`} href={`data:${payload.value.contentType};base64,${payload.value.bytesBase64}`}><ExternalLink className="size-3" />Descargar payload</a>
+}
+const traceExplorerUrl = (traceId: string) => {
+  const template = import.meta.env.VITE_AGENT_TRACE_EXPLORER_URL as string | undefined
+  return template === undefined || template.length === 0 ? undefined : template.replace("{traceId}", encodeURIComponent(traceId))
+}
+function RunDetail({ runId }: { readonly runId: string }) {
+  const detail = useAtomValue(runDetailFamily(runId))
+  return <main className="flex-1 overflow-auto p-6"><div className="mx-auto max-w-6xl space-y-6"><header><h1 className="text-2xl font-semibold">Run detail</h1><p className="font-mono text-xs text-muted-foreground">{runId}</p></header>{detail._tag === "Failure" ? <p role="alert">No se ha podido cargar el run.</p> : detail._tag !== "Success" ? <p>Loading…</p> : <><section className="grid gap-3 md:grid-cols-4">{[["Estado", detail.value.run.status], ["Turns", detail.value.usage.turns], ["Input tokens", detail.value.usage.inputTokens], ["Output tokens", detail.value.usage.outputTokens]].map(([label,value]) => <div key={label} className="rounded-lg border p-4"><p className="text-xs text-muted-foreground">{label}</p><p className="font-semibold">{value}</p></div>)}</section><section><h2 className="mb-3 text-lg font-semibold">Timeline</h2><ol className="space-y-2">{detail.value.events.map((event) => <li key={event.sequence} className="rounded border p-3 text-sm"><strong>{event.type}</strong> · {new Date(event.at).toLocaleString()}</li>)}</ol></section><section><h2 className="mb-3 text-lg font-semibold">Model traces</h2>{detail.value.traces.length === 0 ? <p>Sin trazas.</p> : <div className="space-y-2">{detail.value.traces.map((trace) => <article key={trace.traceId} className="rounded border p-3 text-sm"><div className="flex flex-wrap justify-between gap-2"><span><strong>{trace.provider}/{trace.model}</strong> · {trace.status} · {trace.durationMs ?? "—"} ms</span>{trace.captureStatus === "stored" ? <Payload runId={runId} traceId={trace.traceId} /> : <span>{trace.captureStatus}</span>}</div><p className="font-mono text-xs text-muted-foreground">trace {trace.traceId}{traceExplorerUrl(trace.traceId) === undefined ? null : <> · <a className="text-primary underline" href={traceExplorerUrl(trace.traceId)} target="_blank" rel="noreferrer">Grafana / Tempo</a></>}</p></article>)}</div>}</section></>}</div></main>
+}

@@ -1,5 +1,7 @@
-import { Context, Effect } from "effect"
+import { Context, Data, Effect } from "effect"
+export * from "./trace-payload.js"
 import type { ArtifactId, RunId } from "../ids.js"
+import type { AgentTraceRecord } from "../store/trace-store.js"
 import type { JournalEvent, RunBudgetLimits, RunBudgetUsage, RunRecord, RunStatus } from "../run/model.js"
 
 /** Values accepted by telemetry. Free text is deliberately not representable. */
@@ -59,6 +61,15 @@ export const projectRunInspector = (rootRunId: RunId, runs: ReadonlyArray<RunRec
   const root = runs.find((run) => run.id === rootRunId)
   return root === undefined ? undefined : projectNode(root, runs, facts)
 }
+
+export interface AgentRunListItem { readonly runId: RunId; readonly status: RunStatus; readonly startedAt: number; readonly parentRunId?: RunId; readonly turns: number; readonly inputTokens: number; readonly outputTokens: number }
+export interface AgentRunInspection { readonly run: AgentRunListItem; readonly limits: RunBudgetLimits; readonly usage: RunBudgetUsage; readonly events: ReturnType<typeof safeJournalSummary>; readonly traces: ReadonlyArray<AgentTraceRecord> }
+export class AgentInspectorFailure extends Data.TaggedError("AgentInspectorFailure")<{ readonly reason: "not-found" | "storage" | "payload-unavailable" }> {}
+export class AgentInspector extends Context.Service<AgentInspector, {
+  readonly listRuns: (limit: number, before?: number) => Effect.Effect<ReadonlyArray<AgentRunListItem>, AgentInspectorFailure>
+  readonly inspectRun: (runId: RunId) => Effect.Effect<AgentRunInspection, AgentInspectorFailure>
+  readonly payload: (runId: RunId, traceId: string) => Effect.Effect<{ readonly contentType: string; readonly contentEncoding?: string; readonly bytes: Uint8Array }, AgentInspectorFailure>
+}>()("@proxus/agent-harness/observability/index/AgentInspector") {}
 
 export interface RetentionPolicy { readonly artifactsMs: number; readonly journalMs: number; readonly encryptedDebugMs?: number }
 export interface RetentionCandidate { readonly kind: "artifact" | "journal" | "encrypted-debug"; readonly id: string; readonly createdAt: number; readonly terminal: boolean }

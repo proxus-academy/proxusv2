@@ -1,6 +1,6 @@
 // @effect-diagnostics anyUnknownInErrorContext:off globalErrorInEffectCatch:off globalErrorInEffectFailure:off preferSchemaOverJson:off strictBooleanExpressions:off missingEffectError:off
 import { SqlClient } from "effect/unstable/sql/SqlClient"
-import { AgentStore, type AgentStoreError, type AgentStoreSnapshot, type RunCommit } from "@proxus/agent-harness/store"
+import { AgentStore, AgentTraceStore, AgentTraceStoreError, type AgentStoreError, type AgentStoreSnapshot, type AgentTraceRecord, type RunCommit } from "@proxus/agent-harness/store"
 import { ClaimLost, EntryAlreadyExists, EntryNotFound, InvalidCompaction, RunNotFound, SessionNotFound, VersionConflict } from "@proxus/agent-harness/errors"
 import type { RunId, SessionEntryId, SessionId } from "@proxus/agent-harness/ids"
 import type { JournalEvent, RunCheckpoint, RunRecord } from "@proxus/agent-harness/run"
@@ -44,3 +44,25 @@ export const makeAgentStoreSql = Effect.gen(function*() {
 })
 
 export const AgentStoreSqlLive = Layer.effect(AgentStore, makeAgentStoreSql)
+
+const traceFailure = (operation: string) => (cause: unknown) => new AgentTraceStoreError({ operation, cause })
+export const makeAgentTraceStoreSql = Effect.gen(function*() {
+  const sql = yield* SqlClient
+  const decode = (row: any): AgentTraceRecord => ({
+    traceId: row.traceId, spanId: row.spanId, runId: row.runId, turn: row.turn, provider: row.provider, model: row.model,
+    status: row.status, captureStatus: row.captureStatus, startedAt: row.startedAt, schemaVersion: row.schemaVersion, redactionVersion: row.redactionVersion,
+    ...(row.completedAt == null ? {} : { completedAt: row.completedAt }), ...(row.durationMs == null ? {} : { durationMs: row.durationMs }),
+    ...(row.inputTokens == null ? {} : { inputTokens: row.inputTokens }), ...(row.outputTokens == null ? {} : { outputTokens: row.outputTokens }),
+    ...(row.artifactId == null ? {} : { artifactId: row.artifactId }), ...(row.payloadSha256 == null ? {} : { payloadSha256: row.payloadSha256 }),
+    ...(row.payloadBytes == null ? {} : { payloadBytes: row.payloadBytes }), ...(row.contentType == null ? {} : { contentType: row.contentType }),
+    ...(row.contentEncoding == null ? {} : { contentEncoding: row.contentEncoding }), ...(row.expiresAt == null ? {} : { expiresAt: row.expiresAt }),
+    ...(row.captureErrorCategory == null ? {} : { captureErrorCategory: row.captureErrorCategory }),
+  })
+  const columns = sql`trace_id as "traceId",span_id as "spanId",run_id as "runId",turn,provider,model,status,capture_status as "captureStatus",started_at as "startedAt",completed_at as "completedAt",duration_ms as "durationMs",input_tokens as "inputTokens",output_tokens as "outputTokens",artifact_id as "artifactId",payload_sha256 as "payloadSha256",payload_bytes as "payloadBytes",content_type as "contentType",content_encoding as "contentEncoding",schema_version as "schemaVersion",redaction_version as "redactionVersion",expires_at as "expiresAt",capture_error_category as "captureErrorCategory"`
+  return AgentTraceStore.of({
+    upsert: (r) => sql`insert into agent_trace_payloads(trace_id,span_id,run_id,turn,provider,model,status,capture_status,started_at,completed_at,duration_ms,input_tokens,output_tokens,artifact_id,payload_sha256,payload_bytes,content_type,content_encoding,schema_version,redaction_version,expires_at,capture_error_category) values(${r.traceId},${r.spanId},${r.runId},${r.turn},${r.provider},${r.model},${r.status},${r.captureStatus},${r.startedAt},${r.completedAt ?? null},${r.durationMs ?? null},${r.inputTokens ?? null},${r.outputTokens ?? null},${r.artifactId ?? null},${r.payloadSha256 ?? null},${r.payloadBytes ?? null},${r.contentType ?? null},${r.contentEncoding ?? null},${r.schemaVersion},${r.redactionVersion},${r.expiresAt ?? null},${r.captureErrorCategory ?? null}) on conflict(trace_id) do update set status=excluded.status,capture_status=excluded.capture_status,completed_at=excluded.completed_at,duration_ms=excluded.duration_ms,input_tokens=excluded.input_tokens,output_tokens=excluded.output_tokens,artifact_id=excluded.artifact_id,payload_sha256=excluded.payload_sha256,payload_bytes=excluded.payload_bytes,content_type=excluded.content_type,content_encoding=excluded.content_encoding,expires_at=excluded.expires_at,capture_error_category=excluded.capture_error_category`.pipe(Effect.asVoid, Effect.mapError(traceFailure("upsert"))),
+    get: (traceId) => sql<any>`select ${columns} from agent_trace_payloads where trace_id=${traceId}`.pipe(Effect.map((rows) => rows[0] === undefined ? undefined : decode(rows[0])), Effect.mapError(traceFailure("get"))),
+    listByRun: (runId) => sql<any>`select ${columns} from agent_trace_payloads where run_id=${runId} order by started_at,trace_id`.pipe(Effect.map((rows) => rows.map(decode)), Effect.mapError(traceFailure("listByRun"))),
+  })
+})
+export const AgentTraceStoreSqlLive = Layer.effect(AgentTraceStore, makeAgentTraceStoreSql)

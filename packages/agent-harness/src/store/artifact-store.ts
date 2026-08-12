@@ -11,9 +11,9 @@ export interface StoredArtifactReference {
   readonly classification: ArtifactClassification
   readonly byteLength: number
   readonly createdAt: number
-  readonly expiresAt: number
+  readonly expiresAt?: number
 }
-export interface ArtifactPutInput { readonly id: ArtifactId; readonly runId: RunId; readonly tenantId: string; readonly contentType: string; readonly classification?: ArtifactClassification; readonly bytes: Uint8Array; readonly createdAt: number; readonly expiresAt: number }
+export interface ArtifactPutInput { readonly id: ArtifactId; readonly runId: RunId; readonly tenantId: string; readonly contentType: string; readonly classification?: ArtifactClassification; readonly bytes: Uint8Array; readonly createdAt: number; readonly expiresAt?: number }
 
 /** Artifact content is always run/tenant scoped. Cleanup requires the retention role. */
 export class ArtifactStore extends Context.Service<ArtifactStore, {

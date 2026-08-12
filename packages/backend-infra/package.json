@@ -15,12 +15,15 @@
     "./agent-harness/store/memory": "./src/modules/agent-harness/store/memory/layer.ts",
     "./agent-harness/store/pglite": "./src/modules/agent-harness/store/pglite/layer.ts",
     "./agent-harness/store/postgres": "./src/modules/agent-harness/store/postgres/layer.ts",
+    "./agent-harness/store/sql": "./src/modules/agent-harness/store/shared/layer.ts",
     "./agent-harness/skills/filesystem": "./src/modules/agent-harness/skills/filesystem/layer.ts",
     "./agent-harness/sandbox/temporary": "./src/modules/agent-harness/sandbox/temporary/layer.ts",
     "./agent-harness/sandbox/current": "./src/modules/agent-harness/sandbox/current/layer.ts",
     "./agent-harness/artifacts/filesystem": "./src/modules/agent-harness/artifacts/filesystem.ts",
     "./agent-harness/observability/console": "./src/modules/agent-harness/observability/console.ts",
+    "./agent-harness/observability/inspector": "./src/modules/agent-harness/observability/inspector.ts",
     "./agent-harness/observability/otlp": "./src/modules/agent-harness/observability/otlp.ts",
+    "./agent-harness/observability/trace-payload": "./src/modules/agent-harness/observability/trace-payload.ts",
     "./agent-harness/github": "./src/modules/agent-harness/github/index.ts"
   },
   "scripts": {

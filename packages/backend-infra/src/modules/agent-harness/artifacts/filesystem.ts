@@ -13,14 +13,14 @@ const authorize = (metadata: Metadata, access: ArtifactAccess, role: "reader" | 
 
 export const filesystemArtifactStoreLayer = (root: string): Layer.Layer<ArtifactStore> => Layer.succeed(ArtifactStore, ArtifactStore.of({
   put: (input) => Effect.tryPromise({ try: async () => {
-    if (input.expiresAt <= input.createdAt) throw new Error("Artifact expiry must follow creation")
+    if (input.expiresAt !== undefined && input.expiresAt <= input.createdAt) throw new Error("Artifact expiry must follow creation")
     const directory = resolve(root, input.runId)
     await mkdir(directory, { recursive: true })
     const data = resolve(directory, `${input.id}.bin`)
     const temporary = `${data}.${process.pid}.tmp`
     await writeFile(temporary, input.bytes, { flag: "wx", mode: 0o600 })
     await rename(temporary, data)
-    const metadata: Metadata = { id: input.id, runId: input.runId, tenantId: input.tenantId, contentType: input.contentType, classification: input.classification ?? "confidential", byteLength: input.bytes.byteLength, createdAt: input.createdAt, expiresAt: input.expiresAt }
+    const metadata: Metadata = { id: input.id, runId: input.runId, tenantId: input.tenantId, contentType: input.contentType, classification: input.classification ?? "confidential", byteLength: input.bytes.byteLength, createdAt: input.createdAt, ...(input.expiresAt === undefined ? {} : { expiresAt: input.expiresAt }) }
     await writeFile(metadataPath(root, input.runId, input.id), JSON.stringify(metadata), { flag: "wx", mode: 0o600 })
     return metadata
   }, catch: failure }),
@@ -40,7 +40,7 @@ export const filesystemArtifactStoreLayer = (root: string): Layer.Layer<Artifact
     for (const runId of await readdir(root).catch(() => [])) for (const name of await readdir(resolve(root, runId)).catch(() => [])) {
       if (!name.endsWith(".json")) continue
       const metadata = JSON.parse(await readFile(resolve(root, runId, name), "utf8")) as Metadata
-      if (metadata.tenantId !== access.tenantId || metadata.expiresAt > now) continue
+      if (metadata.tenantId !== access.tenantId || metadata.expiresAt === undefined || metadata.expiresAt > now) continue
       await Promise.all([rm(resolve(root, runId, `${metadata.id}.bin`), { force: true }), rm(resolve(root, runId, name), { force: true })]); removed++
     }
     return removed

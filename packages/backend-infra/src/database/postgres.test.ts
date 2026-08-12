@@ -33,7 +33,7 @@ describe("database migration check", () => {
 
               expect(pending._tag).toBe("PendingDatabaseMigrations")
               if (pending._tag === "PendingDatabaseMigrations") {
-                expect(pending.pending).toHaveLength(5)
+                expect(pending.pending).toHaveLength(6)
               }
 
               yield* migratePglite("./drizzle")

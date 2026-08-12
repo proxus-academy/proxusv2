@@ -115,6 +115,17 @@ export const agentSessions = pgTable("agent_sessions", { id: uuid("id").primaryK
 export const agentSessionEntries = pgTable("agent_session_entries", {
   id: uuid("id").primaryKey(), sessionId: uuid("session_id").notNull().references(() => agentSessions.id, { onDelete: "cascade" }), entry: jsonb("entry").notNull(), createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
 }, (table) => [index("agent_session_entries_session_idx").on(table.sessionId)])
+export const agentTracePayloads = pgTable("agent_trace_payloads", {
+  traceId: text("trace_id").primaryKey(),
+  spanId: text("span_id").notNull(),
+  runId: uuid("run_id").notNull().references(() => agentRuns.id, { onDelete: "cascade" }),
+  turn: integer("turn").notNull(),
+  provider: text("provider").notNull(), model: text("model").notNull(), status: text("status").notNull(), captureStatus: text("capture_status").notNull(),
+  startedAt: bigint("started_at", { mode: "number" }).notNull(), completedAt: bigint("completed_at", { mode: "number" }), durationMs: bigint("duration_ms", { mode: "number" }),
+  inputTokens: integer("input_tokens"), outputTokens: integer("output_tokens"), artifactId: uuid("artifact_id"), payloadSha256: text("payload_sha256"), payloadBytes: integer("payload_bytes"),
+  contentType: text("content_type"), contentEncoding: text("content_encoding"), schemaVersion: integer("schema_version").notNull(), redactionVersion: integer("redaction_version").notNull(),
+  expiresAt: bigint("expires_at", { mode: "number" }), captureErrorCategory: text("capture_error_category"),
+}, (table) => [index("agent_trace_payloads_run_started_idx").on(table.runId, table.startedAt)])
 
 export type FeatureFlagSnapshotRow = typeof featureFlagSnapshots.$inferSelect
 export type StudyAssetRow = typeof studyAssets.$inferSelect

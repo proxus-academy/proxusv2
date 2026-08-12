@@ -98,6 +98,33 @@ pnpm --filter @proxus/agent-cli start -- --json --database .proxus/agent-runs
 pnpm --filter @proxus/agent-cli start -- --json --workspace "$PWD"
 ```
 
+### Streaming and trace inspector
+
+The agent CLI tests distinguish streamed presentation from terminal settlement.
+For `run` and `chat`, use a scripted stream to assert that text deltas are
+forwarded once and in order, the completed response is not printed twice, an
+absent terminal event fails, and cancellation/failure still closes the stream.
+Durable playground runs should also prove that capture failure does not alter the
+model or run outcome.
+
+Trace payload tests decode the gzip bytes and validate JSON schema v1, redaction
+before persistence, deterministic truncation under the strict uncompressed size
+bound, explicit `truncated` metadata, and SHA-256 over the exact compressed bytes.
+Cover `pending → stored`, artifact-write failure, incomplete stream and failure
+to write capture metadata as best-effort behavior. Assert the current nullable
+expiry policy rather than obsolete 24/30/90-day assumptions.
+
+Inspector adapter tests use temporary SQL with canonical migrations for run,
+journal and trace metadata and a separate test `ArtifactStore` for bytes. They
+must prove run/trace ownership checks, ACL propagation, payload-unavailable vs
+storage failure, ordering/pagination and that SQL never becomes blob storage.
+Typed admin HTTP tests cover all four `/admin/agent-runs` endpoints, schema
+failures, safe bodyless `404`/`500`, base64/content metadata and OpenAPI inclusion.
+Admin UI tests cover loading/error/empty states, gzip download, and rendering an
+external trace link only when `VITE_AGENT_TRACE_EXPLORER_URL` is non-empty with
+`{traceId}` replaced by the encoded ID. Tests must not contact a real collector,
+explorer, model provider or production artifact store.
+
 ### Google Chat agent
 
 `apps/google-chat-agent` se prueba sin Google ni GitHub live. Fixtures firmadas y fakes deterministas cubren binding `tenant + space + thread`, restart desde snapshot durable, delivery duplicada, cola en turn boundaries, progreso hijo por cursor, card/resolución de approval autenticada e idempotencia del post final.
@@ -153,7 +180,11 @@ contract, serialization and lifecycle tests. Components test accessible
 rendering and dispatch; they do not duplicate atom or service behavior.
 
 Browser tests are reserved for navigation, focus, drag-and-drop, uploads and a
-few critical public/admin journeys.
+few critical public/admin journeys. Trace payload fixtures are synthetic and
+contain no credentials, customer prompts or production traces. Because the
+agent inspector is temporarily unauthenticated, any deployment smoke must bind
+to a non-public test environment; a successful public reachability check is a
+security failure, not a test prerequisite.
 
 ## Isolation
 

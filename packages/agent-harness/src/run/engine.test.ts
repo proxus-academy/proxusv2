@@ -1,6 +1,6 @@
 // @effect-diagnostics asyncFunction:off
 import { describe, expect, it } from "vitest"
-import { Effect, Fiber, Layer } from "effect"
+import { Effect, Fiber, Layer, Stream } from "effect"
 import { OneTurnModel, ModelTurnFailure, scriptedModelLayer, type ScriptedTurn } from "../ai/model-turn.js"
 import { makeRunId } from "../ids.js"
 import { AgentStore } from "../store/agent-store.js"
@@ -92,7 +92,10 @@ describe("RunEngine", () => {
 
   // @effect-diagnostics-next-line asyncFunction:off
   it("interrupts an in-flight turn when durable cancellation is requested", async () => {
-    const model = Layer.succeed(OneTurnModel, OneTurnModel.of({ generate: () => Effect.never as Effect.Effect<never, ModelTurnFailure> }))
+    const model = Layer.succeed(OneTurnModel, OneTurnModel.of({
+      generate: () => Effect.never as Effect.Effect<never, ModelTurnFailure>,
+      stream: () => Stream.never as Stream.Stream<never, ModelTurnFailure>,
+    }))
     const layer = Layer.provideMerge(runEngineLayer(), Layer.merge(memoryAgentStoreLayer, model))
     const program = Effect.gen(function*() {
       const engine = yield* RunEngine

@@ -24,5 +24,5 @@ describe("admin embedded HTTP API", () => {
         query: { kind: "country", status: "published" },
       })).toEqual([published])
     }))),
-  15_000)
+  30_000)
 })

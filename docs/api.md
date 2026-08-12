@@ -83,6 +83,31 @@ validates the new endpoint kinds and duplicate triple, and compacts both the old
 and new groups in one transaction. Disconnecting compacts the former group in
 the same transaction.
 
+## Administrative agent-run inspector
+
+Prefix: `/admin/agent-runs`
+
+| Method | Path | Operation |
+| --- | --- | --- |
+| GET | `/?limit=&before=` | List runs, newest first; `limit` is clamped to 1–100 and `before` is an epoch-millisecond cursor |
+| GET | `/:runId` | Read run limits, usage, safe journal summaries and trace metadata |
+| GET | `/:runId/traces` | List typed model-trace metadata for a run |
+| GET | `/:runId/traces/:traceId/payload` | Read a captured payload as typed content metadata plus base64 bytes |
+
+These routes are declared in `AdminAgentRunsApi`, composed into `AdminApi`, and
+consumed through the generated typed client. Invalid IDs and query values are
+schema decoding failures. Missing runs and unavailable/mismatched payloads are
+bodyless `404`; storage failures are bodyless `500`. SQL supplies run, journal
+and trace metadata, while payload bytes are resolved separately through
+`ArtifactStore`; the HTTP handler does not query either directly.
+
+**Temporary security warning:** these endpoints, including downloadable model
+request/response payloads, are currently unauthenticated. Redaction and bounds
+do not make payloads public or harmless. `admin-server` must be deployed only in
+a trusted, non-public development environment and must not be reachable from the
+public Internet until administrative authentication, authorization and tenant
+scope are enforced at the transport boundary.
+
 ## Public feature flags
 
 | Method | Path | Operation |

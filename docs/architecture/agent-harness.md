@@ -144,7 +144,8 @@ versión esperada del run/session
 
 No expone queries SQL, filas, Drizzle ni transaction handles. Tampoco sustituye a:
 
-- `ArtifactStore`, que guarda diffs/logs grandes con retención y ACL;
+- `ArtifactStore`, que guarda diffs/logs/payloads grandes como blobs con ACL y una política de expiración independiente;
+- `AgentTraceStore`, cuyas filas SQL guardan únicamente metadatos consultables y referencias/hash de payload, no sus bytes;
 - OpenTelemetry, que exporta señales operacionales;
 - la conversación model-visible, que se reconstruye desde entries autorizadas.
 
@@ -213,13 +214,15 @@ Hay cuatro destinos con responsabilidades distintas:
 
 El core define eventos y campos seguros. Infra implementa persistencia y exportadores. El composition root configura destino, sampling, redacción y retención. OpenTelemetry no almacena el estado necesario para reanudar y el repository no acumula spans o deltas de streaming que no hagan falta para recuperación/auditoría.
 
-Por defecto no se exportan prompts, completions, razonamiento, argumentos/resultados raw, secretos ni contenido de cliente. Los deltas live son best-effort; el mensaje final y los transitions durables son autoritativos.
+Por defecto no se exportan prompts, completions, razonamiento, argumentos/resultados raw, secretos ni contenido de cliente. La captura técnica local del inspector es una excepción explícita y separada de OTLP: decora el stream del modelo, observa deltas sin cambiar su entrega y escribe un envelope JSON v1 comprimido con gzip en `ArtifactStore`. Antes de comprimir aplica redacción v1, truncación determinista por delta y un límite estricto sobre el JSON total sin comprimir; marca `truncated`, calcula SHA-256 sobre los bytes gzip finalmente almacenados y conserva en SQL versiones, tamaños, content type/encoding, estado y referencia del artefacto. La captura es best-effort: un fallo de metadatos o artefacto se registra como `captureStatus: failed` cuando es posible, pero nunca cambia el stream ni el outcome del modelo. Un stream sin evento final se marca incompleto. Los deltas live son best-effort; el mensaje final y los transitions durables son autoritativos.
 
 ### Privacidad, ACL y retención operativa
 
-La instrumentación usa un vocabulario cerrado de eventos y dimensiones (`type`, `outcome`, operación estable, categoría de error y buckets). IDs de run/session/tenant, paths, comandos, texto libre y mensajes de error no son labels métricos. Infra aplica una allowlist y redacción antes de console u OTLP; el collector vuelve a borrar campos sensibles como defensa en profundidad. Los payloads de debug están deshabilitados por defecto. Habilitarlos exige cifrado, destino separado, rol `operator`, auditoría de acceso y una ventana explícita menor o igual a 24 horas.
+La instrumentación usa un vocabulario cerrado de eventos y dimensiones (`type`, `outcome`, operación estable, categoría de error y buckets). IDs de run/session/tenant, paths, comandos, texto libre y mensajes de error no son labels métricos. Infra aplica una allowlist y redacción antes de console u OTLP; el collector vuelve a borrar campos sensibles como defensa en profundidad. Los payloads raw de debug en OTLP siguen deshabilitados. La captura técnica local del inspector no se exporta por OTLP y es la excepción descrita arriba; su clasificación `encrypted-debug` no constituye por sí sola una garantía de cifrado del adapter filesystem. Antes de un deployment público exige almacenamiento cifrado, identidad/rol administrativo, auditoría de acceso y una ventana de retención explícita. La implementación inicial todavía no aporta esas garantías ni asigna una ventana automática.
 
-Cada artefacto lleva tenant, run, clasificación y `expiresAt`. Leer requiere rol `reader` y coincidencia tenant/run; eliminar y ejecutar cleanup requiere rol `retention`. La política inicial de producto es: artefactos normales 30 días, debug cifrado 24 horas y journal durable 90 días. Cleanup es idempotente, por tenant, y solo considera runs terminales. Nunca elimina journal/checkpoint de un run activo, suspendido, reclamable o sujeto a legal hold. Antes de purgar journal se conserva el outcome agregado y la evidencia de aprobación exigida por auditoría, sin prompts ni resultados raw. El adapter filesystem implementa purge de artefactos; el job PostgreSQL de journal debe ejecutar el plan core con un principal de retención y lotes acotados, no `DELETE` ad hoc desde transportes.
+Cada artefacto lleva tenant, run y clasificación; `expiresAt` es nullable/opcional. Leer requiere rol `reader` y coincidencia tenant/run; eliminar y ejecutar cleanup requiere rol `retention`. **La política inicial implementada no asigna expiración automática:** los payloads técnicos y sus filas de metadata se crean con `expiresAt = null`/ausente. Por tanto, no se prometen actualmente ventanas de 24, 30 o 90 días. Esos valores eran objetivos anteriores y quedan sustituidos por esta política hasta que un deployment configure expiración y opere un job de cleanup verificable.
+
+El mecanismo de cleanup de artefactos es idempotente, por tenant, y solo elimina elementos que tengan una expiración explícita vencida; la planificación de journal considera únicamente runs terminales. Nunca debe eliminar journal/checkpoint de un run activo, suspendido, reclamable o sujeto a legal hold. Una política futura deberá definir y probar por separado las ventanas de blobs, debug y journal, preservar la evidencia de auditoría requerida y ejecutar con un principal de retención y lotes acotados, no con `DELETE` ad hoc desde transportes.
 
 La proyección de inspector es pura y recibe únicamente facts seguros. No lee `RunRecord.context`, `output`, `failure` ni `JournalEvent.detail`; muestra objetivo resumido, perfil lógico de modelo, skills, IDs/planes DSL estables, operaciones, recursos clasificados, paths relativos, comandos normalizados, validaciones, árbol de hijos, presupuestos, referencias ACL de artefactos y respuesta final explícitamente publicada. Su resultado no contiene HTML ni payloads de transporte.
 
@@ -243,7 +246,7 @@ GOOGLE_GENERATIVE_AI_API_KEY=...
 GOOGLE_GENERATIVE_AI_MODEL=gemini-2.5-flash
 ```
 
-El adapter host-side usa el endpoint OpenAI-compatible de Google Generative AI. `run` crea un run durable en PGlite bajo `.proxus/agent-runs`; `--database :memory:` permite un smoke test efímero. `chat` conserva contexto únicamente durante el proceso interactivo y no habilita tools.
+El adapter host-side usa el endpoint OpenAI-compatible de Google Generative AI. `run` crea un run durable en PGlite bajo `.proxus/agent-runs`; `--database :memory:` permite un smoke test efímero. Tanto `run` como cada turno de `chat` consumen `OneTurnModel.stream` y escriben cada `TextDelta` en stdout al llegar, sin esperar ni volver a imprimir la respuesta completa. Solo el evento terminal asienta el resultado; terminar el stream sin él es un fallo. `run` imprime después un salto de línea y el estado/ID en stderr. `chat` conserva contexto únicamente durante el proceso interactivo, incorpora la respuesta terminal una sola vez y no habilita tools. La captura técnica descrita arriba acompaña a los runs durables; el chat efímero sin `invocation` no crea una traza persistida.
 
 ## Composición por deployment
 

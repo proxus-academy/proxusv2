@@ -1,5 +1,5 @@
-import { Clock, Context, Data, Effect, Layer } from "effect"
-import { OneTurnModel, type ModelTurnResult } from "../ai/model-turn.js"
+import { Clock, Context, Data, Effect, Layer, Stream } from "effect"
+import { OneTurnModel, type ModelTurnResult, type ModelTurnStreamEvent } from "../ai/model-turn.js"
 import type { RunId } from "../ids.js"
 import { AgentStore, type AgentStoreError } from "../store/agent-store.js"
 import { emptyUsage, type RunBudgetLimits, type RunBudgetUsage, type RunRecord, type TurnDecision } from "./model.js"
@@ -35,7 +35,10 @@ export class RunEngine extends Context.Service<RunEngine, {
   readonly cancel: (runId: RunId) => Effect.Effect<void, AgentStoreError>
 }>()("@proxus/agent-harness/run/engine/RunEngine") {}
 
-export const runEngineLayer = (decide: (result: ModelTurnResult) => TurnDecision = defaultTurnDecision): Layer.Layer<RunEngine, never, AgentStore | OneTurnModel> => Layer.effect(RunEngine, Effect.gen(function*() {
+export const runEngineLayer = (
+  decide: (result: ModelTurnResult) => TurnDecision = defaultTurnDecision,
+  onStreamEvent: (event: ModelTurnStreamEvent) => Effect.Effect<void> = () => Effect.void,
+): Layer.Layer<RunEngine, never, AgentStore | OneTurnModel> => Layer.effect(RunEngine, Effect.gen(function*() {
   const store = yield* AgentStore
   const model = yield* OneTurnModel
   const now = Clock.currentTimeMillis
@@ -50,8 +53,16 @@ export const runEngineLayer = (decide: (result: ModelTurnResult) => TurnDecision
       if (at >= run.deadlineAt) return yield* store.commit(run.id, { expectedVersion: run.version, status: "TimedOut", events: [{ type: "RunTimedOut", at }], checkpoint: { status: "TimedOut", usage: run.usage, context: run.context } })
       if (run.usage.turns >= run.limits.maxTurns) return yield* store.commit(run.id, { expectedVersion: run.version, status: "BudgetExhausted", failure: "turns", events: [{ type: "BudgetExhausted", at, detail: "turns" }], checkpoint: { status: "BudgetExhausted", usage: run.usage, context: run.context } })
       run = yield* store.commit(run.id, { expectedVersion: run.version, events: [{ type: "TurnStarted", at, turn: run.usage.turns + 1 }] })
+      const streamed = Effect.gen(function*() {
+        let completed: ModelTurnResult | undefined
+        yield* model.stream({ instructions, context: run.context, invocation: { runId: run.id, turn: run.usage.turns + 1 } }).pipe(Stream.runForEach((event) =>
+          onStreamEvent(event).pipe(Effect.andThen(Effect.sync(() => { if (event._tag === "Completed") completed = event.result }))),
+        ))
+        if (completed === undefined) return yield* new RunEngineFailure({ message: "Model stream ended without a completion event" })
+        return completed
+      })
       const raced = yield* Effect.raceFirst(
-        model.generate({ instructions, context: run.context }).pipe(Effect.map((result) => ({ _tag: "Result" as const, result }))),
+        streamed.pipe(Effect.map((result) => ({ _tag: "Result" as const, result }))),
         store.awaitCancellation(run.id).pipe(Effect.map(() => ({ _tag: "Cancelled" as const }))),
       ).pipe(Effect.catch((cause) => Effect.succeed({ _tag: "Failure" as const, cause })))
       const endedAt = yield* now

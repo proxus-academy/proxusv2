@@ -39,8 +39,9 @@ const run = Effect.gen(function*() {
     if (values.input === undefined || values.input.trim() === "") return yield* Effect.fail(new Error("--input is required\n\n" + usage))
     const database = values.database === ":memory:" ? ":memory:" : resolve(values.database!)
     if (database !== ":memory:") mkdirSync(database, { recursive: true })
-    const result = yield* playgroundRun({ database, input: values.input })
-    console.log(result.output ?? `Run ${result.id} ended with status ${result.status}${result.failure === undefined ? "" : `: ${result.failure}`}`)
+    const result = yield* playgroundRun({ database, input: values.input, onTextDelta: (delta) => stdout.write(delta) })
+    stdout.write("\n")
+    console.error(`run ${result.id}: ${result.status}${result.failure === undefined ? "" : ` (${result.failure})`}`)
     return
   }
 
@@ -59,9 +60,10 @@ const run = Effect.gen(function*() {
         if (input === "/exit" || input === "/quit") break
         if (input === "") continue
         context = [...context, { role: "user", content: input }]
-        const turn = yield* playgroundChatTurn(context)
+        stdout.write("gemini> ")
+        const turn = yield* playgroundChatTurn(context, (delta) => stdout.write(delta))
         context = turn.context
-        console.log(`gemini> ${turn.answer}\n`)
+        stdout.write("\n\n")
       }
     } finally {
       terminal.close()

@@ -4,7 +4,8 @@
   "type": "module",
   "exports": {
     ".": "./src/http.ts",
-    "./study-catalog": "./src/modules/study-catalog/http.ts"
+    "./study-catalog": "./src/modules/study-catalog/http.ts",
+    "./agent-runs": "./src/modules/agent-runs/http.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
@@ -12,6 +13,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@proxus/agent-harness": "workspace:*",
     "@proxus/backend-domain": "workspace:*",
     "@proxus/shared": "workspace:*",
     "effect": "4.0.0-beta.98"

@@ -135,6 +135,9 @@ importers:
       '@effect/platform-node':
         specifier: 4.0.0-beta.98
         version: 4.0.0-beta.98(effect@4.0.0-beta.98)(ioredis@5.11.1)
+      '@proxus/agent-harness':
+        specifier: workspace:*
+        version: link:../../packages/agent-harness
       '@proxus/backend-admin-transport':
         specifier: workspace:*
         version: link:../../packages/backend-admin-transport
@@ -453,6 +456,9 @@ importers:
 
   packages/backend-admin-transport:
     dependencies:
+      '@proxus/agent-harness':
+        specifier: workspace:*
+        version: link:../agent-harness
       '@proxus/backend-domain':
         specifier: workspace:*
         version: link:../backend-domain

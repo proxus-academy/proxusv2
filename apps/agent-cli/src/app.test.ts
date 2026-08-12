@@ -18,13 +18,13 @@ describe("local/CI composition root", () => {
     expect(report.run.usage.turns).toBe(4)
     expect(report.events.map((event) => event.sequence)).toEqual(report.events.map((_, index) => index + 1))
     expect(await reopenRun(database)).toMatchObject({ id: report.run.id, status: "Succeeded", output: "Prepared and validated deterministic change." })
-  })
+  }, 30_000)
 
   it("cleans a temporary sandbox after the scoped executable completes", async () => {
     const report = await runDeterministicScenario({ database: ":memory:", write: () => undefined })
     expect(report.workspaceExistsBeforeClose).toBe(true)
     expect(existsSync(report.workspace)).toBe(false)
-  })
+  }, 30_000)
 
   it("uses but does not remove the current CI workspace", async () => {
     const root = mkdtempSync(resolve(tmpdir(), "agent-cli-workspace-")); roots.push(root)
@@ -32,5 +32,5 @@ describe("local/CI composition root", () => {
     expect(readFileSync(resolve(root, "work/greeting.txt"), "utf8")).toBe("hello deterministic agent\n")
     expect(existsSync(root)).toBe(true)
     expect(report.workspace).toBe(root)
-  })
+  }, 30_000)
 })

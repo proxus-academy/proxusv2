@@ -14,5 +14,5 @@ describe("admin server surface", () => {
       expect(document.paths["/admin/study-catalog/nodes"]).toBeDefined()
       expect(Object.keys(document.paths).some((path) => path.startsWith("/study-catalog/"))).toBe(false)
     }))),
-  15_000)
+  30_000)
 })

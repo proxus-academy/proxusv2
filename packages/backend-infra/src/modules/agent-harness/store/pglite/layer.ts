@@ -3,7 +3,7 @@ import { AgentStore } from "@proxus/agent-harness/store"
 import { Effect, Layer } from "effect"
 import { migratePglite } from "../../../../database/pglite.js"
 import { defaultMigrationsFolder } from "../../../../database/paths.js"
-import { AgentStoreSqlLive, makeAgentStoreSql } from "../shared/layer.js"
+import { AgentStoreSqlLive, AgentTraceStoreSqlLive, makeAgentStoreSql } from "../shared/layer.js"
 
 /** PGlite store implementation. Provide a PgliteClient Layer at the composition root. */
 export const PgliteAgentStoreLive = AgentStoreSqlLive
@@ -22,4 +22,15 @@ export const pgliteAgentStoreLayer = (
     AgentStore,
     migratePglite(migrationsFolder).pipe(Effect.andThen(makeAgentStoreSql)),
   ).pipe(Layer.provide(client))
+}
+
+export const pgliteAgentStoresLayer = (
+  dataDir?: string,
+  migrationsFolder = defaultMigrationsFolder,
+) => {
+  const client = PgliteClient.layer(dataDir === undefined ? {} : { dataDir })
+  return Layer.merge(AgentStoreSqlLive, AgentTraceStoreSqlLive).pipe(
+    Layer.provideMerge(Layer.effectDiscard(migratePglite(migrationsFolder))),
+    Layer.provide(client),
+  )
 }

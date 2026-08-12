@@ -9,7 +9,8 @@
     "./study-catalog": "./src/modules/study-catalog/index.ts",
     "./feature-flags": "./src/modules/feature-flags/index.ts",
     "./product-analytics": "./src/modules/product-analytics/index.ts",
-    "./realtime": "./src/modules/realtime/index.ts"
+    "./realtime": "./src/modules/realtime/index.ts",
+    "./agent-runs": "./src/modules/agent-runs/index.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
