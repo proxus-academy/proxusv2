@@ -1,4 +1,5 @@
 import type { ReactNode } from "react"
+import { Link, useMatchRoute } from "@tanstack/react-router"
 import {
   Sidebar,
   SidebarContent,
@@ -14,9 +15,10 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { adminNavigation, type AdminSection } from "./navigation.js"
+import { adminNavigation } from "./navigation.js"
 
-export function AdminLayout({ activeSection, onNavigate, children }: { readonly activeSection: AdminSection; readonly onNavigate: (section: AdminSection) => void; readonly children: ReactNode }) {
+export function AdminLayout({ children }: { readonly children: ReactNode }) {
+  const matchRoute = useMatchRoute()
   return (
     <TooltipProvider>
       <SidebarProvider className="admin-shell [--sidebar-width:18rem]">
@@ -35,10 +37,10 @@ export function AdminLayout({ activeSection, onNavigate, children }: { readonly 
               <SidebarGroupLabel className="px-2 text-[11px] font-semibold uppercase tracking-wider">Datos</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {adminNavigation.map(({ id, label, icon: Icon }) => (
-                    <SidebarMenuItem key={label}>
-                      <SidebarMenuButton asChild isActive={activeSection === id} tooltip={label} className="font-medium data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground">
-                        <a href={`#${id}`} onClick={() => onNavigate(id)}><Icon aria-hidden="true" /><span>{label}</span></a>
+                  {adminNavigation.map(({ to, label, icon: Icon }) => (
+                    <SidebarMenuItem key={to}>
+                      <SidebarMenuButton asChild isActive={matchRoute({ to, fuzzy: true }) !== false} tooltip={label} className="font-medium data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground">
+                        <Link to={to}><Icon aria-hidden="true" /><span>{label}</span></Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   ))}

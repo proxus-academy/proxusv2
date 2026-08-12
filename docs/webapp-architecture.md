@@ -125,11 +125,12 @@ state.
 
 ## Routing
 
-`apps/web` is a client-only SPA and uses TanStack Router as the single owner of
+`apps/web` and `apps/admin` are client-only SPAs and use TanStack Router as the single owner of
 URL matching, browser history, nested layouts, parameters, search parameters and
-React rendering. The typed, file-based route definitions live in `apps/web/src/routes/`; the
-TanStack Router Vite plugin generates `apps/web/src/routeTree.gen.ts`, while
-`apps/web/src/routes/router.tsx` creates the router from that generated tree.
+React rendering. Their typed, file-based route definitions live in `apps/<app>/src/routes/`; the
+TanStack Router Vite plugin generates `apps/<app>/src/routeTree.gen.ts`, while each
+`apps/<app>/src/routes/router.tsx` creates the router from that generated tree. Admin exposes
+login at `/admin/login` and places its catalog and user screens below authenticated route layouts.
 Proxus does not use route loaders,
 `beforeLoad`, router-managed data caches or router invalidation.
 
