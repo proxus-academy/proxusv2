@@ -206,7 +206,12 @@ for (const workspacePackage of packages) {
     const imports = ts.preProcessFile(source, true, true).importedFiles.map(({ fileName }) => fileName)
 
     for (const specifier of imports) {
-      if (specifier.includes("://") || specifier.startsWith("#") || isBuiltin(specifier)) continue
+      if (
+        specifier.includes("://") ||
+        specifier.startsWith("#") ||
+        specifier.startsWith("astro:") ||
+        isBuiltin(specifier)
+      ) continue
 
       const location = relative(root, file)
       const dependency = packageNameFromSpecifier(specifier)

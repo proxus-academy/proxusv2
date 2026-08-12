@@ -7,7 +7,8 @@ Este archivo define las reglas globales para agentes que trabajan en el reposito
 Proxus v2 es un workspace `pnpm` full-stack basado en TypeScript, Effect v4 y React.
 
 - `apps/server`: API HTTP tipada y backend Effect. Usa PGlite durante el desarrollo y PostgreSQL en producción, con persistencia y migraciones Drizzle.
-- `apps/web`: aplicación web pública y propietaria de sus adapters de navegador.
+- `apps/site`: sitio público estático en Astro para portada, contenido editorial y páginas informativas.
+- `apps/web`: aplicación web de producto y propietaria de sus adapters de navegador.
 - `apps/admin`: aplicación administrativa.
 - `apps/dev-server`: composition root exclusivo de desarrollo; monta las APIs pública y administrativa sobre una sola PGlite.
 - `apps/storybook`: entorno Storybook del sistema de diseño.
@@ -27,6 +28,7 @@ Antes de realizar cambios relevantes, consulta la documentación correspondiente
 - DDD, bounded contexts y módulos: `docs/architecture/domain-driven-architecture.md`.
 - API HTTP pública y administrativa: `docs/api.md`.
 - Estrategia y convenciones de pruebas: `docs/testing.md`.
+- Sitio público estático Astro: `docs/architecture/public-site.md`.
 - Arquitectura React, estado derivado y sincronización: `docs/webapp-architecture.md`.
 - Effect Atom con React: `docs/effect/90_react_and_effect_atom.md`.
 - Effect Form y convenciones de formularios: `docs/forms/README.md` y el capítulo específico aplicable de `docs/forms/*`.
