@@ -67,10 +67,10 @@ describe("desktop viewport adapter", () => {
   })
 
   it("reacts when the viewport is resized", () => {
-    const matches = {
+    const matches: Record<string, boolean> = {
       "(max-width: 1023px)": true,
       "(any-pointer: coarse)": true,
-    } satisfies Record<string, boolean>
+    }
     const viewport = renderViewport(matches)
     expect(host.textContent).toBe("mobile")
     matches["(max-width: 1023px)"] = false
