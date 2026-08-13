@@ -32,10 +32,10 @@ export const resource = <const Type extends string, const Id extends string>(
   return { type, id, scopes: dedupeRefs(scopes) }
 }
 
-export const isObjectRef = (value: unknown): value is ObjectRef => {
-  if (typeof value !== "object" || value === null) return false
+export const isObjectRef = (cause: unknown): cause is ObjectRef => {
+  if (typeof cause !== "object" || cause === null) return false
   // SAFETY: The surrounding typed contract establishes the asserted representation.
-  const candidate = value as { readonly type?: unknown; readonly id?: unknown }
+  const candidate = cause as { readonly type?: unknown; readonly id?: unknown }
   return typeof candidate.type === "string" && candidate.type.length > 0 &&
     typeof candidate.id === "string" && candidate.id.length > 0
 }

@@ -6,7 +6,7 @@ export type Locale = typeof Locale.Type
 
 export const fallbackLocale: Locale = "es"
 export const localeTags = { es: "es-ES", en: "en-GB" } satisfies Record<Locale, string>
-export const isLocale = (value: unknown): value is Locale => value === "es" || value === "en"
+export const isLocale = (cause: unknown): cause is Locale => cause === "es" || cause === "en"
 
 const es = {
   language: { label: "Idioma", spanish: "Español", english: "English", device: "Usar idioma del dispositivo" },

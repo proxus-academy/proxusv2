@@ -63,7 +63,7 @@ export declare namespace AccessApi {
 
 let accessInstance = 0
 const failDefinition = (message: string): never => { throw new AccessDefinitionError({ message }) }
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value)
+const isRecord = (cause: unknown): cause is Record<string, unknown> => typeof cause === "object" && cause !== null && !Array.isArray(cause)
 const unique = <A>(values: Iterable<A>): readonly A[] => Array.from(new Set(values))
 
 export const defineAccess = <
@@ -141,31 +141,31 @@ export const defineAccess = <
     return candidate
   }
 
-  function validateResource<const Type extends ScopeType>(expected: Type, value: unknown): Resource<Type> {
-    if (isRecord(value) && isObjectRef(value) && Array.isArray(value.scopes)) {
-      if (value.type !== expected) failDefinition(`Mapper for ${expected} returned resource type ${String(value.type)}`)
+  function validateResource<const Type extends ScopeType>(expected: Type, cause: unknown): Resource<Type> {
+    if (isRecord(cause) && isObjectRef(cause) && Array.isArray(cause.scopes)) {
+      if (cause.type !== expected) failDefinition(`Mapper for ${expected} returned resource type ${String(cause.type)}`)
       const scopes: Scope[] = []
-      for (const parent of value.scopes) {
+      for (const parent of cause.scopes) {
         if (!isObjectRef(parent) || !isScopeType(parent.type)) failDefinition(`Resource ${expected} contains an invalid scope`)
         scopes.push(parent)
       }
-      return { type: expected, id: value.id, scopes: dedupeRefs(scopes) }
+      return { type: expected, id: cause.id, scopes: dedupeRefs(scopes) }
     }
     return failDefinition(`Mapper for ${expected} returned an invalid resource`)
   }
 
   const resourceTypeOfPermission = <const P extends Permission>(permission: P): Extract<ResourceTypeOfPermission<P>, ScopeType> => {
-    const isExpectedType = (value: string): value is Extract<ResourceTypeOfPermission<P>, ScopeType> => permission.startsWith(`${value}:`) && isScopeType(value)
+    const isExpectedType = (cause: string): cause is Extract<ResourceTypeOfPermission<P>, ScopeType> => permission.startsWith(`${cause}:`) && isScopeType(cause)
     const type = permission.slice(0, permission.indexOf(":"))
     if (isExpectedType(type)) return type
     return failDefinition(`Permission ${permission} has an invalid resource type`)
   }
 
-  const mapResource = (type: string, input: unknown): unknown => {
+  const mapResource = (type: string, cause: unknown): unknown => {
     const resources: unknown = definition.resources
-    if (!isRecord(resources)) return input
+    if (!isRecord(resources)) return cause
     const mapper = resources[type]
-    return typeof mapper === "function" ? mapper(input) : input
+    return typeof mapper === "function" ? mapper(cause) : cause
   }
   const toResource = <const P extends Permission>(permission: P, input: ResourceInput<Resources, ScopeType, P>): Resource<Extract<ResourceTypeOfPermission<P>, ScopeType>> => {
     const type = resourceTypeOfPermission(permission)
