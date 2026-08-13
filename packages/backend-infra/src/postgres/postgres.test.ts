@@ -47,6 +47,7 @@ import {
   authChallenges,
   authSessions,
   featureFlagSnapshots,
+  productAnalyticsEvents,
   roleAssignments,
   studyAssets,
   studyEdges,
@@ -95,6 +96,7 @@ const cleanProductTables = Effect.gen(function*() {
   const db = yield* PostgresDrizzle.makeWithDefaults()
   yield* db.execute(sql`
     truncate table
+      ${productAnalyticsEvents},
       ${roleAssignments},
       ${authChallenges},
       ${authSessions},
@@ -219,8 +221,11 @@ describe("real PostgreSQL 17", () => {
       const decoded = yield* Schema.decodeUnknownEffect(
         migrationResultSchema,
       )(result)
+      const migrations = readMigrationFiles({
+        migrationsFolder: defaultMigrationsFolder,
+      })
       expect(decoded.rows[0]).toMatchObject({
-        migrationCount: 6,
+        migrationCount: migrations.length,
         studyEdgesTable: "study_edges",
         studyNodesTable: "study_nodes",
         usersTable: "users",
@@ -236,10 +241,10 @@ describe("real PostgreSQL 17", () => {
         values (${subject}::uuid, 'subject', 'Auth subject', 'published', now(), now())`)
       yield* db.execute(sql`insert into users
         (id, email_normalized, status, password_hash, google_subject, username_normalized,
-         birth_year, problem_kind, subject_id, validated_node_ids, created_at, updated_at)
+         birth_year, problem_kind, subject_id, study_id, acquisition_source,
+         acquisition_other, created_at, updated_at)
         values (${user}::uuid, 'valid@example.com', 'active', 'hash', 'google-valid', 'valid_user',
-          2001, 'prepare-exams', ${subject}::uuid,
-          '["00000000-0000-4000-8000-000000000451","00000000-0000-4000-8000-000000000451","00000000-0000-4000-8000-000000000451","00000000-0000-4000-8000-000000000451","00000000-0000-4000-8000-000000000451"]'::jsonb, now(), now())`)
+          2001, 'prepare-exams', ${subject}::uuid, ${subject}::uuid, 'friend', null, now(), now())`)
 
       const invalidStatements = [
         sql`update users set email_normalized = 'Not-Normalized@example.com' where id = ${user}::uuid`,
@@ -259,6 +264,7 @@ describe("real PostgreSQL 17", () => {
   test("upgrades legacy Feature Flags rows for repository and HTTP-facing reader access", () =>
     runPostgres(Effect.gen(function*() {
       const db = yield* PostgresDrizzle.makeWithDefaults()
+      yield* db.execute(sql`drop table if exists ${productAnalyticsEvents} cascade`)
       yield* db.execute(sql`drop table if exists ${roleAssignments} cascade`)
       yield* db.execute(sql`drop table if exists ${authChallenges} cascade`)
       yield* db.execute(sql`drop table if exists ${authSessions} cascade`)

@@ -8,7 +8,6 @@ import { fileURLToPath } from "node:url"
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const rootManifest = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"))
-const webManifest = JSON.parse(readFileSync(resolve(root, "apps/web/package.json"), "utf8"))
 const temporaryRoot = mkdtempSync(join(tmpdir(), "proxus-validation-"))
 const pnpm = process.platform === "win32" ? "pnpm.cmd" : "pnpm"
 const directoryLinkType = process.platform === "win32" ? "junction" : "dir"
@@ -57,7 +56,7 @@ try {
   linkNodeModules(effectProbe)
   cpSync(resolve(root, "tsconfig.base.json"), resolve(effectProbe, "tsconfig.base.json"))
   cpSync(resolve(root, "apps/web/tsconfig.json"), resolve(effectProbe, "apps/web/tsconfig.json"))
-  writeToolManifest(resolve(effectProbe, "apps/web"), { typecheck: webManifest.scripts.typecheck })
+  writeToolManifest(resolve(effectProbe, "apps/web"), { typecheck: "tsc --noEmit" })
   writeJson(effectProbe, "effect-inventory.json", [{ path: "apps/web" }])
   write(
     effectProbe,

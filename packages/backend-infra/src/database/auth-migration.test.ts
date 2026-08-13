@@ -9,7 +9,7 @@ import { defaultMigrationsFolder } from "./paths.js"
 import { migratePglite } from "./pglite.js"
 import { users } from "./schema.js"
 
-const previousMigrationCount = 8
+const acquisitionMigrationName = "20260731071341_fuzzy_queen_noir"
 const subjectId = "00000000-0000-4000-8000-000000000401"
 const userId = "00000000-0000-4000-8000-000000000402"
 const grantorId = "00000000-0000-4000-8000-000000000403"
@@ -100,8 +100,11 @@ describe("auth database migration", () => {
   test("upgrades the populated previous revision without changing existing rows", () => withDatabase(Effect.gen(function*() {
     const db = yield* PgliteDrizzle.makeWithDefaults()
     const migrations = readMigrationFiles({ migrationsFolder: defaultMigrationsFolder })
-    expect(migrations).toHaveLength(previousMigrationCount + 1)
-    yield* migratePgSession(migrations.slice(0, previousMigrationCount), db._.session, {
+    const acquisitionMigration = migrations.findIndex(
+      ({ name }) => name === acquisitionMigrationName,
+    )
+    expect(acquisitionMigration).toBeGreaterThan(0)
+    yield* migratePgSession(migrations.slice(0, acquisitionMigration), db._.session, {
       migrationsFolder: defaultMigrationsFolder,
     })
     yield* db.execute(sql`insert into study_nodes (id, kind, name, status, created_at, updated_at)

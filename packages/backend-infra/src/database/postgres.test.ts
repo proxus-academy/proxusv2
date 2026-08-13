@@ -130,18 +130,21 @@ describe("database migration check", () => {
             const context = yield* Layer.build(ClientLive)
             return yield* Effect.gen(function*() {
               const db = yield* PgliteDrizzle.makeWithDefaults()
+              const migrations = readMigrationFiles({
+                migrationsFolder: defaultMigrationsFolder,
+              })
               const pending = yield* checkDatabaseMigrations(
                 db,
-                "./drizzle",
+                defaultMigrationsFolder,
               ).pipe(Effect.flip)
 
               expect(pending._tag).toBe("PendingDatabaseMigrations")
               if (pending._tag === "PendingDatabaseMigrations") {
-                expect(pending.pending).toHaveLength(9)
+                expect(pending.pending).toHaveLength(migrations.length)
               }
 
-              yield* migratePglite("./drizzle")
-              yield* checkDatabaseMigrations(db, "./drizzle")
+              yield* migratePglite(defaultMigrationsFolder)
+              yield* checkDatabaseMigrations(db, defaultMigrationsFolder)
             }).pipe(Effect.provide(context))
           }),
         ),
