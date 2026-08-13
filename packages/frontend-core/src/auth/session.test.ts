@@ -46,7 +46,7 @@ const read = (response: Response) => Effect.gen(function*() {
   return result
 })
 
-const jsonResponse = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
+const jsonResponse = (cause: unknown, status = 200) => new Response(JSON.stringify(cause), {
   status,
   headers: { "content-type": "application/json" },
 })

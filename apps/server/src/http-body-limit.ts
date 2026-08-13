@@ -16,11 +16,11 @@ const contentLengthExceedsLimit = (request: HttpServerRequest.HttpServerRequest)
   return Number.isFinite(contentLength) && contentLength > MaximumRequestBodySizeBytes
 }
 
-const isBodyLimitDefect = (defect: unknown) =>
-  defect instanceof HttpServerError.HttpServerError &&
-  defect.reason instanceof HttpServerError.RequestParseError &&
-  defect.reason.cause instanceof Error &&
-  defect.reason.cause.message === "maxBytes exceeded"
+const isBodyLimitDefect = (cause: unknown) =>
+  cause instanceof HttpServerError.HttpServerError &&
+  cause.reason instanceof HttpServerError.RequestParseError &&
+  cause.reason.cause instanceof Error &&
+  cause.reason.cause.message === "maxBytes exceeded"
 
 const causeIsBodyLimit = (cause: Cause.Cause<unknown>) => {
   const defect = Cause.findDefect(cause)

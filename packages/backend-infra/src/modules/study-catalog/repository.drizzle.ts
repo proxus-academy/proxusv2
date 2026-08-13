@@ -364,15 +364,15 @@ export const makeStudyCatalogRepositoryDrizzle = (db: StudyDatabase) => {
         return yield* decodeEdge(row)
       }),
     ).pipe(
-      Effect.mapError((error: unknown) => {
+      Effect.mapError((cause: unknown) => {
         if (
-          Schema.is(StudyNodeNotFound)(error) ||
-          Schema.is(StudyEdgeEndpointKindMismatch)(error) ||
-          Schema.is(StudyEdgeAlreadyExists)(error)
+          Schema.is(StudyNodeNotFound)(cause) ||
+          Schema.is(StudyEdgeEndpointKindMismatch)(cause) ||
+          Schema.is(StudyEdgeAlreadyExists)(cause)
         ) {
-          return error
+          return cause
         }
-        return repositoryError("createEdge", error)
+        return repositoryError("createEdge", cause)
       }),
     )
 
@@ -550,16 +550,16 @@ export const makeStudyCatalogRepositoryDrizzle = (db: StudyDatabase) => {
       onNone: () => Effect.die("updateEdge retry stopped without a result"),
       onSome: Effect.succeed,
     })),
-    Effect.mapError((error: unknown) => {
+    Effect.mapError((cause: unknown) => {
       if (
-        Schema.is(StudyEdgeNotFound)(error) ||
-        Schema.is(StudyNodeNotFound)(error) ||
-        Schema.is(StudyEdgeEndpointKindMismatch)(error) ||
-        Schema.is(StudyEdgeAlreadyExists)(error)
+        Schema.is(StudyEdgeNotFound)(cause) ||
+        Schema.is(StudyNodeNotFound)(cause) ||
+        Schema.is(StudyEdgeEndpointKindMismatch)(cause) ||
+        Schema.is(StudyEdgeAlreadyExists)(cause)
       ) {
-        return error
+        return cause
       }
-      return repositoryError("updateEdge", error)
+      return repositoryError("updateEdge", cause)
     }),
   )
 
@@ -622,10 +622,10 @@ export const makeStudyCatalogRepositoryDrizzle = (db: StudyDatabase) => {
   const removeEdge = (edgeId: StudyEdgeId) =>
     removeEdgeAttempt(edgeId).pipe(
       Effect.repeat({ until: (removed) => removed }),
-      Effect.mapError((error: unknown) =>
-        Schema.is(StudyEdgeNotFound)(error)
-          ? error
-          : repositoryError("removeEdge", error),
+      Effect.mapError((cause: unknown) =>
+        Schema.is(StudyEdgeNotFound)(cause)
+          ? cause
+          : repositoryError("removeEdge", cause),
       ),
       Effect.asVoid,
     )
@@ -647,10 +647,10 @@ export const makeStudyCatalogRepositoryDrizzle = (db: StudyDatabase) => {
             () => new StudyNodeNotFound({ nodeId }),
           ).pipe(Effect.flatMap(decodeNode)),
         ),
-        Effect.mapError((error: unknown) =>
-          Schema.is(StudyNodeNotFound)(error)
-            ? error
-            : repositoryError("renameNode", error),
+        Effect.mapError((cause: unknown) =>
+          Schema.is(StudyNodeNotFound)(cause)
+            ? cause
+            : repositoryError("renameNode", cause),
         ),
       )
 
@@ -671,10 +671,10 @@ export const makeStudyCatalogRepositoryDrizzle = (db: StudyDatabase) => {
             () => new StudyNodeNotFound({ nodeId }),
           ).pipe(Effect.flatMap(decodeNode)),
         ),
-        Effect.mapError((error: unknown) =>
-          Schema.is(StudyNodeNotFound)(error)
-            ? error
-            : repositoryError("updateNodeStatus", error),
+        Effect.mapError((cause: unknown) =>
+          Schema.is(StudyNodeNotFound)(cause)
+            ? cause
+            : repositoryError("updateNodeStatus", cause),
         ),
       )
 

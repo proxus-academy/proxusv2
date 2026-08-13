@@ -36,8 +36,8 @@ const challengeFromRow = (row: AuthChallengeRow): AuthChallenge => ({
 })
 const first = <A>(rows: ReadonlyArray<A>) => Option.fromIterable(rows)
 
-const constraintName = (error: unknown): string => {
-  const pending: Array<unknown> = [error]
+const constraintName = (cause: unknown): string => {
+  const pending: Array<unknown> = [cause]
   const seen = new Set<object>()
   const text: Array<string> = []
   while (pending.length > 0) {
@@ -51,8 +51,8 @@ const constraintName = (error: unknown): string => {
   }
   return text.join(" ")
 }
-const conflict = (error: unknown): UserConflict | undefined => {
-  const constraint = constraintName(error)
+const conflict = (cause: unknown): UserConflict | undefined => {
+  const constraint = constraintName(cause)
   if (constraint.includes("users_email_normalized_uidx")) return new UserConflict({ field: "email" })
   if (constraint.includes("users_username_normalized_uidx")) return new UserConflict({ field: "username" })
   if (constraint.includes("users_google_subject_uidx")) return new UserConflict({ field: "google-subject" })
@@ -89,9 +89,9 @@ export const makeUserRepositoryDrizzle = (db: AuthDatabase) => {
       ),
       onSome: (row) => Effect.succeed(userFromRow(row)),
     })),
-    Effect.mapError((error: unknown) => error instanceof UserConflict || error instanceof AuthRepositoryError
-      ? error
-      : conflict(error) ?? repositoryError("createUser", error)),
+    Effect.mapError((cause: unknown) => cause instanceof UserConflict || cause instanceof AuthRepositoryError
+      ? cause
+      : conflict(cause) ?? repositoryError("createUser", cause)),
   ))
   const updateOne = (operation: string, id: User["id"], values: Partial<typeof users.$inferInsert>) =>
     db.update(users).set(values).where(eq(users.id, id)).returning().pipe(
@@ -99,7 +99,7 @@ export const makeUserRepositoryDrizzle = (db: AuthDatabase) => {
         onNone: () => Effect.fail(new UserNotFound({ userId: id })),
         onSome: (row) => Effect.succeed(userFromRow(row)),
       })),
-      Effect.mapError((error: unknown) => error instanceof UserNotFound ? error : repositoryError(operation, error)),
+      Effect.mapError((cause: unknown) => cause instanceof UserNotFound ? cause : repositoryError(operation, cause)),
     )
   return UserRepository.of({
     createPending: create, createGoogleActive: create,
@@ -116,8 +116,8 @@ export const makeUserRepositoryDrizzle = (db: AuthDatabase) => {
       const existing = yield* db.select().from(users).where(eq(users.id, id)).limit(1)
       if (existing[0] === undefined) return yield* new UserNotFound({ userId: id })
       return yield* new InvalidRepositoryState({ entity: "user" })
-    }).pipe(Effect.mapError((error: unknown) => error instanceof UserNotFound || error instanceof InvalidRepositoryState
-      ? error : conflict(error) ?? repositoryError("linkGoogle", error))),
+    }).pipe(Effect.mapError((cause: unknown) => cause instanceof UserNotFound || cause instanceof InvalidRepositoryState
+      ? cause : conflict(cause) ?? repositoryError("linkGoogle", cause))),
     getById: (id) => db.select().from(users).where(eq(users.id, id)).limit(1).pipe(
       Effect.map((rows) => Option.map(first(rows), userFromRow)), Effect.mapError((cause) => repositoryError("getById", cause))),
     listAll: () => db.select().from(users).orderBy(desc(users.createdAt)).pipe(
@@ -130,9 +130,9 @@ export const makeUserRepositoryDrizzle = (db: AuthDatabase) => {
       return yield* existing.length === 0
         ? new UserNotFound({ userId: id })
         : new InvalidRepositoryState({ entity: "user" })
-    }).pipe(Effect.mapError((error: unknown) => error instanceof UserNotFound || error instanceof InvalidRepositoryState
-      ? error
-      : repositoryError("activate", error))),
+    }).pipe(Effect.mapError((cause: unknown) => cause instanceof UserNotFound || cause instanceof InvalidRepositoryState
+      ? cause
+      : repositoryError("activate", cause))),
     disable: (id, disabledAt) => updateOne("disable", id, { status: "disabled", updatedAt: disabledAt }),
     enable: (id, enabledAt) => db.update(users).set({ status: "active", updatedAt: enabledAt }).where(and(
       eq(users.id, id), eq(users.status, "disabled"), isNotNull(users.emailVerifiedAt),
@@ -140,7 +140,7 @@ export const makeUserRepositoryDrizzle = (db: AuthDatabase) => {
       Effect.flatMap((rows) => rows[0] === undefined
         ? Effect.fail(new InvalidRepositoryState({ entity: "user" }))
         : Effect.succeed(userFromRow(rows[0]))),
-      Effect.mapError((error: unknown) => error instanceof InvalidRepositoryState ? error : repositoryError("enable", error)),
+      Effect.mapError((cause: unknown) => cause instanceof InvalidRepositoryState ? cause : repositoryError("enable", cause)),
     ),
     usernameExists: (username) => db.select({ id: users.id }).from(users).where(eq(users.usernameNormalized, username)).limit(1).pipe(
       Effect.map((rows) => rows.length > 0), Effect.mapError((cause) => repositoryError("usernameExists", cause))),
@@ -171,7 +171,7 @@ export const makeAuthChallengeRepositoryDrizzle = (db: AuthDatabase, inTransacti
       onNone: () => Effect.fail(repositoryError("issueChallenge", new Error("insert returned no row"))),
       onSome: (row) => Effect.succeed(challengeFromRow(row)),
     })
-  }))).pipe(Effect.mapError((error: unknown) => error instanceof AuthRepositoryError ? error : repositoryError("issueChallenge", error))),
+  }))).pipe(Effect.mapError((cause: unknown) => cause instanceof AuthRepositoryError ? cause : repositoryError("issueChallenge", cause))),
   findLatest: (userId, purpose, now) => db.select().from(authChallenges).where(and(
     eq(authChallenges.userId, userId), eq(authChallenges.purpose, purpose),
   )).orderBy(desc(authChallenges.createdAt), desc(authChallenges.id)).limit(1).pipe(
@@ -194,7 +194,7 @@ export const makeAuthChallengeRepositoryDrizzle = (db: AuthDatabase, inTransacti
   }).where(eq(authChallenges.id, id)).returning().pipe(
     Effect.flatMap((rows) => Option.match(first(rows), {
       onNone: () => Effect.fail(new AuthChallengeNotFound()), onSome: (row) => Effect.succeed(challengeFromRow(row)),
-    })), Effect.mapError((error: unknown) => error instanceof AuthChallengeNotFound ? error : repositoryError("recordChallengeFailure", error))),
+    })), Effect.mapError((cause: unknown) => cause instanceof AuthChallengeNotFound ? cause : repositoryError("recordChallengeFailure", cause))),
   consume: (id, consumedAt) => Effect.gen(function*() {
     const rows = yield* db.update(authChallenges).set({ consumedAt }).where(and(
       eq(authChallenges.id, id), isNull(authChallenges.consumedAt), gt(authChallenges.expiresAt, consumedAt),
@@ -202,11 +202,11 @@ export const makeAuthChallengeRepositoryDrizzle = (db: AuthDatabase, inTransacti
     )).returning({ id: authChallenges.id })
     if (rows.length > 0) return
     const existing = yield* db.select({ id: authChallenges.id }).from(authChallenges).where(eq(authChallenges.id, id)).limit(1)
-    const error: AuthChallengeNotFound | InvalidRepositoryState = existing.length === 0
+    const cause: AuthChallengeNotFound | InvalidRepositoryState = existing.length === 0
       ? new AuthChallengeNotFound()
       : new InvalidRepositoryState({ entity: "challenge" })
-    return yield* error
-  }).pipe(Effect.mapError((error: unknown) => error instanceof AuthChallengeNotFound || error instanceof InvalidRepositoryState ? error : repositoryError("consumeChallenge", error))),
+    return yield* cause
+  }).pipe(Effect.mapError((cause: unknown) => cause instanceof AuthChallengeNotFound || cause instanceof InvalidRepositoryState ? cause : repositoryError("consumeChallenge", cause))),
   revokePurpose: (userId, purpose, revokedAt) => db.update(authChallenges).set({ consumedAt: revokedAt }).where(and(
     eq(authChallenges.userId, userId), eq(authChallenges.purpose, purpose), isNull(authChallenges.consumedAt),
   )).pipe(Effect.asVoid, Effect.mapError((cause) => repositoryError("revokeChallengePurpose", cause))),

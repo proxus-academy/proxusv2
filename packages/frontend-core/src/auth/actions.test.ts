@@ -23,7 +23,7 @@ const session = Schema.decodeUnknownSync(CurrentSession)({
   expiresAt: "2030-01-01T00:00:00.000Z",
 })
 
-const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
+const json = (cause: unknown, status = 200) => new Response(JSON.stringify(cause), {
   status,
   headers: { "content-type": "application/json" },
 })

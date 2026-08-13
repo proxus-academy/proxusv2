@@ -21,17 +21,17 @@ const causeHasTag = (cause: unknown, tag: string): boolean =>
   typeof cause === "object" && cause !== null && "_tag" in cause &&
     (cause._tag === tag || ("cause" in cause && causeHasTag(cause.cause, tag)))
 
-const errorTag = (error: unknown): string | undefined =>
-  typeof error === "object" && error !== null && "_tag" in error && typeof error._tag === "string"
-    ? error._tag
+const errorTag = (cause: unknown): string | undefined =>
+  typeof cause === "object" && cause !== null && "_tag" in cause && typeof cause._tag === "string"
+    ? cause._tag
     : undefined
 
-const errorResponse = (error: unknown) => {
-  if (causeHasTag(error, "UploadTooLarge")) {
+const errorResponse = (cause: unknown) => {
+  if (causeHasTag(cause, "UploadTooLarge")) {
     return HttpServerResponse.empty({ status: 413 })
   }
 
-  switch (errorTag(error)) {
+  switch (errorTag(cause)) {
     case "ObjectNotFound":
       return HttpServerResponse.empty({ status: 404 })
     case "ObjectAlreadyExists":
@@ -109,8 +109,8 @@ export const httpLayer = (
             : limitBytes(body, claims.maxContentLength, claims.key),
         })
         return HttpServerResponse.empty({ status: 201 })
-      }).pipe(Effect.catchEager((error) =>
-        Effect.succeed(errorResponse(error)))),
+      }).pipe(Effect.catchEager((cause) =>
+        Effect.succeed(errorResponse(cause)))),
     )
 
     const download = (request: HttpServerRequest.HttpServerRequest) =>
@@ -121,8 +121,8 @@ export const httpLayer = (
           contentType: object.contentType,
           contentLength: Number(object.contentLength),
         })
-      }).pipe(Effect.catchEager((error) =>
-        Effect.succeed(errorResponse(error))))
+      }).pipe(Effect.catchEager((cause) =>
+        Effect.succeed(errorResponse(cause))))
 
     yield* router.add("GET", `${transferPath}/download/*`, download)
 
@@ -133,7 +133,7 @@ export const httpLayer = (
           contentLength: Number(object.contentLength),
           headers: { "cache-control": "public, max-age=31536000, immutable" },
         })),
-        Effect.catchEager((error) => Effect.succeed(errorResponse(error))),
+        Effect.catchEager((cause) => Effect.succeed(errorResponse(cause))),
       )
 
     // HttpRouter automatically falls back from HEAD to GET. The Web response

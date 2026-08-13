@@ -21,9 +21,9 @@ describe("product i18n resources", () => {
   })
 
   it("provides the same namespaces in both resources", () => {
-    const paths = (value: unknown, prefix = ""): ReadonlyArray<string> =>
-      typeof value === "object" && value !== null
-        ? Object.entries(value).flatMap(([key, child]) => paths(child, prefix === "" ? key : `${prefix}.${key}`))
+    const paths = (cause: unknown, prefix = ""): ReadonlyArray<string> =>
+      typeof cause === "object" && cause !== null
+        ? Object.entries(cause).flatMap(([key, child]) => paths(child, prefix === "" ? key : `${prefix}.${key}`))
         : [prefix]
     expect(paths(resources.en)).toEqual(paths(resources.es))
   })
