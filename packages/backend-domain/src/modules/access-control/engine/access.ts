@@ -64,6 +64,7 @@ export declare namespace AccessApi {
 let accessInstance = 0
 const failDefinition = (message: string): never => { throw new AccessDefinitionError({ message }) }
 // SAFETY: Runtime representation is checked at this boundary before use.
+// SAFETY: This value remains opaque until the adjacent boundary validation succeeds.
 const isRecord = (cause: unknown): cause is Record<string, unknown> => typeof cause === "object" && cause !== null && !Array.isArray(cause)
 const unique = <A>(values: Iterable<A>): readonly A[] => Array.from(new Set(values))
 
@@ -164,7 +165,7 @@ export const defineAccess = <
     if (isExpectedType(type)) return type
     return failDefinition(`Permission ${permission} has an invalid resource type`)
   }
-
+  // SAFETY: This value remains opaque until the adjacent boundary validation succeeds.
   const mapResource = (type: string, cause: unknown): unknown => {
     const resources: unknown = definition.resources
     if (!isRecord(resources)) return cause

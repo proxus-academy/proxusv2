@@ -17,7 +17,8 @@ const program = <A, E>(effect: Effect.Effect<A, E, LessonPluginRegistry>, candid
     Effect.provide(staticLessonPluginRegistryLayer(host, candidates)),
   )
 
-const manifest = (overrides: Record<string, unknown> = {}) => ({
+type ManifestOverrides = Partial<Omit<typeof lessonCounterManifest, "manifestVersion">> & { readonly manifestVersion?: number }
+const manifest = (overrides: ManifestOverrides = {}) => ({
   ...lessonCounterManifest,
   ...overrides,
 })

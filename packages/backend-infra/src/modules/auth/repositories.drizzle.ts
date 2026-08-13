@@ -45,7 +45,7 @@ const constraintName = (cause: unknown): string => {
     // SAFETY: Runtime representation is checked at this boundary before use.
     if (typeof current !== "object" || current === null || seen.has(current)) continue
     seen.add(current)
-    const record: Record<string, unknown> = Object.fromEntries(Object.entries(current))
+    const record = Object.fromEntries(Object.entries(current))
     // SAFETY: Runtime representation is checked at this boundary before use.
     if (typeof record.constraint === "string") text.push(record.constraint)
     // SAFETY: Runtime representation is checked at this boundary before use.

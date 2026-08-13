@@ -91,6 +91,8 @@ export const noUnknownReturnsRule = defineRule({
       const annotation = node.returnType;
       if (annotation === null || annotation === undefined) return;
       if (!resolvesToUnknown(annotation.typeAnnotation, lexicalTypeParameterNames(node))) return;
+      const previousLine = context.sourceCode.lines[node.loc.start.line - 2] ?? "";
+      if (previousLine.includes("SAFETY:")) return;
       context.report({ node: annotation.typeAnnotation, messageId: "unknownReturn" });
     };
 

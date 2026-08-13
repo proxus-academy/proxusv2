@@ -9,7 +9,7 @@ import { useDesktopViewport } from "../platform/viewport/index.js"
 export const Route = createRootRoute({
   component: RootLayout,
   errorComponent: RouteError,
-  validateSearch: (search): Readonly<Record<string, unknown>> => search,
+  validateSearch: () => ({}),
 })
 
 function RootLayout() {

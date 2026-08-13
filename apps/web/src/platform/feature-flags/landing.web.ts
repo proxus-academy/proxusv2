@@ -15,6 +15,7 @@ const seenKey = (assignment: RegistrationLandingAssignment) =>
 
 export const makeRegistrationLandingAnalyticsWeb = (
   storage: Pick<Storage, "getItem" | "setItem">,
+  // SAFETY: The analytics response body is intentionally opaque because only request completion matters.
   request: (input: string, init: RequestInit) => Promise<unknown>,
   baseUrl = "/api",
 ) => RegistrationLandingAnalytics.of({

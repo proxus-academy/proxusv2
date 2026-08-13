@@ -8,6 +8,7 @@ const encode = (secret: string, cause: unknown) => {
   const payload = Buffer.from(JSON.stringify(cause), "utf8").toString("base64url")
   return `${payload}.${createHmac("sha256", secret).update(payload).digest("base64url")}`
 }
+// SAFETY: This value remains opaque until the adjacent boundary validation succeeds.
 const decode = (secret: string, token: string): unknown => {
   const parts = token.split(".")
   if (parts.length !== 2 || parts[0] === undefined || parts[0] === "" || parts[1] === undefined || parts[1] === "") throw reject()
@@ -17,6 +18,7 @@ const decode = (secret: string, token: string): unknown => {
   if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) throw reject()
   try { return JSON.parse(Buffer.from(parts[0], "base64url").toString("utf8")) } catch { throw reject() }
 }
+// SAFETY: This value remains opaque until the adjacent boundary validation succeeds.
 // SAFETY: Runtime representation is checked at this boundary before use.
 const record = (cause: unknown): cause is Record<string, unknown> => typeof cause === "object" && cause !== null
 

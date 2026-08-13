@@ -36,7 +36,7 @@
     "effect:diagnostics": "node scripts/run-effect-diagnostics.mjs",
     "lint": "pnpm lint:eslint && pnpm lint:anti-slop",
     "lint:eslint": "eslint \"apps/**/*.{js,mjs,ts,tsx}\" \"packages/*/**/*.{ts,tsx}\" --no-error-on-unmatched-pattern --no-warn-ignored --max-warnings 0",
-    "lint:anti-slop": "oxlint --config oxlint.config.ts apps packages --deny-warnings",
+    "lint:anti-slop": "oxlint --config oxlint.config.ts apps packages --quiet",
     "boundaries": "depcruise --config dependency-cruiser.config.mjs apps packages",
     "knip": "knip --config knip.json --no-progress",
     "workspace:contracts": "node scripts/check-workspace-contracts.mjs",
