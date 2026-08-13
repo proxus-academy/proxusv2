@@ -1,0 +1,99 @@
+name: Reconcile previews
+
+on:
+  schedule:
+    - cron: "23 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preview-lifecycle
+  cancel-in-progress: false
+
+env:
+  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  PULUMI_BACKEND_URL: gs://proxus-v2-pulumi-state
+  PULUMI_SECRETS_PROVIDER: gcpkms://projects/proxus-v2/locations/europe-southwest1/keyRings/pulumi-state/cryptoKeys/pulumi-secrets
+
+jobs:
+  authorize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      iac_sha: ${{ steps.policy.outputs.iac_sha }}
+    steps:
+      - name: Authorize only trusted main reconciliation code
+        id: policy
+        env:
+          SOURCE_REF: ${{ github.ref }}
+          IAC_SHA: ${{ github.workflow_sha }}
+        run: |
+          test "$SOURCE_REF" = refs/heads/main
+          [[ "$IAC_SHA" =~ ^[a-f0-9]{40}$ ]]
+          printf 'iac_sha=%s\n' "$IAC_SHA" >> "$GITHUB_OUTPUT"
+
+  reconcile:
+    needs: authorize
+    environment: preview
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: read
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Authenticate as the preview deployer without a key
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_PREVIEW_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_PREVIEW_DEPLOYER_SERVICE_ACCOUNT }}
+          create_credentials_file: true
+      - name: Check out trusted main IaC after authentication
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ needs.authorize.outputs.iac_sha }}
+          path: trusted
+          persist-credentials: false
+      - name: Use pinned Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22.22.2
+      - name: Install frozen dependencies
+        working-directory: trusted
+        run: |
+          npm install --global corepack@0.35.0
+          corepack enable pnpm
+          pnpm install --frozen-lockfile
+      - name: Install pinned Pulumi CLI
+        uses: pulumi/setup-pulumi@b374ceb6168550de27c6eba92e01c1a774040e11 # v2
+        with:
+          pulumi-version: 3.257.0
+      - name: Destroy stacks without a current open labeled pull request
+        working-directory: trusted
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IAC_SHA: ${{ needs.authorize.outputs.iac_sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$IAC_SHA"
+          test -n "$GCP_PROJECT_ID"
+          pulumi login "$PULUMI_BACKEND_URL"
+          stacks_file="$(mktemp)"
+          trap 'rm -f "$stacks_file"' EXIT
+          pulumi --cwd infra/preview stack ls --json > "$stacks_file"
+          mapfile -t stacks < <(jq -r '.[].name | select(test("^pr-[1-9][0-9]{0,5}$"))' "$stacks_file")
+          for stack in "${stacks[@]}"; do
+            pr="${stack#pr-}"
+            pr_json="$(gh api "repos/$GITHUB_REPOSITORY/pulls/$pr")"
+            active="$(jq -r --arg repository "$GITHUB_REPOSITORY" '
+              .state == "open" and
+              .base.ref == "main" and
+              .base.repo.full_name == $repository and
+              .head.repo.full_name == $repository and
+              any(.labels[]?; .name == "deploy-preview")
+            ' <<< "$pr_json")"
+            if [[ "$active" != true ]]; then
+              pnpm infra destroy --pr "$pr"
+            fi
+          done

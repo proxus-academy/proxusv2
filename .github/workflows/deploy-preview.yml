@@ -1,0 +1,395 @@
+name: Deploy preview
+
+on:
+  pull_request_target:
+    types: [labeled, unlabeled, synchronize, reopened, closed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preview-lifecycle
+  cancel-in-progress: false
+
+env:
+  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  GCP_REGION: europe-southwest1
+  PULUMI_BACKEND_URL: gs://proxus-v2-pulumi-state
+  PULUMI_SECRETS_PROVIDER: gcpkms://projects/proxus-v2/locations/europe-southwest1/keyRings/pulumi-state/cryptoKeys/pulumi-secrets
+
+jobs:
+  authorize:
+    permissions:
+      contents: read
+      pull-requests: read
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      mode: ${{ steps.policy.outputs.mode }}
+      sha: ${{ steps.policy.outputs.sha }}
+      iac_sha: ${{ steps.policy.outputs.iac_sha }}
+      pr: ${{ steps.policy.outputs.pr }}
+    steps:
+      - name: Resolve current label state and authorize the exact reviewed commit
+        id: policy
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          IAC_SHA: ${{ github.workflow_sha }}
+        with:
+          script: |
+            const eventPr = context.payload.pull_request
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: eventPr.number,
+            })
+            core.setOutput("pr", String(pr.number))
+            if (!/^[a-f0-9]{40}$/.test(process.env.IAC_SHA ?? "")) {
+              core.setFailed("The trusted main workflow SHA is not immutable.")
+              return
+            }
+            core.setOutput("iac_sha", process.env.IAC_SHA)
+            const labeled = pr.labels.some(({ name }) => name === "deploy-preview")
+            if (pr.state !== "open") {
+              core.setOutput("mode", "destroy")
+              return
+            }
+            if (!labeled) {
+              const removedPreviewLabel = context.payload.action === "unlabeled" &&
+                context.payload.label?.name === "deploy-preview"
+              core.setOutput("mode", removedPreviewLabel ? "destroy" : "none")
+              return
+            }
+            const repository = `${context.repo.owner}/${context.repo.repo}`
+            if (pr.base.ref !== "main" || pr.base.repo.full_name !== repository) {
+              core.setFailed("Preview IaC is authorized only from the main base branch.")
+              return
+            }
+            if (pr.head.repo?.full_name !== repository) {
+              core.setFailed("Previews never build code from forks.")
+              return
+            }
+            if (!/^[a-f0-9]{40}$/.test(pr.head.sha)) {
+              core.setFailed("The PR head is not an immutable commit SHA.")
+              return
+            }
+            const reviews = await github.paginate(github.rest.pulls.listReviews, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100,
+            })
+            const latestByReviewer = new Map()
+            for (const review of reviews) {
+              if (review.user?.login && !new Set(["COMMENTED", "PENDING"]).has(review.state)) {
+                latestByReviewer.set(review.user.login, review)
+              }
+            }
+            const trusted = new Set(["OWNER", "MEMBER", "COLLABORATOR"])
+            const approved = [...latestByReviewer.values()].some((review) =>
+              review.state === "APPROVED" &&
+              review.commit_id === pr.head.sha &&
+              trusted.has(review.author_association)
+            )
+            if (!approved) {
+              core.setFailed("The current preview commit requires a current approval from an owner, member, or collaborator.")
+              return
+            }
+            core.setOutput("sha", pr.head.sha)
+            core.setOutput("mode", "deploy")
+
+  build:
+    needs: authorize
+    if: needs.authorize.outputs.mode == 'deploy'
+    environment: preview
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    outputs:
+      public_image: ${{ steps.images.outputs.public_image }}
+      admin_image: ${{ steps.images.outputs.admin_image }}
+      web_image: ${{ steps.images.outputs.web_image }}
+      admin_web_image: ${{ steps.images.outputs.admin_web_image }}
+    steps:
+      - name: Authenticate as the build submitter without a key
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_PREVIEW_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_BUILD_SUBMITTER_SERVICE_ACCOUNT }}
+          create_credentials_file: true
+      - name: Check out only trusted main IaC after authentication
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ needs.authorize.outputs.iac_sha }}
+          path: trusted
+          persist-credentials: false
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
+      - name: Verify trusted IaC and configurable preview gates
+        working-directory: trusted
+        env:
+          IAC_SHA: ${{ needs.authorize.outputs.iac_sha }}
+          PROVIDER: ${{ vars.GCP_PREVIEW_WORKLOAD_IDENTITY_PROVIDER }}
+          BUILDER: ${{ vars.GCP_BUILD_SUBMITTER_SERVICE_ACCOUNT }}
+          IAP_PRINCIPAL: ${{ vars.IAP_GROUP_PRINCIPAL }}
+          DATABASE_TEMPLATE: ${{ vars.NEON_PREVIEW_DATABASE_SECRET_ID_TEMPLATE }}
+          AUTH_SECRET: ${{ vars.AUTH_SIGNING_SECRET_ID }}
+          OBJECT_SECRET: ${{ vars.OBJECT_STORAGE_SIGNING_SECRET_ID }}
+          ANALYTICS_DATASET: ${{ vars.PRODUCT_ANALYTICS_DATASET }}
+          ANALYTICS_TABLE: ${{ vars.PRODUCT_ANALYTICS_TABLE }}
+          RUNTIME_READY: ${{ vars.APPLICATION_RUNTIME_READY }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$IAC_SHA"
+          for value in "$GCP_PROJECT_ID" "$PROVIDER" "$BUILDER" "$IAP_PRINCIPAL" "$DATABASE_TEMPLATE" "$AUTH_SECRET" "$OBJECT_SECRET" "$ANALYTICS_DATASET" "$ANALYTICS_TABLE"; do
+            test -n "$value"
+          done
+          [[ "$DATABASE_TEMPLATE" == *'{pr}'* ]]
+          test "$RUNTIME_READY" = true
+      - name: Build the exact reviewed commit in least-privilege Cloud Build
+        id: images
+        working-directory: trusted
+        env:
+          SOURCE_SHA: ${{ needs.authorize.outputs.sha }}
+          SOURCE_REVISION: ${{ needs.authorize.outputs.sha }}
+          SOURCE_URL: https://github.com/${{ github.repository }}
+          IMAGE_TAG_SUFFIX: ${{ github.run_id }}-${{ github.run_attempt }}
+        run: infra/scripts/build-images.sh
+
+  verify:
+    needs: [authorize, build]
+    if: needs.authorize.outputs.mode == 'deploy'
+    permissions:
+      contents: read
+      pull-requests: read
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Refuse stale images before obtaining deploy credentials
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          EXPECTED_PR: ${{ needs.authorize.outputs.pr }}
+          EXPECTED_SHA: ${{ needs.authorize.outputs.sha }}
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: Number(process.env.EXPECTED_PR),
+            })
+            const repository = `${context.repo.owner}/${context.repo.repo}`
+            if (
+              pr.state !== "open" ||
+              !pr.labels.some(({ name }) => name === "deploy-preview") ||
+              pr.base.ref !== "main" ||
+              pr.base.repo.full_name !== repository ||
+              pr.head.repo?.full_name !== repository ||
+              pr.head.sha !== process.env.EXPECTED_SHA
+            ) {
+              core.setFailed("The pull request changed while its images were building; refusing a stale deployment.")
+              return
+            }
+            const reviews = await github.paginate(github.rest.pulls.listReviews, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100,
+            })
+            const latestByReviewer = new Map()
+            for (const review of reviews) {
+              if (review.user?.login && !new Set(["COMMENTED", "PENDING"]).has(review.state)) {
+                latestByReviewer.set(review.user.login, review)
+              }
+            }
+            const trusted = new Set(["OWNER", "MEMBER", "COLLABORATOR"])
+            const approved = [...latestByReviewer.values()].some((review) =>
+              review.state === "APPROVED" &&
+              review.commit_id === pr.head.sha &&
+              trusted.has(review.author_association)
+            )
+            if (!approved) core.setFailed("The exact built commit no longer has a current trusted approval.")
+
+  deploy:
+    needs: [authorize, build, verify]
+    if: needs.authorize.outputs.mode == 'deploy'
+    environment: preview
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Authenticate as the preview deployer without a key
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_PREVIEW_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_PREVIEW_DEPLOYER_SERVICE_ACCOUNT }}
+          create_credentials_file: true
+      - name: Check out only trusted main IaC after authentication
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ needs.authorize.outputs.iac_sha }}
+          path: trusted
+          persist-credentials: false
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
+      - name: Use pinned Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22.22.2
+      - name: Verify trusted checkout and immutable image outputs
+        working-directory: trusted
+        env:
+          IAC_SHA: ${{ needs.authorize.outputs.iac_sha }}
+          PUBLIC_IMAGE: ${{ needs.build.outputs.public_image }}
+          ADMIN_IMAGE: ${{ needs.build.outputs.admin_image }}
+          WEB_IMAGE: ${{ needs.build.outputs.web_image }}
+          ADMIN_WEB_IMAGE: ${{ needs.build.outputs.admin_web_image }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$IAC_SHA"
+          for value in "$PUBLIC_IMAGE" "$ADMIN_IMAGE" "$WEB_IMAGE" "$ADMIN_WEB_IMAGE"; do
+            [[ "$value" =~ @sha256:[a-f0-9]{64}$ ]]
+          done
+      - name: Install frozen dependencies
+        working-directory: trusted
+        run: |
+          npm install --global corepack@0.35.0
+          corepack enable pnpm
+          pnpm install --frozen-lockfile
+      - name: Install pinned Pulumi CLI
+        uses: pulumi/setup-pulumi@b374ceb6168550de27c6eba92e01c1a774040e11 # v2
+        with:
+          pulumi-version: 3.257.0
+      - name: Select and configure the PR stack
+        working-directory: trusted
+        env:
+          PR_NUMBER: ${{ needs.authorize.outputs.pr }}
+          PUBLIC_IMAGE: ${{ needs.build.outputs.public_image }}
+          ADMIN_IMAGE: ${{ needs.build.outputs.admin_image }}
+          WEB_IMAGE: ${{ needs.build.outputs.web_image }}
+          ADMIN_WEB_IMAGE: ${{ needs.build.outputs.admin_web_image }}
+          DATABASE_TEMPLATE: ${{ vars.NEON_PREVIEW_DATABASE_SECRET_ID_TEMPLATE }}
+          AUTH_SECRET: ${{ vars.AUTH_SIGNING_SECRET_ID }}
+          OBJECT_SECRET: ${{ vars.OBJECT_STORAGE_SIGNING_SECRET_ID }}
+          IAP_PRINCIPAL: ${{ vars.IAP_GROUP_PRINCIPAL }}
+          ANALYTICS_DATASET: ${{ vars.PRODUCT_ANALYTICS_DATASET }}
+          ANALYTICS_TABLE: ${{ vars.PRODUCT_ANALYTICS_TABLE }}
+        run: |
+          database_secret="${DATABASE_TEMPLATE//\{pr\}/$PR_NUMBER}"
+          pnpm infra outputs --pr "$PR_NUMBER" >/dev/null
+          p="pulumi --cwd infra/preview"
+          stack="pr-$PR_NUMBER"
+          $p config set --stack "$stack" gcp:project "$GCP_PROJECT_ID"
+          $p config set --stack "$stack" gcp:region "$GCP_REGION"
+          $p config set --stack "$stack" prNumber "$PR_NUMBER"
+          $p config set --stack "$stack" publicImage "$PUBLIC_IMAGE"
+          $p config set --stack "$stack" adminImage "$ADMIN_IMAGE"
+          $p config set --stack "$stack" webImage "$WEB_IMAGE"
+          $p config set --stack "$stack" adminWebImage "$ADMIN_WEB_IMAGE"
+          $p config set --stack "$stack" databaseSecretId "$database_secret"
+          $p config set --stack "$stack" authSigningSecretId "$AUTH_SECRET"
+          $p config set --stack "$stack" objectStorageSigningSecretId "$OBJECT_SECRET"
+          $p config set --stack "$stack" iapPrincipal "$IAP_PRINCIPAL"
+          $p config set --stack "$stack" productAnalyticsDataset "$ANALYTICS_DATASET"
+          $p config set --stack "$stack" productAnalyticsTable "$ANALYTICS_TABLE"
+          $p config set --stack "$stack" applicationRuntimeReady true
+          $p config set --stack "$stack" deployServices false
+      - name: Converge migration infrastructure only
+        working-directory: trusted
+        run: pnpm infra deploy --pr "${{ needs.authorize.outputs.pr }}"
+      - name: Run the ordered preview migration job
+        working-directory: trusted
+        env:
+          PR_NUMBER: ${{ needs.authorize.outputs.pr }}
+        run: |
+          job="$(pulumi --cwd infra/preview stack output migrationJobName --stack "pr-$PR_NUMBER")"
+          gcloud run jobs execute "$job" --project "$GCP_PROJECT_ID" --region "$GCP_REGION" --wait
+      - name: Deploy the production composition behind direct IAP
+        working-directory: trusted
+        env:
+          PR_NUMBER: ${{ needs.authorize.outputs.pr }}
+        run: |
+          pulumi --cwd infra/preview config set --stack "pr-$PR_NUMBER" deployServices true
+          pnpm infra deploy --pr "$PR_NUMBER"
+      - name: Read preview URLs
+        id: urls
+        working-directory: trusted
+        env:
+          PR_NUMBER: ${{ needs.authorize.outputs.pr }}
+        run: |
+          printf 'public=%s\n' "$(pulumi --cwd infra/preview stack output publicUrl --stack "pr-$PR_NUMBER")" >> "$GITHUB_OUTPUT"
+          printf 'admin=%s\n' "$(pulumi --cwd infra/preview stack output adminUrl --stack "pr-$PR_NUMBER")" >> "$GITHUB_OUTPUT"
+      - name: Comment on the pull request
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          PUBLIC_URL: ${{ steps.urls.outputs.public }}
+          ADMIN_URL: ${{ steps.urls.outputs.admin }}
+        with:
+          script: |
+            const marker = "<!-- proxus-preview -->"
+            const body = `${marker}\nIAP preview for this reviewed commit:\n\n- Public: ${process.env.PUBLIC_URL}\n- Admin: ${process.env.ADMIN_URL}`
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              per_page: 100,
+            })
+            const previous = comments.find((comment) => comment.body?.includes(marker) && comment.user?.type === "Bot")
+            if (previous) {
+              await github.rest.issues.updateComment({ owner: context.repo.owner, repo: context.repo.repo, comment_id: previous.id, body })
+            } else {
+              await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, body })
+            }
+
+  destroy:
+    needs: authorize
+    if: needs.authorize.outputs.mode == 'destroy'
+    environment: preview
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Authenticate as the preview deployer without a key
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_PREVIEW_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_PREVIEW_DEPLOYER_SERVICE_ACCOUNT }}
+          create_credentials_file: true
+      - name: Check out only trusted main IaC after authentication
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ needs.authorize.outputs.iac_sha }}
+          path: trusted
+          persist-credentials: false
+      - name: Use pinned Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22.22.2
+      - name: Install frozen dependencies
+        working-directory: trusted
+        run: |
+          npm install --global corepack@0.35.0
+          corepack enable pnpm
+          pnpm install --frozen-lockfile
+      - name: Install pinned Pulumi CLI
+        uses: pulumi/setup-pulumi@b374ceb6168550de27c6eba92e01c1a774040e11 # v2
+        with:
+          pulumi-version: 3.257.0
+      - name: Destroy only an existing PR stack
+        working-directory: trusted
+        env:
+          IAC_SHA: ${{ needs.authorize.outputs.iac_sha }}
+          PR_NUMBER: ${{ needs.authorize.outputs.pr }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$IAC_SHA"
+          [[ "$PR_NUMBER" =~ ^[1-9][0-9]{0,5}$ ]]
+          pulumi login "$PULUMI_BACKEND_URL"
+          if pulumi --cwd infra/preview stack select "pr-$PR_NUMBER"; then
+            pnpm infra destroy --pr "$PR_NUMBER"
+          else
+            echo "Preview stack pr-$PR_NUMBER does not exist; nothing to destroy."
+          fi

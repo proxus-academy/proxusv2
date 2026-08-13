@@ -1,0 +1,202 @@
+name: Deploy production
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  GCP_REGION: europe-southwest1
+  PULUMI_BACKEND_URL: gs://proxus-v2-pulumi-state
+  PULUMI_SECRETS_PROVIDER: gcpkms://projects/proxus-v2/locations/europe-southwest1/keyRings/pulumi-state/cryptoKeys/pulumi-secrets
+
+jobs:
+  authorize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      sha: ${{ steps.policy.outputs.sha }}
+    steps:
+      - name: Authorize only the exact main commit carrying this workflow
+        id: policy
+        env:
+          SOURCE_REF: ${{ github.ref }}
+          SOURCE_SHA: ${{ github.sha }}
+          WORKFLOW_SHA: ${{ github.workflow_sha }}
+        run: |
+          test "$SOURCE_REF" = refs/heads/main
+          [[ "$SOURCE_SHA" =~ ^[a-f0-9]{40}$ ]]
+          test "$WORKFLOW_SHA" = "$SOURCE_SHA"
+          printf 'sha=%s\n' "$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: authorize
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    outputs:
+      public_image: ${{ steps.images.outputs.public_image }}
+      admin_image: ${{ steps.images.outputs.admin_image }}
+      web_image: ${{ steps.images.outputs.web_image }}
+      admin_web_image: ${{ steps.images.outputs.admin_web_image }}
+    steps:
+      - name: Authenticate as the build submitter without a key
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_PRODUCTION_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_BUILD_SUBMITTER_SERVICE_ACCOUNT }}
+          create_credentials_file: true
+      - name: Check out the authorized main commit after authentication
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ needs.authorize.outputs.sha }}
+          path: trusted
+          persist-credentials: false
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
+      - name: Verify trusted checkout and build configuration
+        working-directory: trusted
+        env:
+          SOURCE_SHA: ${{ needs.authorize.outputs.sha }}
+          PROVIDER: ${{ vars.GCP_PRODUCTION_WORKLOAD_IDENTITY_PROVIDER }}
+          BUILDER: ${{ vars.GCP_BUILD_SUBMITTER_SERVICE_ACCOUNT }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          for value in "$GCP_PROJECT_ID" "$PROVIDER" "$BUILDER"; do
+            test -n "$value"
+          done
+      - name: Build and publish four immutable images in Cloud Build
+        id: images
+        working-directory: trusted
+        env:
+          SOURCE_SHA: ${{ needs.authorize.outputs.sha }}
+          SOURCE_REVISION: ${{ needs.authorize.outputs.sha }}
+          SOURCE_URL: https://github.com/${{ github.repository }}
+          IMAGE_TAG_SUFFIX: ${{ github.run_id }}-${{ github.run_attempt }}
+        run: infra/scripts/build-images.sh
+
+  deploy:
+    needs: [authorize, build]
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Authenticate as the production deployer without a key
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_PRODUCTION_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_PRODUCTION_DEPLOYER_SERVICE_ACCOUNT }}
+          create_credentials_file: true
+      - name: Check out the authorized main commit after authentication
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ needs.authorize.outputs.sha }}
+          path: trusted
+          persist-credentials: false
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
+      - name: Use pinned Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22.22.2
+      - name: Verify deployment gates and immutable image outputs
+        working-directory: trusted
+        env:
+          SOURCE_SHA: ${{ needs.authorize.outputs.sha }}
+          PROVIDER: ${{ vars.GCP_PRODUCTION_WORKLOAD_IDENTITY_PROVIDER }}
+          DEPLOYER: ${{ vars.GCP_PRODUCTION_DEPLOYER_SERVICE_ACCOUNT }}
+          DOMAIN: ${{ vars.PRODUCTION_DOMAIN }}
+          IAP_PRINCIPAL: ${{ vars.IAP_GROUP_PRINCIPAL }}
+          DATABASE_SECRET: ${{ vars.NEON_PRODUCTION_DATABASE_SECRET_ID }}
+          AUTH_SECRET: ${{ vars.AUTH_SIGNING_SECRET_ID }}
+          OBJECT_SECRET: ${{ vars.OBJECT_STORAGE_SIGNING_SECRET_ID }}
+          WEBSITE_BUCKET: ${{ vars.PRODUCTION_WEBSITE_BUCKET }}
+          ANALYTICS_DATASET: ${{ vars.PRODUCT_ANALYTICS_DATASET }}
+          ANALYTICS_TABLE: ${{ vars.PRODUCT_ANALYTICS_TABLE }}
+          RUNTIME_READY: ${{ vars.APPLICATION_RUNTIME_READY }}
+          PUBLIC_IMAGE: ${{ needs.build.outputs.public_image }}
+          ADMIN_IMAGE: ${{ needs.build.outputs.admin_image }}
+          WEB_IMAGE: ${{ needs.build.outputs.web_image }}
+          ADMIN_WEB_IMAGE: ${{ needs.build.outputs.admin_web_image }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          for value in "$GCP_PROJECT_ID" "$PROVIDER" "$DEPLOYER" "$DOMAIN" "$IAP_PRINCIPAL" "$DATABASE_SECRET" "$AUTH_SECRET" "$OBJECT_SECRET" "$WEBSITE_BUCKET" "$ANALYTICS_DATASET" "$ANALYTICS_TABLE" "$PUBLIC_IMAGE" "$ADMIN_IMAGE" "$WEB_IMAGE" "$ADMIN_WEB_IMAGE"; do
+            test -n "$value"
+          done
+          test "$RUNTIME_READY" = true
+      - name: Install frozen dependencies
+        working-directory: trusted
+        run: |
+          npm install --global corepack@0.35.0
+          corepack enable pnpm
+          pnpm install --frozen-lockfile
+      - name: Install pinned Pulumi CLI
+        uses: pulumi/setup-pulumi@b374ceb6168550de27c6eba92e01c1a774040e11 # v2
+        with:
+          pulumi-version: 3.257.0
+      - name: Select and configure the production stack
+        working-directory: trusted
+        env:
+          PUBLIC_IMAGE: ${{ needs.build.outputs.public_image }}
+          ADMIN_IMAGE: ${{ needs.build.outputs.admin_image }}
+          ADMIN_WEB_IMAGE: ${{ needs.build.outputs.admin_web_image }}
+          DATABASE_SECRET: ${{ vars.NEON_PRODUCTION_DATABASE_SECRET_ID }}
+          AUTH_SECRET: ${{ vars.AUTH_SIGNING_SECRET_ID }}
+          OBJECT_SECRET: ${{ vars.OBJECT_STORAGE_SIGNING_SECRET_ID }}
+          DOMAIN: ${{ vars.PRODUCTION_DOMAIN }}
+          IAP_PRINCIPAL: ${{ vars.IAP_GROUP_PRINCIPAL }}
+          WEBSITE_BUCKET: ${{ vars.PRODUCTION_WEBSITE_BUCKET }}
+          ANALYTICS_DATASET: ${{ vars.PRODUCT_ANALYTICS_DATASET }}
+          ANALYTICS_TABLE: ${{ vars.PRODUCT_ANALYTICS_TABLE }}
+        run: |
+          pnpm infra outputs --environment production >/dev/null
+          p="pulumi --cwd infra/production"
+          $p config set --stack production gcp:project "$GCP_PROJECT_ID"
+          $p config set --stack production gcp:region "$GCP_REGION"
+          $p config set --stack production publicImage "$PUBLIC_IMAGE"
+          $p config set --stack production adminImage "$ADMIN_IMAGE"
+          $p config set --stack production adminWebImage "$ADMIN_WEB_IMAGE"
+          $p config set --stack production databaseSecretId "$DATABASE_SECRET"
+          $p config set --stack production authSigningSecretId "$AUTH_SECRET"
+          $p config set --stack production objectStorageSigningSecretId "$OBJECT_SECRET"
+          $p config set --stack production domain "$DOMAIN"
+          $p config set --stack production iapPrincipal "$IAP_PRINCIPAL"
+          $p config set --stack production websiteBucketName "$WEBSITE_BUCKET"
+          $p config set --stack production productAnalyticsDataset "$ANALYTICS_DATASET"
+          $p config set --stack production productAnalyticsTable "$ANALYTICS_TABLE"
+          $p config set --stack production applicationRuntimeReady true
+          $p config set --stack production deployServices false
+      - name: Converge migration infrastructure only
+        working-directory: trusted
+        run: pnpm infra deploy --environment production
+      - name: Run the ordered database migration job
+        working-directory: trusted
+        run: |
+          job="$(pulumi --cwd infra/production stack output migrationJobName --stack production)"
+          gcloud run jobs execute "$job" --project "$GCP_PROJECT_ID" --region "$GCP_REGION" --wait
+      - name: Extract the web artifact from its immutable image
+        working-directory: trusted
+        env:
+          WEB_IMAGE: ${{ needs.build.outputs.web_image }}
+          OUTPUT_DIRECTORY: ${{ github.workspace }}/trusted/artifacts/production-web
+        run: infra/scripts/extract-web-artifact.sh
+      - name: Deploy application services and private static CDN
+        working-directory: trusted
+        run: |
+          pulumi --cwd infra/production config set --stack production webDistPath "$GITHUB_WORKSPACE/trusted/artifacts/production-web"
+          pulumi --cwd infra/production config set --stack production deployServices true
+          pnpm infra deploy --environment production

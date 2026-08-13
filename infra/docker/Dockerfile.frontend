@@ -1,0 +1,37 @@
+# syntax=docker/dockerfile:1
+FROM node:22.22.2-bookworm-slim@sha256:9f6d5975c7dca860947d3915877f85607946403fc55349f39b4bc3688448bb6e AS build
+ARG APP
+ARG SOURCE_SHA
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+WORKDIR /workspace
+RUN test "$APP" = web -o "$APP" = admin
+RUN test -n "$SOURCE_SHA"
+RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json turbo.json ./
+COPY apps/admin/package.json apps/admin/package.json
+COPY apps/web/package.json apps/web/package.json
+COPY packages/frontend-core/package.json packages/frontend-core/package.json
+COPY packages/product-messages/package.json packages/product-messages/package.json
+COPY packages/shared/package.json packages/shared/package.json
+COPY packages/ui/package.json packages/ui/package.json
+RUN pnpm install --frozen-lockfile --ignore-scripts
+COPY apps/admin apps/admin
+COPY apps/web apps/web
+COPY packages/frontend-core packages/frontend-core
+COPY packages/product-messages packages/product-messages
+COPY packages/shared packages/shared
+COPY packages/ui packages/ui
+RUN pnpm --filter "@proxus/$APP" build
+
+FROM node:22.22.2-bookworm-slim@sha256:9f6d5975c7dca860947d3915877f85607946403fc55349f39b4bc3688448bb6e
+ARG APP
+ARG SOURCE_SHA
+ENV NODE_ENV=production
+LABEL org.opencontainers.image.revision=$SOURCE_SHA
+WORKDIR /app
+COPY --from=build --chown=node:node /workspace/apps/${APP}/dist /app/public
+COPY --chown=node:node infra/src/build/static-server.mjs /app/server.mjs
+USER node
+EXPOSE 8080
+CMD ["node", "/app/server.mjs"]

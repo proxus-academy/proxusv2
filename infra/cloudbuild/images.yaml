@@ -1,0 +1,48 @@
+steps:
+  - id: public-backend
+    name: gcr.io/cloud-builders/docker@sha256:661e95acd923514f71f47ce7b390e06a8d31b15febecf772e506babf62960528
+    args:
+      - build
+      - --file=infra/docker/Dockerfile.backend
+      - --target=server
+      - --build-arg=SOURCE_SHA=${_SOURCE_SHA}
+      - --tag=${_IMAGE_PREFIX}/proxus-server:${_IMAGE_TAG}
+      - .
+  - id: admin-backend
+    name: gcr.io/cloud-builders/docker@sha256:661e95acd923514f71f47ce7b390e06a8d31b15febecf772e506babf62960528
+    args:
+      - build
+      - --file=infra/docker/Dockerfile.backend
+      - --target=admin-server
+      - --build-arg=SOURCE_SHA=${_SOURCE_SHA}
+      - --tag=${_IMAGE_PREFIX}/proxus-admin-server:${_IMAGE_TAG}
+      - .
+  - id: public-web
+    name: gcr.io/cloud-builders/docker@sha256:661e95acd923514f71f47ce7b390e06a8d31b15febecf772e506babf62960528
+    args:
+      - build
+      - --file=infra/docker/Dockerfile.frontend
+      - --build-arg=APP=web
+      - --build-arg=SOURCE_SHA=${_SOURCE_SHA}
+      - --tag=${_IMAGE_PREFIX}/proxus-web:${_IMAGE_TAG}
+      - .
+  - id: admin-web
+    name: gcr.io/cloud-builders/docker@sha256:661e95acd923514f71f47ce7b390e06a8d31b15febecf772e506babf62960528
+    args:
+      - build
+      - --file=infra/docker/Dockerfile.frontend
+      - --build-arg=APP=admin
+      - --build-arg=SOURCE_SHA=${_SOURCE_SHA}
+      - --tag=${_IMAGE_PREFIX}/proxus-admin-web:${_IMAGE_TAG}
+      - .
+images:
+  - ${_IMAGE_PREFIX}/proxus-server:${_IMAGE_TAG}
+  - ${_IMAGE_PREFIX}/proxus-admin-server:${_IMAGE_TAG}
+  - ${_IMAGE_PREFIX}/proxus-web:${_IMAGE_TAG}
+  - ${_IMAGE_PREFIX}/proxus-admin-web:${_IMAGE_TAG}
+serviceAccount: projects/${PROJECT_ID}/serviceAccounts/proxus-cloud-build@${PROJECT_ID}.iam.gserviceaccount.com
+options:
+  dynamicSubstitutions: true
+  logging: CLOUD_LOGGING_ONLY
+  machineType: E2_HIGHCPU_8
+timeout: 1800s
