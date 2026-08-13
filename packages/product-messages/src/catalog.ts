@@ -63,9 +63,9 @@ const es = {
   errors: { unexpected: "Ha ocurrido un error inesperado.", unavailable: "El servicio no está disponible. Inténtalo de nuevo.", studyCatalog: { nodeNotFound: "No se encontró el elemento solicitado.", edgeNotFound: "No se encontró la relación solicitada." } },
 } as const
 
-type ResourceShape<Value> = Value extends string
+type ResourceMessages<Value> = Value extends string
   ? string
-  : { readonly [Key in keyof Value]: ResourceShape<Value[Key]> }
+  : { readonly [Key in keyof Value]: ResourceMessages<Value[Key]> }
 
 const en = {
   language: { label: "Language", spanish: "Español", english: "English", device: "Use device language" },
@@ -120,7 +120,7 @@ const en = {
     download: { title: "Proxus is designed for your computer", description: "We're preparing the mobile apps. In the meantime, open this link on a screen at least 1024 pixels wide." },
   },
   errors: { unexpected: "Something went wrong.", unavailable: "The service is unavailable. Please try again.", studyCatalog: { nodeNotFound: "The requested item could not be found.", edgeNotFound: "The requested relationship could not be found." } },
-} satisfies ResourceShape<typeof es>
+} satisfies ResourceMessages<typeof es>
 
 export const resources = { es, en } as const
 export type ProductNamespace = keyof typeof es

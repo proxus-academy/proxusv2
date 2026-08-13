@@ -1,6 +1,6 @@
 import { Context, Data, Effect, Layer, Ref } from "effect"
 import { Access, type AccessPermission, type AccessRole, type AccessScopeType } from "./access.js"
-import { Forbidden, RoleStoreError, type Resource, type RoleQuery, type RoleStoreShape, type Scope, type Subject } from "./engine/index.js"
+import { Forbidden, RoleStoreError, type Resource, type RoleQuery, type RoleStoreDefinition, type Scope, type Subject } from "./engine/index.js"
 
 export interface RoleAssignment {
   readonly userId: string
@@ -39,14 +39,14 @@ const validScope = (role: AccessRole, scope: Scope<AccessScopeType>): boolean =>
 const isGlobalAdmin = (assignment: Pick<RoleAssignment, "role" | "scope">) =>
   assignment.role === "admin" && assignment.scope.type === globalScope.type && assignment.scope.id === globalScope.id
 
-export interface AccessControlServiceShape {
+export interface AccessControlOperations {
   readonly requireAdministrator: (subject: Subject) => Effect.Effect<void, Forbidden | RoleStoreError>
   readonly capabilities: (subject: Subject, resource?: Resource<AccessScopeType>) => Effect.Effect<ReadonlySet<AccessPermission>, RoleStoreError>
   readonly require: (subject: Subject, permission: AccessPermission, resource: Resource<AccessScopeType>) => Effect.Effect<void, Forbidden | RoleStoreError>
   readonly grantRole: (actor: Subject, assignment: Omit<RoleAssignment, "grantedBy" | "grantedAt">, grantedAt: Date) => Effect.Effect<void, Forbidden | RoleStoreError | InvalidRoleScope | DuplicateRoleAssignment | RoleAssignmentStoreError>
   readonly revokeRole: (actor: Subject, assignment: Pick<RoleAssignment, "userId" | "role" | "scope">) => Effect.Effect<void, Forbidden | RoleStoreError | InvalidRoleScope | LastAdministrator | RoleAssignmentNotFound | RoleAssignmentStoreError>
 }
-export class AccessControlService extends Context.Service<AccessControlService, AccessControlServiceShape>()("@proxus/backend-domain/modules/access-control/service/AccessControlService") {}
+export class AccessControlService extends Context.Service<AccessControlService, AccessControlOperations>()("@proxus/backend-domain/modules/access-control/service/AccessControlService") {}
 
 const adminResource = Access.resource("studyCatalog", "global")
 // The canonical engine deliberately accepts adapter-owned failures as unknown and normalizes them here.
@@ -61,7 +61,7 @@ const requireAdministrator = (actor: Subject) => Effect.gen(function* () {
 
 export const AccessControlServiceLive = Layer.effect(AccessControlService, Effect.gen(function* () {
   const repository = yield* RoleAssignmentsRepository
-  const roleStore: RoleStoreShape<AccessRole, AccessScopeType, RoleStoreError> = {
+  const roleStore: RoleStoreDefinition<AccessRole, AccessScopeType, RoleStoreError> = {
     getRoles: (query) => repository.getRoles(query).pipe(Effect.mapError((cause) => new RoleStoreError({ message: "RoleStore failed", cause })))
   }
   const withStore = <A, E, R>(effect: Effect.Effect<A, E, R | typeof Access.RoleStore.Identifier>) =>

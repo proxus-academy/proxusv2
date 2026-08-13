@@ -10,7 +10,7 @@ import { makeAccessSchemas } from "./schema.js"
 import { guard, all, any, toBool, type Policy } from "./policy.js"
 import type {
   PermissionConfig, PermissionOf, Resource, ResourceInput, ResourceMappers,
-  ResourceTypeOf, ResourceTypeOfPermission, RoleBinding, RoleConfig, RoleOf, RoleStoreShape, Scope, Subject
+  ResourceTypeOf, ResourceTypeOfPermission, RoleBinding, RoleConfig, RoleOf, RoleStoreDefinition, Scope, Subject
 } from "./types.js"
 
 export interface AccessDefinition<
@@ -34,14 +34,14 @@ export interface AccessApi<
   readonly roles: { readonly config: Roles; readonly all: ReadonlySet<RoleOf<Roles>>; readonly has: (value: string) => value is RoleOf<Roles> }
   readonly schemas: ReturnType<typeof makeAccessSchemas<Permissions, Roles>>
   readonly CurrentSubject: Context.Service<AccessApi.CurrentSubject<Permissions, Roles>, Subject>
-  readonly RoleStore: Context.Service<AccessApi.RoleStore<Permissions, Roles>, RoleStoreShape<string, ResourceTypeOf<Permissions>, unknown>>
+  readonly RoleStore: Context.Service<AccessApi.RoleStore<Permissions, Roles>, RoleStoreDefinition<string, ResourceTypeOf<Permissions>, unknown>>
   readonly subject: typeof makeSubject
   readonly scope: <const Type extends ResourceTypeOf<Permissions>, const Id extends string>(type: Type, id: Id) => Scope<Type, Id>
   readonly resource: <const Type extends ResourceTypeOf<Permissions>, const Id extends string>(type: Type, id: Id, options?: { readonly scopes?: readonly Scope<ResourceTypeOf<Permissions>>[] }) => Resource<Type, Id>
   readonly toResource: <const P extends PermissionOf<Permissions>>(permission: P, input: ResourceInput<Resources, ResourceTypeOf<Permissions>, P>) => Resource<Extract<ResourceTypeOfPermission<P>, ResourceTypeOf<Permissions>>>
   readonly effectiveScopes: typeof effectiveScopes
   readonly roleBinding: (input: { readonly subject: Subject; readonly scope: Scope<ResourceTypeOf<Permissions>>; readonly role: string }) => RoleBinding<RoleOf<Roles>, ResourceTypeOf<Permissions>>
-  readonly makeRoleStore: (bindings: Iterable<RoleBinding<RoleOf<Roles>, ResourceTypeOf<Permissions>>>) => RoleStoreShape<RoleOf<Roles>, ResourceTypeOf<Permissions>>
+  readonly makeRoleStore: (bindings: Iterable<RoleBinding<RoleOf<Roles>, ResourceTypeOf<Permissions>>>) => RoleStoreDefinition<RoleOf<Roles>, ResourceTypeOf<Permissions>>
   readonly permissionsForRoles: (roles: Iterable<RoleOf<Roles>>) => ReadonlySet<PermissionOf<Permissions>>
   readonly can: <const P extends PermissionOf<Permissions>>(permission: P, input: ResourceInput<Resources, ResourceTypeOf<Permissions>, P>) => Effect.Effect<boolean, RoleStoreError, AccessApi.CurrentSubject<Permissions, Roles> | AccessApi.RoleStore<Permissions, Roles>>
   readonly canFor: (permission: PermissionOf<Permissions>, input: { readonly subject: Subject; readonly resource: Resource<ResourceTypeOf<Permissions>> }) => Effect.Effect<boolean, RoleStoreError, AccessApi.RoleStore<Permissions, Roles>>
@@ -127,7 +127,7 @@ export const defineAccess = <
 
   const id = ++accessInstance
   class CurrentSubject extends Context.Service<AccessApi.CurrentSubject<Permissions, Roles>, Subject>()(`effect-access/CurrentSubject/${id}`) {}
-  class RoleStore extends Context.Service<AccessApi.RoleStore<Permissions, Roles>, RoleStoreShape<string, ScopeType, unknown>>()(`effect-access/RoleStore/${id}`) {}
+  class RoleStore extends Context.Service<AccessApi.RoleStore<Permissions, Roles>, RoleStoreDefinition<string, ScopeType, unknown>>()(`effect-access/RoleStore/${id}`) {}
   const roleSet = new Set<Role>(roleValues)
   const schemas = makeAccessSchemas(definition)
 
@@ -179,7 +179,7 @@ export const defineAccess = <
     return { ...input, role: input.role }
   }
 
-  const makeRoleStore = (bindings: Iterable<RoleBinding<Role, ScopeType>>): RoleStoreShape<Role, ScopeType> => {
+  const makeRoleStore = (bindings: Iterable<RoleBinding<Role, ScopeType>>): RoleStoreDefinition<Role, ScopeType> => {
     const normalized = new Map<string, RoleBinding<Role, ScopeType>>()
     for (const binding of bindings) {
       roleBinding(binding)
@@ -202,7 +202,7 @@ export const defineAccess = <
 
   // `unknown` is the adapter-owned RoleStore error before normalization at this seam.
   // @effect-diagnostics anyUnknownInErrorContext:off
-  const normalizedRoles = (store: RoleStoreShape<string, ScopeType, unknown>, query: { readonly subject: Subject; readonly scopes: readonly Scope<ScopeType>[] }) =>
+  const normalizedRoles = (store: RoleStoreDefinition<string, ScopeType, unknown>, query: { readonly subject: Subject; readonly scopes: readonly Scope<ScopeType>[] }) =>
     Effect.flatMap(
       Effect.try({ try: () => store.getRoles(query), catch: (cause) => new RoleStoreError({ message: "RoleStore threw", cause }) }),
       (request) => Effect.flatMap(
