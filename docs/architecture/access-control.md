@@ -49,9 +49,11 @@ Todas las rutas de `AdminApi` protegidas resuelven la misma sesión opaca que la
 
 `GET /admin/access-control/capabilities` devuelve permisos efectivos. `POST /admin/access-control/roles` concede y `DELETE /admin/access-control/roles` revoca; ambas operaciones requieren administrador global. La UI consume capabilities para presentar controles y falla cerrada si no puede cargarlas, pero cada mutación vuelve a autorizarse en backend.
 
-## Persistencia y procesos
+## Persistencia, procesos y borde cloud
 
-La sesión y las asignaciones deben proceder de la misma base lógica para las APIs pública y administrativa. En desarrollo, `apps/dev-server` monta ambas en un único proceso sobre una sola PGlite y siembra fixtures QA de forma idempotente. Dos procesos no abren el mismo directorio PGlite. En producción, los servidores separados comparten PostgreSQL 17.
+La sesión y las asignaciones deben proceder de la misma base lógica para las APIs pública y administrativa. En desarrollo, `apps/dev-server` monta ambas en un único proceso sobre una sola PGlite y siembra fixtures QA de forma idempotente. Dos procesos no abren el mismo directorio PGlite. Los entrypoints production separados usan PostgreSQL mediante `DATABASE_URL`; la IaC cloud referencia un secreto de PostgreSQL externo y no incluye `dev-server` ni PGlite.
+
+El Admin cloud declarado añade IAP directo de Cloud Run como defensa de plataforma y concede acceso a un grupo configurable. IAP decide quién alcanza el servicio; no sustituye `CurrentSubject`, roles, scopes ni capabilities. La integración actual no convierte headers IAP en autoridad de producto: cada ruta protegida sigue exigiendo la sesión opaca y autorización backend. El runtime aún no ha sido desplegado, por lo que no hay evidencia de smoke IAP/RBAC en cloud.
 
 ## Amenazas y controles
 

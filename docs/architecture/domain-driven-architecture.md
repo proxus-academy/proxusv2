@@ -1,8 +1,10 @@
 # Arquitectura de dominio de Proxus
 
 > **Estado:** normativa de arquitectura
-> **Alcance:** backend Effect, contratos compartidos y procesos ejecutables  
-> **Última revisión:** 2026-07-21
+>
+> **Alcance:** backend Effect, contratos compartidos y procesos ejecutables
+>
+> **Última revisión:** 2026-08-13
 
 ## Organización
 
@@ -146,13 +148,19 @@ Email y Google son puertos requeridos por Domain. Desarrollo usa adapters consol
 
 ## Frontend
 
-Los clientes públicos se generan desde `PublicApi`. Admin compone un cliente `AdminApi` para mutaciones/consultas administrativas y otro `PublicApi` para lecturas públicas, con URLs distintas. Feature Flags se lee únicamente mediante el port `FeatureFlagDistribution` y el `snapshotAtom` creado por `makeFeatureFlagSnapshotModule`; su `lifecycleAtom` hace polling scoped en la raíz de cada aplicación y el adapter web usa el cliente HTTP tipado y la caché condicional del navegador. El flujo es:
+Los clientes públicos se generan desde `PublicApi`. Admin compone un cliente `AdminApi` para mutaciones/consultas administrativas y otro `PublicApi` para lecturas públicas. En local pueden usar URLs distintas; la composición cloud declarada coloca ambos backends como sidecars del frontend administrativo, mientras la web production sirve `/api` por load balancer hacia la API pública. Ese hosting no fusiona contratos ni composition roots backend. Feature Flags se lee únicamente mediante el port `FeatureFlagDistribution` y el `snapshotAtom` creado por `makeFeatureFlagSnapshotModule`; su `lifecycleAtom` hace polling scoped en la raíz de cada aplicación y el adapter web usa el cliente HTTP tipado y la caché condicional del navegador. El flujo es:
 
 ```text
 view → atom → application client o platform port → adapter
 ```
 
 La lógica neutral vive en `frontend-core`; `apps/web` posee sus adapters de navegador y compone runtime, pantallas y rutas. El contrato de rutas del producto público vive en `@proxus/frontend-core/public-product`: web y futuros clientes nativos comparten destinos y flujo salvo una diferencia de producto explícita. Un futuro cliente nativo seleccionará adapters propios de navegación, almacenamiento y HTTP; no dependerá de internals de Web. Consulta `docs/webapp-architecture.md` y `docs/effect/90_react_and_effect_atom.md`.
+
+## Límite de infraestructura cloud
+
+`infra` es un workspace técnico, no un bounded context ni una capa del flujo de dominio. Declara foundation, production y previews GCP, pero no importa ni ejecuta reglas de producto. Los builds backend seleccionan los entrypoints productivos de `apps/server` y `apps/admin-server`, que usan PostgreSQL; `apps/dev-server` y PGlite quedan fuera de las imágenes. Cloud Build construye/publica cuatro imágenes y Pulumi las consume por digest. El hosting administrativo multi-container no autoriza a saltarse servicios: cada API conserva `handler → service → port → adapter`.
+
+La IaC solo referencia IDs de Secret Manager para PostgreSQL externo y otros secretos; no posee Neon ni sus valores. Consulta [`../infrastructure/gcp-pulumi.md`](../infrastructure/gcp-pulumi.md) para el estado real: solo foundation está provisionado y los runtimes siguen pendientes.
 
 ## Testing
 

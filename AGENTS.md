@@ -43,7 +43,8 @@ La referencia upstream de Effect está en `.repos/effect-smol`. Las referencias 
 - No copies mecánicamente el módulo más cercano: úsalo para localizar puntos de integración y valida el diseño contra `docs/*`.
 - Cuando cambien arquitectura, API, persistencia, estrategia de pruebas o límites de módulo, actualiza la documentación relevante en el mismo cambio.
 - Evita mezclar refactors amplios, formateo masivo y cambios funcionales no relacionados.
-- En cloud no uses claves JSON, `allUsers`, secretos en state/config o código PR no confiable con credenciales. Cloud Build construye/publica y Pulumi despliega por digest.
+- En cloud no uses claves JSON, principals públicos, secretos en state/config o código PR no confiable con credenciales. Cloud Build solo construye/publica las cuatro imágenes y Pulumi despliega por digest desde IaC confiable de `main`.
+- No confundas IaC declarada o tests con recursos provisionados: solo foundation se ha aplicado (48 recursos sin cambios en su preview posterior); production/previews y sus gates manuales siguen pendientes según el runbook.
 
 ## Arquitectura backend
 
@@ -161,7 +162,7 @@ pnpm test
 pnpm build
 ```
 
-`pnpm static` incluye diagnostics de Effect para los 13 proyectos TypeScript del workspace (también sus configs TS), typecheck, ESLint type-aware, dependency-cruiser, Knip y contratos de packages. No existe baseline de hallazgos aceptados ni deben añadirse allowlists para ocultarlos. `pnpm validate:pr` ejecuta el self-test, `static`, los tests Vitest/PGlite implementados y los builds.
+`pnpm static` incluye diagnostics de Effect para los 15 proyectos TypeScript del workspace, incluida la IaC y sus configs, typecheck, ESLint type-aware, dependency-cruiser, Knip y contratos de packages. No existe baseline de hallazgos aceptados ni deben añadirse allowlists para ocultarlos. `pnpm validate:pr` ejecuta el self-test, `static`, los tests Vitest/PGlite implementados y los builds.
 
 `pnpm check` conserva el atajo histórico `typecheck` + `build`; no incluye tests ni el resto de validadores estáticos. `check`, `static` y `validate:pr` no requieren PostgreSQL ni Docker; el workflow añade un job separado con PostgreSQL 17 que ejecuta migraciones y `@proxus/backend-infra test:postgres` como gate real mínimo. Los journeys de browser siguen pendientes y no son un gate. Consulta `docs/testing.md` antes de describir la cobertura real.
 

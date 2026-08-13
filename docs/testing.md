@@ -177,11 +177,15 @@ un proceso vacío.
 
 ### Infrastructure as code
 
-`infra/src/**/*.test.ts` cubre invariantes puras de política y configuración; TypeScript valida el programa Pulumi de foundation. Estas comprobaciones no contactan GCP. Un `pulumi preview --diff` real es obligatorio antes de aplicar y pertenece a la operación de infraestructura, no al gate determinista de PR. Foundation es el único stack aprobado para apply en esta fase.
+`infra/src/**/*.test.ts` cubre validación de configuración e inspecciona con mocks los grafos Pulumi de production/preview: región, referencia DIY exacta a foundation, migración antes de servicios, IAP sin principals públicos, límites de instancias y bucket web privado/CDN. TypeScript valida los tres programas Pulumi. Son pruebas de programa; no contactan GCP, Neon, Secret Manager, IAP ni Cloud Build y no demuestran que un recurso exista.
+
+Los Dockerfiles añaden comprobaciones de build —incluida la ausencia de PGlite/dev-server en bundles backend— y `build-images.sh` comprueba provenance/digests cuando Cloud Build se ejecuta. Esas comprobaciones no forman parte de Vitest ni acreditan una imagen si no se ha ejecutado el build remoto.
+
+Antes de cualquier apply es obligatorio un `pulumi preview --diff` real y revisado. Solo foundation se ha aplicado; el preview posterior registrado mostró 48 recursos sin cambios. Production y `pr-<number>` no se han aplicado ni probado mediante smoke tests cloud. Siguen pendientes adapters email/Google, configuración externa Neon/Secret Manager/analytics, DNS, privilegios DML/DDL separados, lifecycle de datos preview y journeys autenticados IAP/CDN/Cloud Run.
 
 ## Current CI gates and pending suites
 
-The current `.github/workflows/validate.yml` has two independent required jobs.
+The current `.github/workflows/validate.yml` has two independent required jobs. The deployment workflows are lifecycle automation, not additional validation coverage: their cloud paths run only when their authorization and configuration gates are met, and production/preview have not been executed as evidence for this baseline.
 After a frozen install, `validate` runs `pnpm validate:pr`, which performs:
 
 1. validator self-tests;
@@ -232,7 +236,7 @@ repeated race tests and additional PostgreSQL versions.
 The checks have no generated allowlist or accepted-violation baseline:
 
 - `effect:diagnostics` obtains the workspace inventory from `pnpm list -r`, sorts
-  every discovered `tsconfig.json`, and checks all 15 projects, incluida la IaC TypeScript. The wrapper also
+  every discovered `tsconfig.json`, and checks all 15 projects, including the TypeScript IaC. The wrapper also
   accepts `--root` and a JSON `--inventory` for isolated probes. It passes the
   root Effect Language Service configuration explicitly, so a leaf `plugins`
   override cannot silently reduce coverage. Workspace tsconfigs include their

@@ -1,29 +1,34 @@
 # Separación de APIs y despliegue con Pulumi
 
-> **Estado:** propuesta para revisión adversarial  
-> **Alcance:** backend, contratos HTTP, seguridad administrativa, infraestructura y entornos  
+> **Estado:** aceptada parcialmente; backend e IaC implementados, runtimes cloud pendientes de gates
+>
+> **Alcance:** backend, contratos HTTP, seguridad administrativa, infraestructura y entornos
+>
 > **Fecha:** 2026-07-16
+>
+> **Actualización de implementación:** 2026-08-13
 
 ## Resumen
 
-Proxus desplegará la API pública y la API administrativa como procesos e imágenes Docker independientes. Ambos procesos reutilizarán los mismos servicios de aplicación y ports de dominio, pero montarán contratos HTTP distintos y seleccionarán sus adapters mediante Layers en composition roots mínimos.
+Proxus despliega conceptualmente la API pública y la API administrativa como procesos e imágenes Docker independientes. La separación de entrypoints e imágenes ya está implementada; su despliegue cloud aún no. Ambos procesos reutilizan los mismos servicios de aplicación y ports de dominio, pero montan contratos HTTP distintos y seleccionan sus adapters mediante Layers en composition roots mínimos.
 
-La infraestructura se declarará con Pulumi y TypeScript. Un workflow de despliegue TypeScript, potencialmente modelado con Effect y Pulumi Automation API, coordinará las operaciones que no son estado declarativo, especialmente migraciones, verificaciones y promoción de revisiones.
+La infraestructura está declarada con Pulumi TypeScript. La implementación final usa workflows de GitHub Actions y scripts versionados, no Automation API: Cloud Build solo construye/publica y Pulumi converge por digest; los workflows ordenan migración y servicios.
 
-La plataforma inicial será Google Cloud:
+La plataforma implementada en código es Google Cloud:
 
-- Cloud Run para `server` y `admin-server`;
-- Cloud SQL for PostgreSQL;
-- Artifact Registry para imágenes;
-- Secret Manager para secretos runtime;
-- IAM e IAP para restringir el acceso administrativo;
-- GCS como backend del state de Pulumi;
-- entornos persistentes `development`, `staging` y `production`;
-- entornos efímeros `pr-<number>` bajo demanda.
+- Cloud Run para API pública, Admin y jobs de migración;
+- PostgreSQL externo en Neon, referenciado mediante IDs configurables de Secret Manager y no provisionado por esta IaC;
+- Artifact Registry para cuatro imágenes inmutables;
+- Secret Manager para referencias a secretos runtime preexistentes;
+- IAP directo de Cloud Run y un grupo configurable para Admin y previews;
+- GCS versionado y KMS como backend DIY del state de Pulumi;
+- un stack persistente `production` y stacks efímeros `pr-<number>` bajo demanda.
+
+Solo foundation y su bootstrap GCS/KMS han sido provisionados. Un preview posterior mostró 48 recursos sin cambios. Production y previews existen como programas/workflows, pero siguen sin aplicar hasta cerrar los gates del runbook; no hay entornos cloud `development` o `staging` implementados.
 
 ## Motivación
 
-Actualmente un único servidor monta grupos HTTP públicos y administrativos. Esto impide aplicar políticas operativas fuertes por audiencia sin que el proceso público conozca las rutas administrativas.
+La propuesta nació cuando un único servidor montaba grupos HTTP públicos y administrativos. Esa limitación ya se resolvió con entrypoints, routers e imágenes backend separados; queda pendiente verificar el aislamiento operativo en cloud.
 
 La separación física pretende:
 
@@ -140,47 +145,39 @@ Separar clientes evita exposición accidental y mejora la interface, pero no es 
 
 ## Seguridad administrativa
 
-Flujo objetivo:
+Flujo cloud declarado para Admin:
 
 ```text
-usuario administrativo
+usuario del grupo configurado
   → Google Identity / Workspace
-  → IAP
-  → HTTPS Load Balancer
-  → Cloud Run admin con ingress restringido
-  → validación de identidad IAP
-  → AdminPrincipal
-  → servicio y política de autorización
+  → IAP directo de Cloud Run
+  → frontend Admin + APIs sidecar
+  → cookie opaca de Proxus
+  → CurrentSubject
+  → servicio y política RBAC
 ```
 
-Requisitos:
+Controles implementados en IaC:
 
-- `admin-server` no permite invocación anónima;
-- el origen directo de Cloud Run no puede saltarse IAP;
-- solo identidades técnicas explícitas tienen `run.invoker`;
-- no se confía en headers de identidad si la petición no procede del camino protegido;
-- cada mutación registra una identidad administrativa verificable;
-- IAM/IAP autentican acceso; el dominio conserva autorización por operación cuando existan roles o scopes;
-- Public y Admin usan service accounts y usuarios PostgreSQL distintos;
-- la imagen pública no monta ni sirve `AdminApi`, y viceversa salvo una excepción documentada.
+- el origen Cloud Run exige IAP y no recibe principals públicos;
+- solo el service agent de IAP obtiene `run.invoker`;
+- el principal humano es un grupo configurable, no un valor fijado en código;
+- la imagen pública no sirve `AdminApi`; Admin compone explícitamente ambas imágenes backend porque su frontend necesita superficies pública y administrativa;
+- production usa service accounts GCP separadas para runtime público y administrativo.
+
+IAP no se convierte todavía en un `AdminPrincipal` de dominio ni sustituye la sesión/RBAC de producto. Tampoco hay usuarios PostgreSQL separados demostrados: ambos runtimes consumen actualmente el mismo Secret Manager ID. La auditoría de identidad IAP y los smoke tests de acceso siguen pendientes.
 
 ## Entornos y proyectos
 
-Entornos persistentes:
+La implementación actual usa un único proyecto GCP configurado, la región `europe-southwest1` y tres proyectos Pulumi sobre backend DIY:
 
-- `development`;
-- `staging`;
-- `production`.
+| Programa | Proyecto | Stack |
+| --- | --- | --- |
+| Foundation | `proxus-foundation` | `foundation` |
+| Production | `proxus-production` | `production` |
+| Preview | `proxus-preview` | `pr-<number>` |
 
-Se recomienda un proyecto GCP por entorno para aislar IAM, secretos, cuotas, Cloud SQL y eliminación accidental. Un proyecto de infraestructura compartida puede alojar Artifact Registry y el bucket de state si la política organizativa lo permite.
-
-El state se almacena en un bucket GCS previamente inicializado:
-
-```bash
-pulumi login gs://proxus-pulumi-state
-```
-
-El bucket tendrá versionado, uniform bucket-level access, public access prevention, auditoría y permisos limitados a CI y operadores. Su bootstrap queda fuera del stack que almacena en él su propio state.
+Production y preview referencian foundation mediante `organization/proxus-foundation/foundation`, que es la forma correcta para este backend DIY. El state está en `gs://proxus-v2-pulumi-state`, con versionado, uniform bucket-level access, public access prevention y cifrado de secretos mediante KMS en `europe-southwest1`. El bootstrap GCS/KMS queda fuera del stack que depende de él.
 
 ## Entornos efímeros por pull request
 
@@ -192,134 +189,118 @@ PR cerrado             → destruir recursos y eliminar stack
 reconciliación nocturna → destruir stacks huérfanos o expirados
 ```
 
-Se empezará bajo una label explícita, por ejemplo `deploy-preview`, para controlar coste y cuotas.
+La label exacta es `deploy-preview`. Solo autoriza un PR del mismo repositorio contra `main`, con aprobación vigente del SHA actual por owner/member/collaborator. La IaC con credenciales siempre procede de un SHA confiable de `main`; Cloud Build recibe por separado el SHA revisado del PR y se verifica su provenance.
 
-### Infraestructura compartida de previews
-
-```text
-preview-foundation
-├── Artifact Registry
-├── DNS y certificado wildcard
-├── perímetro/load balancer/IAP
-├── instancia Cloud SQL no productiva
-└── políticas y observabilidad comunes
-```
-
-### Recursos aislados por PR
+Foundation comparte Artifact Registry, WIF e IAM. Cada stack `pr-<number>` declara:
 
 ```text
 pr-123
-├── servicios Cloud Run public/admin
-├── base de datos PostgreSQL propia
-├── usuario PostgreSQL propio
-├── secretos propios
+├── identidad runtime
 ├── migration job
-├── frontends cuando corresponda
-└── outputs y URLs del preview
+├── Cloud Run público: web + API pública
+├── Cloud Run admin: admin web + API pública + API admin
+├── IAP directo y principal de grupo configurable
+└── outputs con URLs run.app protegidas
 ```
 
-No se creará una instancia Cloud SQL por PR inicialmente. Cada preview tendrá una base de datos, no solo un schema, dentro de una instancia compartida de previews. Nunca se copiarán automáticamente datos de producción; se usarán seeds sintéticos.
+`pr-123` es solo un ejemplo de formato. No hay `preview-foundation`, Cloud SQL, DNS, wildcard ni load balancer por PR. La base Neon y la versión del secreto se preparan fuera de Pulumi; la IaC recibe un Secret Manager ID derivado de una plantilla configurable que contiene `{pr}`. Su alta/baja e independencia por PR son gates operativos pendientes, no garantías del programa actual.
 
-Los servicios preview tendrán límites bajos de instancias y pool para proteger conexiones y cuotas. La destrucción debe ser idempotente y existir una limpieza periódica independiente de los eventos de GitHub.
+Cada servicio preview limita Cloud Run a una instancia. Cerrar el PR o retirar la label destruye el stack; una reconciliación programada desde `main` elimina stacks sin PR abierto, same-repository, contra `main` y etiquetado. La limpieza de Neon y Secret Manager sigue fuera de este lifecycle.
 
 ## Imágenes y runtime
 
-Se producirán al menos dos imágenes inmutables:
+Cloud Build produce exactamente cuatro imágenes inmutables:
 
 ```text
 proxus-server@sha256:...
 proxus-admin-server@sha256:...
+proxus-web@sha256:...
+proxus-admin-web@sha256:...
 ```
 
-Podrán compartir un Dockerfile multi-stage con targets distintos, pero tendrán entrypoints y superficies HTTP diferentes. El artefacto de producción ejecutará JavaScript compilado con Node; no dependerá de `tsx`, fuentes completas ni devDependencies.
+El script valida que la provenance resuelva al SHA completo autorizado y obtiene los cuatro digests. Pulumi rechaza tags y recibe únicamente URIs regionales `@sha256`. Cloud Build no despliega ni accede a state o secretos runtime.
 
-Las imágenes se construyen y publican en CI. Pulumi recibe sus digests y declara qué revisión debe ejecutar cada servicio. Pulumi no debe ocultar builds Docker no reproducibles dentro de una actualización de infraestructura.
+Los backends ejecutan JavaScript compilado con Node y sus entrypoints productivos PostgreSQL. El Dockerfile comprueba que el bundle no contenga PGlite, `PGLITE_DATA_DIR` ni `dev-server`. La web pública production se extrae de su imagen y se carga en un bucket GCS privado/versionado servido por Cloud CDN; Admin y los previews ejecutan sus frontends como sidecars Cloud Run.
 
-## Cloud SQL y privilegios
+## PostgreSQL externo y privilegios
 
-Cada entorno persistente tendrá su propia instancia o aislamiento equivalente aprobado. Como mínimo existirán identidades separadas:
+Production declara identidades GCP separadas para runtime público, runtime administrativo y migraciones. Sin embargo, la implementación actual entrega a las tres el mismo Secret Manager ID de `DATABASE_URL`; no demuestra usuarios PostgreSQL DML/DDL separados. Preview usa una única identidad runtime para sus APIs y job.
 
-- runtime público;
-- runtime administrativo;
-- migraciones.
-
-Solo la identidad de migraciones tendrá permisos DDL. Las APIs no aplicarán migraciones al arrancar; pueden fallar readiness si detectan migraciones pendientes.
-
-En previews, una instancia compartida contendrá una base de datos y usuario por PR. Se impondrán límites de conexiones por servicio y un máximo bajo de instancias Cloud Run.
+Las APIs no aplican migraciones al arrancar y comprueban que no haya pendientes. El workflow converge primero el job, lo ejecuta y espera, y después crea los servicios. Separar credenciales de migración/runtime y automatizar bases/usuarios Neon por PR sigue pendiente antes de afirmar ese aislamiento.
 
 ## Pulumi y workflow de despliegue
 
-Pulumi administra estado deseado:
+Pulumi administra el estado deseado implementado:
 
-- proyectos y APIs necesarias;
-- Artifact Registry;
-- Cloud SQL, bases de datos y usuarios cuando corresponda;
-- Secret Manager;
-- service accounts, IAM, IAP e ingress;
+- APIs necesarias y Artifact Registry en foundation;
+- service accounts, IAM, WIF, IAP e ingress;
+- IAM sobre secretos preexistentes en Secret Manager;
 - Cloud Run services y jobs;
-- DNS, load balancing y outputs.
+- bucket web privado, Cloud CDN, load balancing y outputs de production.
 
-Un workflow TypeScript administra operaciones ordenadas:
+No administra Neon, versiones/valores de secretos, datasets/tablas BigQuery ni DNS.
+
+GitHub Actions y scripts shell administran las operaciones ordenadas:
 
 ```text
-validar
-→ construir/publicar imágenes
-→ converger foundation con Pulumi Automation API
-→ crear/actualizar migration job
+validar identidad/SHA/configuración
+→ construir/publicar cuatro imágenes con Cloud Build
+→ verificar provenance y digests
+→ converger identidades y migration job con Pulumi
 → ejecutar migraciones y esperar resultado
-→ converger servicios de aplicación
-→ ejecutar smoke tests
+→ converger servicios de aplicación con Pulumi
 → publicar outputs o comentario del PR
 ```
 
+Foundation no converge en cada despliegue. Los workflows implementados tampoco ejecutan todavía smoke tests de aplicación; son un gate manual pendiente.
+
 Las migraciones no se modelarán como un recurso Pulumi que se repite por cambios incidentales. Pulumi declara el Cloud Run Job; el workflow lo ejecuta explícitamente y detiene el despliegue ante fallo.
 
-El workflow puede usar Effect para errores tipados, timeout, logging y cleanup. No se envolverá cada llamada en un servicio hipotético; solo se crearán seams donde existan sustitución o tests reales.
-
-Comandos objetivo:
+Comandos implementados:
 
 ```bash
-pnpm infra preview --environment staging
-pnpm infra deploy --environment staging
+pnpm infra preview --environment foundation
+pnpm infra preview --environment production
+pnpm infra deploy --environment production
 pnpm infra deploy --pr 123
 pnpm infra destroy --pr 123
 ```
 
+`123` es un placeholder. El wrapper solo permite `destroy` para previews. Los applies de production/preview no están autorizados operativamente mientras `APPLICATION_RUNTIME_READY` y los gates manuales descritos en el runbook no estén completos.
+
 ## Estrategia de migraciones y rollout
 
-Secuencia inicial:
+Secuencia implementada:
 
-1. provisionar infraestructura necesaria;
-2. publicar imagen de migraciones o seleccionar el comando del artefacto backend;
-3. ejecutar Cloud Run Job con identidad DDL;
-4. esperar éxito y registrar ejecución;
-5. desplegar nuevas revisiones pública y admin;
-6. ejecutar smoke tests;
-7. promocionar tráfico cuando la plataforma lo requiera.
+1. construir y publicar la imagen backend pública que contiene el comando de migración;
+2. converger identidades y Cloud Run Job con servicios desactivados;
+3. ejecutar el job y esperar éxito;
+4. converger las revisiones pública y admin;
+5. completar manualmente DNS/certificado en production;
+6. ejecutar los smoke tests pendientes.
 
-Las migraciones de producción deben seguir expand/migrate/contract cuando convivan revisiones antiguas y nuevas. Un rollback de aplicación no implica rollback automático de schema.
+El job tiene una identidad GCP propia en production, pero hoy comparte el mismo secreto `DATABASE_URL`; no se afirma que tenga credenciales DDL exclusivas.
+
+Las migraciones de producción deben seguir expand/migrate/contract cuando convivan revisiones antiguas y nuevas. Un rollback de aplicación no implica rollback automático de schema. La secuencia está implementada en workflow, pero no se ha ejecutado en cloud.
 
 ## Testing y verificaciones
 
-Se añadirán pruebas para demostrar:
+Las suites existentes demuestran separación de superficies HTTP/composition roots, traducción segura de errores, autorización con sesión/RBAC y grafos Pulumi mockeados sin principals públicos. Los Dockerfiles comprueban al construir que el backend productivo no incluya PGlite/dev-server; Cloud Build verifica provenance y cuatro digests cuando se ejecuta.
 
-- `server` no sirve rutas administrativas;
-- `admin-server` no sirve rutas públicas no declaradas;
-- ambos composition roots arrancan con Layers de test;
-- los dos transports traducen los mismos errores de dominio de forma segura;
-- la identidad IAP inválida o ausente se rechaza;
-- la identidad verificada llega al servicio y a auditoría;
-- la API pública permanece accesible sin identidad administrativa;
-- una base de datos preview empieza limpia, migra y se destruye;
-- el workflow reanuda correctamente tras fallos en Pulumi, migración o smoke tests;
-- el cierre de PR elimina recursos y la reconciliación detecta huérfanos;
-- las imágenes contienen solo el transporte esperado.
+Siguen pendientes pruebas cloud que demuestren:
 
-Cada PR normal seguirá ejecutando tests locales/PGlite. El entorno efímero complementa, no sustituye, las suites deterministas. Los tests PostgreSQL y de composición se ejecutarán antes de promover a staging.
+- rechazo IAP inválido/ausente y ausencia de bypass directo;
+- relación auditable entre identidad IAP y sesión/actor de producto;
+- acceso público production, Admin y assets CDN con configuración real;
+- creación, migración y limpieza de una base Neon preview;
+- recuperación tras fallos Pulumi/migración y smoke tests;
+- destrucción/reconciliación real del stack y limpieza de recursos externos.
+
+Cada PR normal sigue ejecutando tests locales/PGlite. Un entorno efímero, cuando se habilite por primera vez, complementará y no sustituirá las suites deterministas. El gate PostgreSQL 17 actual y las pruebas de composición no equivalen a smoke tests del runtime cloud.
 
 ## Observabilidad y operación
 
-Cada petición y despliegue incluirá, cuando aplique:
+La observabilidad objetivo, todavía no verificada en cloud, incluirá cuando aplique:
 
 - entorno, revisión y digest de imagen;
 - servicio público o administrativo;
@@ -328,13 +309,13 @@ Cada petición y despliegue incluirá, cuando aplique:
 - ejecución y versión de migración;
 - logs estructurados y correlation ID.
 
-Se definirán presupuestos, límites y alertas para Cloud SQL, conexiones, errores Cloud Run y acumulación de previews.
+Siguen pendientes presupuestos, límites y alertas para Neon, conexiones, errores Cloud Run y acumulación de previews.
 
 ## Fases de adopción
 
-### Fase inmediata: separación del backend
+### Fase completada: separación del backend
 
-Esta es la única fase aprobada para implementación por ahora. No incluye Docker, Pulumi, GCP, IAP ni previews.
+La separación física del backend y sus contratos ya está implementada.
 
 1. Separar `PublicApi`, `AdminApi` y mantener la composición solo para tooling/tests.
 2. Dividir handlers y routers públicos/administrativos dentro del runtime actual.
@@ -347,16 +328,16 @@ Esta es la única fase aprobada para implementación por ahora. No incluye Docke
 9. Añadir tests positivos y negativos de superficies HTTP y composición.
 10. Actualizar documentación normativa, scripts y diagnostics.
 
-Durante esta fase, las rutas administrativas conservan temporalmente la política de acceso documentada actualmente. La separación de procesos no debe presentarse como autenticación terminada ni desplegarse públicamente como segura.
+La separación de procesos está completada, pero no debe presentarse como despliegue cloud ni como integración de identidad IAP terminada. La autorización de producto sigue basándose en la sesión y RBAC documentados.
 
-### Fases posteriores, fuera del refactor inmediato
+### IaC implementada y operación pendiente
 
-11. Crear builds Docker reproducibles.
-12. Crear backend GCS y programa Pulumi mínimo.
-13. Incorporar IAM/IAP y cerrar la excepción temporal de acceso administrativo.
-14. Desplegar `development`, después `staging` y finalmente `production`.
-15. Añadir `preview-foundation` y previews por label.
-16. Incorporar workflow TypeScript/Automation API, migraciones y reconciliación.
+11. Completado en código: builds Docker reproducibles de cuatro artefactos y verificación de provenance/digest.
+12. Provisionado: backend GCS/KMS y foundation; 48 recursos sin cambios en el preview posterior registrado.
+13. Completado en código, no desplegado: production, web GCS privada/CDN, IAP directo y principal de grupo configurable.
+14. Completado en código, no desplegado: stacks `pr-<number>`, label lifecycle y reconciliación desde IaC confiable de `main`.
+15. Pendiente: adapters reales email/Google, recursos/config externa Neon y secretos, datos analytics, DNS, revisión de privilegios de base y smoke tests.
+16. Pendiente: aplicar y verificar production/previews. No se implementarán `development`, `staging` o `preview-foundation` sin una decisión posterior.
 
 Cada fase debe conservar el flujo obligatorio:
 
@@ -388,20 +369,17 @@ Rechazado como mecanismo principal: una migración es una operación ordenada y 
 
 ### Cloud SQL por PR
 
-Rechazado inicialmente por coste, latencia de provisión y cuotas. Se usará base de datos por PR sobre una instancia preview compartida.
+Rechazado. La implementación seleccionó PostgreSQL externo en Neon. La IaC solo referencia Secret Manager; el lifecycle de base/usuario por PR sigue fuera de Pulumi y pendiente de operación segura.
 
 ## Riesgos y preguntas abiertas
 
-- coste y complejidad de load balancing/IAP para previews;
-- límites de Cloud SQL y conexiones con muchos PR simultáneos;
-- estrategia exacta de build/push y autenticación CI mediante Workload Identity Federation;
-- ownership y bootstrap del bucket GCS de state;
+- lifecycle y coste de Neon/Secret Manager para previews y conexiones con muchos PR simultáneos;
 - recuperación y locking del backend DIY de Pulumi;
 - política de retención de imágenes, stacks y bases de datos huérfanas;
 - compatibilidad de migraciones durante rollouts graduales;
-- si Artifact Registry debe ser compartido o por proyecto;
-- si development necesita recursos persistentes completos o puede reutilizar preview foundation;
-- mecanismo exacto de autorización y auditoría posterior a IAP;
+- separación real de credenciales DML/DDL;
+- adaptación de autorización/auditoría de producto a la identidad IAP, hoy no implementada;
+- smoke tests autenticados y rollback operativo de DNS/CDN/Cloud Run;
 - riesgo de que los cuatro packages se conviertan en capas shallow y cómo preservar locality por bounded context;
 - ownership temporal de object storage hasta que implemente un port real;
 - reglas de exports y dependencias necesarias para impedir imports de infra desde transports o dominio.
@@ -413,6 +391,6 @@ La propuesta se considerará validada cuando las revisiones adversariales no ide
 1. seguridad e identidad IAP;
 2. diseño DDD y dirección de dependencias;
 3. operación Pulumi/GCS y recuperación;
-4. Cloud SQL, migraciones y previews;
+4. Neon/Secret Manager, migraciones y previews;
 5. costes, cuotas y limpieza;
 6. testing, rollout y rollback.

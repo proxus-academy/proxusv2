@@ -260,16 +260,22 @@ Los comandos QA actuales usan PGlite; mientras no acepten `DATABASE_URL`, los pa
 
 ## Infraestructura GCP
 
-La foundation compartida vive en `infra/foundation`. Usa Pulumi TypeScript en `europe-southwest1`, state GCS versionado, cifrado KMS, Artifact Registry y WIF sin claves JSON. Es la única infraestructura aprobada para converger en esta fase.
+`@proxus/infra` declara Pulumi TypeScript para `foundation`, `production` y previews `pr-<number>` en `europe-southwest1`. Los tres proyectos usan state GCS versionado y secretos de state cifrados con KMS; production/preview referencian foundation mediante `organization/proxus-foundation/foundation` en el backend DIY.
+
+Solo foundation y su bootstrap GCS/KMS han sido provisionados. El preview posterior registrado mostró 48 recursos sin cambios. Production y previews están implementados, pero no aplicados: faltan los gates manuales de runtime, datos/secretos, DNS y smoke tests del runbook. No uses estos comandos para desplegar sin aprobación operativa.
+
+Cloud Build construye/publica cuatro imágenes (`server`, `admin-server`, `web`, `admin-web`), verifica el SHA de provenance y entrega digests a Pulumi; no despliega. Los backends cloud usan los roots productivos Node/PostgreSQL, nunca `apps/dev-server` ni PGlite. Production declara web GCS privada + Cloud CDN y Admin con IAP directo; previews protegen con IAP tanto la web pública como Admin. El grupo IAP y los IDs de Secret Manager/Neon son configuración externa, no valores fijados en el repositorio.
+
+Validación local sin apply:
 
 ```bash
-GCP_PROJECT_ID=proxus-v2 infra/scripts/bootstrap-state.sh
+pnpm --filter @proxus/infra typecheck
+pnpm --filter @proxus/infra test
+bash -n infra/scripts/bootstrap-state.sh
 pnpm infra preview --environment foundation
-pnpm infra deploy --environment foundation
-pnpm infra outputs --environment foundation
 ```
 
-No uses `allUsers`, no introduzcas valores secretos en config Pulumi y revisa siempre el preview antes de aplicar. Consulta la normativa [`docs/infrastructure/gcp-pulumi.md`](./docs/infrastructure/gcp-pulumi.md) y el [`runbook`](./docs/runbooks/gcp-pulumi.md).
+No uses principals públicos, claves JSON o valores secretos en config Pulumi. Consulta la normativa [`docs/infrastructure/gcp-pulumi.md`](./docs/infrastructure/gcp-pulumi.md) y el [`runbook`](./docs/runbooks/gcp-pulumi.md) antes de cualquier operación.
 
 ## Referencias locales
 

@@ -26,7 +26,7 @@ Los handlers solo adaptan HTTP/cookies. Los servicios coordinan reglas y puertos
 
 ## Sesiones y challenges
 
-La cookie contiene un token opaco; solo su hash se persiste. Es `HttpOnly` y `SameSite=Lax`; producción exige además `Secure`. La composición de desarrollo omite `Secure` para que la sesión funcione en previews HTTP de la red privada, mientras que producción mantiene HTTPS como requisito. Una sesión dura 30 días, entra en renovación deslizante durante los últimos 7 y conserva 10 segundos de gracia al rotar. Logout revoca la actual; reset de password revoca todas.
+La cookie contiene un token opaco; solo su hash se persiste. Es `HttpOnly` y `SameSite=Lax`; producción exige además `Secure`. Solo la composición local de `apps/dev-server` omite `Secure`. Los previews cloud declarados ejecutan `NODE_ENV=production` detrás de IAP directo y mantienen HTTPS/cookie segura; no usan el root de desarrollo. Una sesión dura 30 días, entra en renovación deslizante durante los últimos 7 y conserva 10 segundos de gracia al rotar. Logout revoca la actual; reset de password revoca todas.
 
 Los códigos de verificación/reset son de seis dígitos, hasheados, de un uso, con propósito, TTL de 15 minutos y máximo cinco intentos. Reenvío de verificación tiene cooldown de 60 segundos. Solicitud de reset y reenvío responden de forma neutra para evitar enumeración.
 
@@ -39,7 +39,7 @@ Camino a producción, sin cambiar Domain ni contratos:
 1. Implementar `EmailDelivery` con un proveedor transaccional; templates versionados, TLS, retries acotados, idempotency key y redacción de destinatario/código en logs.
 2. Implementar `GoogleIdentityProvider` authorization-code con discovery/JWKS y PKCE cuando aplique; validar `state`, `nonce`, issuer, audience, expiración y `email_verified` antes de producir `VerifiedGoogleIdentity`.
 3. Inyectar credenciales mediante `Config.redacted`, añadir health/observabilidad y pruebas contractuales contra sandbox; nunca hacer fallback a fake/console.
-4. Habilitar adapters mediante valores explícitos distintos de los reservados de desarrollo, desplegar primero en staging y conservar el gate fail-fast.
+4. Habilitar adapters mediante valores explícitos distintos de los reservados de desarrollo, validarlos en un entorno no productivo aprobado y conservar el gate fail-fast. La IaC actual no declara un stack `staging`.
 5. Revisar redirect URIs, orígenes, política de cookies y proxy TLS por entorno; rotar `AUTH_GOOGLE_SIGNING_SECRET` con estrategia compatible con pendientes en vuelo.
 
 ## Amenazas
@@ -57,3 +57,9 @@ Camino a producción, sin cambiar Domain ni contratos:
 | Abuso de códigos/login | expiración, intentos y cooldown | Rate limit por cuenta/IP y protección anti-bot |
 
 No se registran passwords, tokens, hashes, códigos, secretos de firma ni perfiles Google no verificados. Los errores de infraestructura se transforman a respuestas seguras.
+
+## Borde IAP y estado de despliegue
+
+IAP autentica el acceso al servicio Cloud Run; no sustituye la sesión opaca de producto ni produce hoy un `AdminPrincipal` de dominio. La IaC concede acceso IAP a un principal de grupo configurable y `run.invoker` solo al service agent de IAP, sin principals públicos. Dentro de Admin, los handlers siguen resolviendo la cookie y Access Control sigue autorizando cada operación.
+
+Esta defensa de plataforma está implementada en el programa Pulumi, pero no desplegada. `APPLICATION_RUNTIME_READY` debe permanecer cerrado hasta que existan los adapters reales de email/Google, secretos y smoke tests. Un grupo autorizado por IAP que no tenga sesión/capability Proxus recibe el resultado normal de autenticación/autorización de producto; pertenecer al grupo no crea una cuenta ni un rol.
