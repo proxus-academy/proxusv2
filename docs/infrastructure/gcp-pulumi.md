@@ -61,7 +61,7 @@ El programa production declara tres identidades runtime —pública, administrat
 
 Cuando `deployServices=true`:
 
-- la API pública es un Cloud Run con ingress desde el load balancer interno/gestionado y se publica bajo `/api` mediante un HTTPS load balancer externo;
+- la API pública es un Cloud Run con ingress desde el load balancer interno/gestionado y se publica bajo `/api` mediante un HTTPS load balancer externo; el URL map elimina ese prefijo antes de reenviar al router HTTP, igual que los proxies frontend;
 - la web pública se extrae de su imagen inmutable y se carga en un bucket GCS privado, versionado y con public access prevention; Cloud CDN lo lee mediante su service identity, no mediante un principal público;
 - Admin es un servicio Cloud Run multi-container (`admin-web`, API pública y API administrativa) protegido por **IAP directo de Cloud Run**;
 - únicamente el service agent de IAP recibe `run.invoker`, y el acceso IAP se concede al principal de grupo configurable con formato `group:<dirección>`;
@@ -78,7 +78,7 @@ Cada stack `pr-<number>` declara una identidad runtime, un job de migración y, 
 
 Ambos servicios usan IAP directo y el mismo principal de grupo configurable. No se crean DNS, certificados ni load balancers por PR. El número de PR debe coincidir con el nombre del stack.
 
-El lifecycle requiere la label `deploy-preview`. Solo se acepta un PR abierto contra `main`, del mismo repositorio, cuyo SHA actual tenga aprobación vigente de owner/member/collaborator. `pull_request_target` obtiene únicamente política y metadatos: tras autenticarse, los jobs con credenciales hacen checkout de IaC desde el SHA confiable de `main`; Cloud Build recibe por separado el SHA revisado del PR. Antes de desplegar se vuelve a comprobar label, SHA y aprobación para rechazar imágenes obsoletas.
+El lifecycle requiere la label `deploy-preview`. Solo se acepta un PR abierto contra `main`, del mismo repositorio, cuyo SHA actual tenga aprobación vigente de owner/member/collaborator. `pull_request_target` obtiene únicamente política y metadatos: tras autenticarse, los jobs con credenciales hacen checkout de IaC desde el SHA confiable de `main`; Cloud Build recibe por separado el SHA revisado del PR. Después de cada posible espera del environment protegido y antes de obtener credenciales de build o deploy se vuelven a comprobar label, SHA y aprobación para rechazar operaciones e imágenes obsoletas. El destroy también comprueba, antes de autenticarse, que el PR no haya vuelto a abrirse con la label.
 
 Cerrar el PR o retirar la label destruye `pr-<number>`. La reconciliación programada, ejecutada también desde IaC confiable de `main`, enumera solo stacks con ese patrón y destruye los que ya no correspondan a un PR abierto, same-repository, basado en `main` y etiquetado. Todos esos caminos comparten una única concurrency group y no cancelan una operación en curso.
 

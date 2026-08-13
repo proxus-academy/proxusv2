@@ -105,7 +105,7 @@ describe("production Pulumi graph", () => {
     const matcher = record(list(urlMap?.inputs.pathMatchers)[0])
     const route = record(list(matcher.routeRules)[0])
     expect(record(list(route.matchRules)[0]).prefixMatch).toBe("/api")
-    expect(route.routeAction).toBeUndefined()
+    expect(record(record(route.routeAction).urlRewrite).pathPrefixRewrite).toBe("/")
   })
 
   test("protects admin with direct IAP and never grants public IAM", () => {

@@ -25,6 +25,11 @@ if ! gcloud storage buckets describe "gs://${bucket}" --project "$project" >/dev
     --uniform-bucket-level-access \
     --public-access-prevention
 fi
+bucket_location="$(gcloud storage buckets describe "gs://${bucket}" --project "$project" --format='value(location)' | tr '[:upper:]' '[:lower:]')"
+if [[ "$bucket_location" != "$region" ]]; then
+  echo "State bucket location ${bucket_location:-<missing>} does not match ${region}; refusing a destructive replacement" >&2
+  exit 1
+fi
 
 gcloud storage buckets update "gs://${bucket}" \
   --project "$project" \
@@ -47,6 +52,26 @@ if ! gcloud kms keys describe "$key" --project "$project" --location "$region" -
     --purpose=encryption \
     --rotation-period=90d \
     --next-rotation-time="$(date -u -d '+90 days' +%Y-%m-%dT%H:%M:%SZ)"
+fi
+key_json="$(gcloud kms keys describe "$key" --project "$project" --location "$region" --keyring "$keyring" --format=json)"
+if [[ "$(jq -r '.purpose // empty' <<< "$key_json")" != "ENCRYPT_DECRYPT" ]]; then
+  echo "KMS key purpose is not ENCRYPT_DECRYPT; refusing a destructive replacement" >&2
+  exit 1
+fi
+rotation_period="$(jq -r '.rotationPeriod // empty' <<< "$key_json")"
+next_rotation="$(jq -r '.nextRotationTime // empty' <<< "$key_json")"
+if [[ "$rotation_period" != "7776000s" || -z "$next_rotation" ]]; then
+  rotation_args=(
+    kms keys update "$key"
+    --project "$project"
+    --location "$region"
+    --keyring "$keyring"
+    --rotation-period=90d
+  )
+  if [[ -z "$next_rotation" ]]; then
+    rotation_args+=(--next-rotation-time="$(date -u -d '+90 days' +%Y-%m-%dT%H:%M:%SZ)")
+  fi
+  gcloud "${rotation_args[@]}"
 fi
 
 cat <<EOF

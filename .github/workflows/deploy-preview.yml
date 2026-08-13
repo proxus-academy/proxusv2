@@ -105,6 +105,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
+      pull-requests: read
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     outputs:
@@ -113,6 +114,49 @@ jobs:
       web_image: ${{ steps.images.outputs.web_image }}
       admin_web_image: ${{ steps.images.outputs.admin_web_image }}
     steps:
+      - name: Revalidate the reviewed PR after environment approval
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          EXPECTED_PR: ${{ needs.authorize.outputs.pr }}
+          EXPECTED_SHA: ${{ needs.authorize.outputs.sha }}
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: Number(process.env.EXPECTED_PR),
+            })
+            const repository = `${context.repo.owner}/${context.repo.repo}`
+            if (
+              pr.state !== "open" ||
+              !pr.labels.some(({ name }) => name === "deploy-preview") ||
+              pr.base.ref !== "main" ||
+              pr.base.repo.full_name !== repository ||
+              pr.head.repo?.full_name !== repository ||
+              pr.head.sha !== process.env.EXPECTED_SHA
+            ) {
+              core.setFailed("The pull request changed before the build obtained credentials.")
+              return
+            }
+            const reviews = await github.paginate(github.rest.pulls.listReviews, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100,
+            })
+            const latestByReviewer = new Map()
+            for (const review of reviews) {
+              if (review.user?.login && !new Set(["COMMENTED", "PENDING"]).has(review.state)) {
+                latestByReviewer.set(review.user.login, review)
+              }
+            }
+            const trusted = new Set(["OWNER", "MEMBER", "COLLABORATOR"])
+            const approved = [...latestByReviewer.values()].some((review) =>
+              review.state === "APPROVED" &&
+              review.commit_id === pr.head.sha &&
+              trusted.has(review.author_association)
+            )
+            if (!approved) core.setFailed("The exact build commit no longer has a current trusted approval.")
       - name: Authenticate as the build submitter without a key
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
         with:
@@ -157,16 +201,18 @@ jobs:
           IMAGE_TAG_SUFFIX: ${{ github.run_id }}-${{ github.run_attempt }}
         run: infra/scripts/build-images.sh
 
-  verify:
+  deploy:
     needs: [authorize, build]
     if: needs.authorize.outputs.mode == 'deploy'
+    environment: preview
     permissions:
       contents: read
-      pull-requests: read
+      id-token: write
+      pull-requests: write
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 45
     steps:
-      - name: Refuse stale images before obtaining deploy credentials
+      - name: Refuse stale images after environment approval
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
           EXPECTED_PR: ${{ needs.authorize.outputs.pr }}
@@ -209,18 +255,6 @@ jobs:
               trusted.has(review.author_association)
             )
             if (!approved) core.setFailed("The exact built commit no longer has a current trusted approval.")
-
-  deploy:
-    needs: [authorize, build, verify]
-    if: needs.authorize.outputs.mode == 'deploy'
-    environment: preview
-    permissions:
-      contents: read
-      id-token: write
-      pull-requests: write
-    runs-on: ubuntu-24.04
-    timeout-minutes: 45
-    steps:
       - name: Authenticate as the preview deployer without a key
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
         with:
@@ -350,9 +384,24 @@ jobs:
     permissions:
       contents: read
       id-token: write
+      pull-requests: read
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
+      - name: Refuse destruction when the preview became active again
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          EXPECTED_PR: ${{ needs.authorize.outputs.pr }}
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: Number(process.env.EXPECTED_PR),
+            })
+            if (pr.state === "open" && pr.labels.some(({ name }) => name === "deploy-preview")) {
+              core.setFailed("The pull request is open and labeled again; refusing stale destruction.")
+            }
       - name: Authenticate as the preview deployer without a key
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
         with:

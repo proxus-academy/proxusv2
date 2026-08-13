@@ -287,6 +287,7 @@ if (deployServices) {
         priority: 1,
         matchRules: [{ prefixMatch: "/api" }],
         service: apiBackend.id,
+        routeAction: { urlRewrite: { pathPrefixRewrite: "/" } },
       }],
     }],
   })

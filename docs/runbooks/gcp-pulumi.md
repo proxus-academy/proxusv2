@@ -147,7 +147,7 @@ No ejecutar manualmente esta secuencia hasta cerrar todos los gates. No hay roll
 
 Production usa:
 
-- web pública: HTTPS load balancer + bucket GCS privado + Cloud CDN, con `/api` hacia la API pública;
+- web pública: HTTPS load balancer + bucket GCS privado + Cloud CDN, con `/api` hacia la API pública y reescritura del prefijo antes del router backend;
 - Admin: IAP directo de Cloud Run para el principal de grupo configurado;
 - backends productivos Node/PostgreSQL, nunca `apps/dev-server` ni PGlite.
 
@@ -155,7 +155,7 @@ Production usa:
 
 Añadir `deploy-preview` solo a un PR del mismo repositorio contra `main`, con aprobación vigente del SHA actual por owner/member/collaborator. Un `synchronize` invalida la aprobación del SHA anterior hasta que el nuevo commit sea aprobado.
 
-La IaC y los scripts con credenciales siempre proceden del SHA confiable de `main`; Cloud Build recibe únicamente el SHA del PR aprobado. Después del build, el workflow vuelve a comprobar PR, label, SHA y aprobación. El stack es `organization/proxus-preview/pr-<number>` y el número debe coincidir con `prNumber`.
+La IaC y los scripts con credenciales siempre proceden del SHA confiable de `main`; Cloud Build recibe únicamente el SHA del PR aprobado. Como los environments pueden dejar un job esperando aprobación manual, build y deploy vuelven a comprobar PR, label, SHA y aprobación inmediatamente antes de autenticarse. El destroy rechaza igualmente un evento obsoleto si el PR ya volvió a estar abierto y etiquetado. El stack es `organization/proxus-preview/pr-<number>` y el número debe coincidir con `prNumber`.
 
 La secuencia converge primero el job, ejecuta la migración y después crea dos Cloud Run protegidos por IAP con máximo una instancia. Retirar la label o cerrar el PR destruye el stack. El reconciliador diario destruye stacks `pr-<number>` sin un PR abierto, same-repository, contra `main` y con label. No elimina la base Neon ni el secreto externo: esa limpieza sigue siendo manual/pendiente y debe acompañar cada destrucción para evitar datos huérfanos.
 
