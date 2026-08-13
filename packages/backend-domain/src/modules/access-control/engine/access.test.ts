@@ -63,8 +63,8 @@ describe("internal effect-access engine", () => {
   })
 
   test("validates definitions, references and role bindings at runtime", () => {
-    const emptyDefinition: { permissions: Record<string, readonly string[]>; roles: Record<string, readonly `${string}:${string}`[]> } = { permissions: {}, roles: {} }
-    const invalidReference: { permissions: Record<string, readonly string[]>; roles: Record<string, readonly `${string}:${string}`[]> } = { permissions: { file: ["read"] }, roles: { reader: ["file:write"] } }
+    const emptyDefinition = { permissions: {}, roles: {} } satisfies { permissions: Record<string, readonly string[]>; roles: Record<string, readonly `${string}:${string}`[]> }
+    const invalidReference = { permissions: { file: ["read"] }, roles: { reader: ["file:write"] } } satisfies { permissions: Record<string, readonly string[]>; roles: Record<string, readonly `${string}:${string}`[]> }
     expect(() => defineAccess(emptyDefinition)).toThrow(AccessDefinitionError)
     expect(() => defineAccess(invalidReference)).toThrow(AccessDefinitionError)
     const access = makeAccess()

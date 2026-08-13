@@ -86,10 +86,10 @@ export const firstIncompleteStep = (draft: RegistrationDraft): RegistrationStep 
   return draft.provider === "google" ? "confirm-google" : "account"
 }
 
-const order: Readonly<Record<RegistrationStep, number>> = {
+const order = {
   start: 0, problem: 1, "problem-other": 1, study: 2, profile: 3, discovery: 4,
   account: 5, "confirm-google": 5, verify: 6,
-}
+} satisfies Readonly<Record<RegistrationStep, number>>
 
 /** URL steps may move backwards, but never past the first unmet prerequisite. */
 export const guardRegistrationStep = (requested: RegistrationStep, draft: RegistrationDraft): RegistrationStep => {
