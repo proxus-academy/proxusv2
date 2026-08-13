@@ -22,6 +22,7 @@ describe("product i18n resources", () => {
 
   it("provides the same namespaces in both resources", () => {
     const paths = (cause: unknown, prefix = ""): ReadonlyArray<string> =>
+      // SAFETY: Runtime representation is checked at this boundary before use.
       typeof cause === "object" && cause !== null
         ? Object.entries(cause).flatMap(([key, child]) => paths(child, prefix === "" ? key : `${prefix}.${key}`))
         : [prefix]

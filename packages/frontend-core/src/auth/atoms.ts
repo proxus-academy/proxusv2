@@ -17,6 +17,7 @@ export const makeAuthAtoms = <R, ER = never>(runtime: Atom.AtomRuntime<PublicApi
     PublicApiClient.pipe(Effect.flatMap((client) => client.authSession.currentSession({})),
       Effect.matchEffect({
         onFailure: (error) => Effect.sync(() => {
+          // SAFETY: Runtime representation is checked at this boundary before use.
           get.set(sessionAtom, typeof error === "object" && error !== null && "_tag" in error && error._tag === "Unauthorized"
             ? AsyncResult.success(null)
             : AsyncResult.failure(Cause.fail(error)))

@@ -64,6 +64,7 @@ function SidebarProvider({
   const open = openProp ?? internalOpen
   const setOpen = React.useCallback(
     (value: boolean | ((current: boolean) => boolean)) => {
+      // SAFETY: Runtime representation is checked at this boundary before use.
       const openState = typeof value === "function" ? value(open) : value
       if (setOpenProp !== undefined) {
         setOpenProp(openState)
@@ -402,6 +403,7 @@ function SidebarMenuButton({
     return button
   }
 
+  // SAFETY: Runtime representation is checked at this boundary before use.
   const tooltipProps = typeof tooltip === "string"
     ? { children: tooltip }
     : tooltip

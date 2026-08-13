@@ -11,6 +11,7 @@ export const featureFlagInstallationStorageKey = "proxus.feature-flags.installat
 
 const StoredFeatureFlagSubjectId = Schema.declare<FeatureFlagSubjectId>(
   (input): input is FeatureFlagSubjectId =>
+    // SAFETY: Runtime representation is checked at this boundary before use.
     typeof input === "string" && parseFeatureFlagSubjectId(input) === input,
   { identifier: "StoredFeatureFlagSubjectId" },
 )

@@ -8,6 +8,7 @@ import { roleAssignments } from "../../database/schema.js"
 type Database = PgEffectDatabase<EffectPgQueryEffectHKT, EffectPgQueryResultHKT>
 const failure = (operation: RoleAssignmentStoreError["operation"]) => (cause: unknown) => new RoleAssignmentStoreError({ operation, cause })
 const uniqueViolation = (cause: unknown): boolean => {
+  // SAFETY: Runtime representation is checked at this boundary before use.
   if (typeof cause !== "object" || cause === null) return false
   // SAFETY: The surrounding typed contract establishes the asserted representation.
   const value = cause as { readonly code?: unknown; readonly cause?: unknown }

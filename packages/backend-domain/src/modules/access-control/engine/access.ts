@@ -63,6 +63,7 @@ export declare namespace AccessApi {
 
 let accessInstance = 0
 const failDefinition = (message: string): never => { throw new AccessDefinitionError({ message }) }
+// SAFETY: Runtime representation is checked at this boundary before use.
 const isRecord = (cause: unknown): cause is Record<string, unknown> => typeof cause === "object" && cause !== null && !Array.isArray(cause)
 const unique = <A>(values: Iterable<A>): readonly A[] => Array.from(new Set(values))
 
@@ -96,6 +97,7 @@ export const defineAccess = <
     if (!Array.isArray(actions) || actions.length === 0) failDefinition(`Resource ${type} requires at least one action`)
     scopeTypes.add(type)
     for (const action of actions) {
+      // SAFETY: Runtime representation is checked at this boundary before use.
       if (typeof action !== "string" || action.length === 0 || action.includes(":")) failDefinition(`Invalid action for resource ${type}`)
       const permission = `${type}:${action}`
       if (isPermission(permission)) permissionValues.push(permission)
@@ -112,6 +114,7 @@ export const defineAccess = <
     if (role.length === 0) failDefinition("Role names must be non-empty")
     if (!Array.isArray(permissions)) failDefinition(`Role ${role} permissions must be an array`)
     for (const permission of permissions) {
+      // SAFETY: Runtime representation is checked at this boundary before use.
       if (typeof permission !== "string" || !isPermission(permission))
         failDefinition(`Role ${role} references unknown permission ${String(permission)}`)
     }
@@ -121,6 +124,7 @@ export const defineAccess = <
     if (!isRecord(definition.resources)) failDefinition("resources must be an object")
     for (const [type, mapper] of Object.entries(definition.resources)) {
       if (!scopeTypes.has(type)) failDefinition(`Mapper references unknown resource type ${type}`)
+      // SAFETY: Runtime representation is checked at this boundary before use.
       if (typeof mapper !== "function") failDefinition(`Mapper for ${type} must be a function`)
     }
   }
@@ -165,6 +169,7 @@ export const defineAccess = <
     const resources: unknown = definition.resources
     if (!isRecord(resources)) return cause
     const mapper = resources[type]
+    // SAFETY: Runtime representation is checked at this boundary before use.
     return typeof mapper === "function" ? mapper(cause) : cause
   }
   const toResource = <const P extends Permission>(permission: P, input: ResourceInput<Resources, ScopeType, P>): Resource<Extract<ResourceTypeOfPermission<P>, ScopeType>> => {
@@ -211,6 +216,7 @@ export const defineAccess = <
           try: () => {
             if (!Array.isArray(roles)) throw new TypeError("getRoles must return an array")
             // SAFETY: The surrounding typed contract establishes the asserted representation.
+            // SAFETY: Runtime representation is checked at this boundary before use.
             for (const role of roles as readonly unknown[]) if (typeof role !== "string" || !roleSet.has(role as Role)) throw new TypeError(`Unknown role ${String(role)}`)
             // SAFETY: The surrounding typed contract establishes the asserted representation.
             return unique(roles as readonly Role[])

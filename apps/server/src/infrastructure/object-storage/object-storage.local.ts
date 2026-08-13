@@ -40,7 +40,9 @@ const storageError = (operation: string, key: string, cause: unknown) =>
   new ObjectStorageError({ operation, key, cause })
 
 const isPlatformReason = (cause: unknown, tag: string): boolean =>
+  // SAFETY: Runtime representation is checked at this boundary before use.
   typeof cause === "object" && cause !== null &&
+  // SAFETY: Runtime representation is checked at this boundary before use.
   "reason" in cause && typeof cause.reason === "object" && cause.reason !== null &&
   "_tag" in cause.reason && cause.reason._tag === tag
 

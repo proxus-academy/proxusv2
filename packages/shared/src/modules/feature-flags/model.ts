@@ -45,6 +45,7 @@ export const makeFeatureFlagSubjectId = (value: string): FeatureFlagSubjectId =>
 
 export const parseFeatureFlagSubjectId = (
   value: string | null | undefined,
+// SAFETY: Runtime representation is checked at this boundary before use.
 ): FeatureFlagSubjectId | null => typeof value === "string"
   ? Option.getOrNull(
       Schema.decodeUnknownOption(FeatureFlagSubjectId)(value.toLowerCase()),

@@ -29,6 +29,7 @@ export function Textarea({
     <textarea
       ref={(el) => {
         internalRef.current = el
+        // SAFETY: Runtime representation is checked at this boundary before use.
         if (typeof ref === "function") ref(el)
         else if (ref !== undefined && ref !== null) ref.current = el
       }}

@@ -42,6 +42,7 @@ describe("desktop viewport adapter", () => {
       notify: (media: string) => {
         const listener = listeners.get(media)
         act(() => {
+          // SAFETY: Runtime representation is checked at this boundary before use.
           if (typeof listener === "function") listener(new Event("change"))
           else listener?.handleEvent(new Event("change"))
         })

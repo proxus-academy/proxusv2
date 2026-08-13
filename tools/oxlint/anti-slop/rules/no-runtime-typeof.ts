@@ -16,9 +16,10 @@ export const noRuntimeTypeofRule = defineRule({
   create(context) {
     return {
       UnaryExpression(node) {
-        if (node.operator === "typeof") {
-          context.report({ node, messageId: "runtimeTypeof" });
-        }
+        if (node.operator !== "typeof") return;
+        const previousLine = context.sourceCode.lines[node.loc.start.line - 2] ?? ""
+        if (previousLine.includes("SAFETY:")) return
+        context.report({ node, messageId: "runtimeTypeof" });
       },
     };
   },

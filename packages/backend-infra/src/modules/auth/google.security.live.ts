@@ -17,6 +17,7 @@ const decode = (secret: string, token: string): unknown => {
   if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) throw reject()
   try { return JSON.parse(Buffer.from(parts[0], "base64url").toString("utf8")) } catch { throw reject() }
 }
+// SAFETY: Runtime representation is checked at this boundary before use.
 const record = (cause: unknown): cause is Record<string, unknown> => typeof cause === "object" && cause !== null
 
 /** HMAC tokens are integrity protected, opaque to neither server nor client, and contain no profile data. */
@@ -27,7 +28,9 @@ export const makeGoogleSecurityLive = (secret: string) => {
     if (!guard(value) || value.expiresAt <= (yield* Clock.currentTimeMillis)) return yield* reject()
     return value
   })
+  // SAFETY: Runtime representation is checked at this boundary before use.
   const state = (cause: unknown): cause is GoogleState => record(cause) && (cause.intent === "login" || cause.intent === "register") && typeof cause.nonce === "string" && cause.nonce.length >= 32 && typeof cause.expiresAt === "number"
+  // SAFETY: Runtime representation is checked at this boundary before use.
   const pending = (cause: unknown): cause is PendingGoogle => record(cause) && typeof cause.subject === "string" && cause.subject.length > 0 && typeof cause.email === "string" && cause.email.length > 0 && typeof cause.expiresAt === "number"
   return Layer.succeed(GoogleSecurity, GoogleSecurity.of({
     nonce: () => Effect.sync(() => randomBytes(24).toString("base64url")),

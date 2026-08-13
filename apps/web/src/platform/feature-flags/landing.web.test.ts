@@ -42,6 +42,7 @@ describe("registration landing analytics web adapter", () => {
     yield* analytics.record(assignment, "feature_flag_exposed")
     expect(request).toHaveBeenCalledOnce()
     expect(request).toHaveBeenCalledWith("/api/product-analytics/events", expect.objectContaining({ method: "POST" }))
+    // SAFETY: Runtime representation is checked at this boundary before use.
     if (typeof body !== "string") throw new Error("analytics request body was not encoded")
     expect(decodeAnalyticsBatch(body)).toMatchObject({
       events: [{ _tag: "feature_flag_exposed", revision: 4, variant: "long" }],

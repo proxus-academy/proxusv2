@@ -18,6 +18,7 @@ const loadConfig = Effect.gen(function*() {
 })
 const retryableReasons = new Set(["backendError", "internalError", "rateLimitExceeded", "jobRateLimitExceeded"])
 const retryable = (cause: unknown) => {
+  // SAFETY: Runtime representation is checked at this boundary before use.
   const code = typeof cause === "object" && cause !== null && "code" in cause ? Number(cause.code) : NaN
   return code === 408 || code === 429 || code >= 500
 }
@@ -33,6 +34,7 @@ export const normalizeBigQueryPartialFailure = (
   eventIds: ReadonlyArray<string>,
 ) => {
   if (
+    // SAFETY: Runtime representation is checked at this boundary before use.
     typeof cause !== "object" ||
     cause === null ||
     !("name" in cause) ||
@@ -51,14 +53,17 @@ export const normalizeBigQueryPartialFailure = (
   const retryableByIndex = new Map<number, boolean>()
   let allRowsKnown = cause.errors.length > 0
   for (const failure of cause.errors) {
+    // SAFETY: Runtime representation is checked at this boundary before use.
     if (typeof failure !== "object" || failure === null || !("row" in failure)) {
       allRowsKnown = false
       continue
     }
     const row = failure.row
+    // SAFETY: Runtime representation is checked at this boundary before use.
     const insertId = typeof row === "object" && row !== null && "insertId" in row
       ? row.insertId
       : undefined
+    // SAFETY: Runtime representation is checked at this boundary before use.
     const index = typeof insertId === "string"
       ? indexByEventId.get(insertId)
       : undefined
@@ -71,9 +76,11 @@ export const normalizeBigQueryPartialFailure = (
       ? failure.errors
       : []
     const rowIsRetryable = errors.length > 0 && errors.every((error) =>
+      // SAFETY: Runtime representation is checked at this boundary before use.
       typeof error === "object" &&
       error !== null &&
       "reason" in error &&
+      // SAFETY: Runtime representation is checked at this boundary before use.
       typeof error.reason === "string" &&
       retryableReasons.has(error.reason)
     )

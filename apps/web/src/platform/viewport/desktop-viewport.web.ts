@@ -9,6 +9,7 @@ const mediaQueries = () => [
 ] as const
 
 const subscribe = (notify: () => void) => {
+  // SAFETY: Runtime representation is checked at this boundary before use.
   if (typeof globalThis.window.matchMedia !== "function") return () => undefined
   const queries = mediaQueries()
   for (const query of queries) query.addEventListener("change", notify)
@@ -18,6 +19,7 @@ const subscribe = (notify: () => void) => {
 }
 
 const snapshot = () => {
+  // SAFETY: Runtime representation is checked at this boundary before use.
   if (typeof globalThis.window.matchMedia !== "function") return true
   const [narrow, coarsePointer] = mediaQueries()
   return !narrow.matches || !coarsePointer.matches

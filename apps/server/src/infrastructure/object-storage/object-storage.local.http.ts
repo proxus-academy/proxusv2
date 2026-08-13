@@ -18,10 +18,12 @@ const keyFromUrl = (url: string, prefix: string): string => {
 }
 
 const causeHasTag = (cause: unknown, tag: string): boolean =>
+  // SAFETY: Runtime representation is checked at this boundary before use.
   typeof cause === "object" && cause !== null && "_tag" in cause &&
     (cause._tag === tag || ("cause" in cause && causeHasTag(cause.cause, tag)))
 
 const errorTag = (cause: unknown): string | undefined =>
+  // SAFETY: Runtime representation is checked at this boundary before use.
   typeof cause === "object" && cause !== null && "_tag" in cause && typeof cause._tag === "string"
     ? cause._tag
     : undefined

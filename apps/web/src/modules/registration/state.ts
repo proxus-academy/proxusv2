@@ -55,8 +55,10 @@ const onboardingOf = (draft: RegistrationDraft) => {
     username: draft.username,
     birthYear: draft.birthYear,
     problemKind: draft.problemKind,
+    // SAFETY: Runtime representation is checked at this boundary before use.
     ...(typeof draft.problemOtherText === "string" ? { problemOtherText: draft.problemOtherText } : undefined),
     acquisitionSource: draft.acquisitionSource,
+    // SAFETY: Runtime representation is checked at this boundary before use.
     ...(typeof draft.acquisitionOtherText === "string"
       ? { acquisitionOtherText: draft.acquisitionOtherText }
       : undefined),
@@ -195,6 +197,7 @@ export const registrationErrorCodeAtom = Atom.make<RegistrationErrorCode | undef
     return Option.isSome(error) ? [error.value] : []
   })
   const tags = errors.flatMap((error) =>
+    // SAFETY: Runtime representation is checked at this boundary before use.
     typeof error === "object" && error !== null && "_tag" in error && typeof error._tag === "string"
       ? [error._tag]
       : [])

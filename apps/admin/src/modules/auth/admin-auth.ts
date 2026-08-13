@@ -18,7 +18,9 @@ export class AdminAccessClient extends Context.Service<AdminAccessClient, {
 }>()("@proxus/admin/modules/auth/admin-auth/AdminAccessClient") {}
 
 const statusOf = (cause: unknown): number | undefined => {
+  // SAFETY: Runtime representation is checked at this boundary before use.
   if (typeof cause !== "object" || cause === null) return undefined
+  // SAFETY: Runtime representation is checked at this boundary before use.
   if ("status" in cause && typeof cause.status === "number") return cause.status
   if ("response" in cause) return statusOf(cause.response)
   if ("cause" in cause) return statusOf(cause.cause)

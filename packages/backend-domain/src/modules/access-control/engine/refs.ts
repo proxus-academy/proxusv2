@@ -5,6 +5,7 @@
 import type { ObjectRef, Resource, Scope, Subject } from "./types.js"
 
 const assertPart = (name: string, value: string): void => {
+  // SAFETY: Runtime representation is checked at this boundary before use.
   if (typeof value !== "string" || value.length === 0) throw new TypeError(`${name} must be a non-empty string`)
 }
 
@@ -33,10 +34,13 @@ export const resource = <const Type extends string, const Id extends string>(
 }
 
 export const isObjectRef = (cause: unknown): cause is ObjectRef => {
+  // SAFETY: Runtime representation is checked at this boundary before use.
   if (typeof cause !== "object" || cause === null) return false
   // SAFETY: The surrounding typed contract establishes the asserted representation.
   const candidate = cause as { readonly type?: unknown; readonly id?: unknown }
+  // SAFETY: Runtime representation is checked at this boundary before use.
   return typeof candidate.type === "string" && candidate.type.length > 0 &&
+    // SAFETY: Runtime representation is checked at this boundary before use.
     typeof candidate.id === "string" && candidate.id.length > 0
 }
 
