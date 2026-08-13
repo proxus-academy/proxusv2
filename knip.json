@@ -16,6 +16,10 @@
       "ignoreDependencies": ["tailwindcss"]
     },
     "apps/*": {},
-    "packages/*": {}
+    "packages/*": {},
+    "infra": {
+      "entry": ["foundation/index.ts", "src/**/*.test.ts"],
+      "project": ["foundation/**/*.ts", "src/config.ts", "src/foundation/**/*.ts", "src/**/*.test.ts"]
+    }
   }
 }

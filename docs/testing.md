@@ -175,6 +175,10 @@ un proceso vacío.
 - Builders return valid deterministic domain values; fixtures perform Effectful
   arrangement through public interfaces.
 
+### Infrastructure as code
+
+`infra/src/**/*.test.ts` cubre invariantes puras de política y configuración; TypeScript valida el programa Pulumi de foundation. Estas comprobaciones no contactan GCP. Un `pulumi preview --diff` real es obligatorio antes de aplicar y pertenece a la operación de infraestructura, no al gate determinista de PR. Foundation es el único stack aprobado para apply en esta fase.
+
 ## Current CI gates and pending suites
 
 The current `.github/workflows/validate.yml` has two independent required jobs.
@@ -228,7 +232,7 @@ repeated race tests and additional PostgreSQL versions.
 The checks have no generated allowlist or accepted-violation baseline:
 
 - `effect:diagnostics` obtains the workspace inventory from `pnpm list -r`, sorts
-  every discovered `tsconfig.json`, and checks all 14 projects. The wrapper also
+  every discovered `tsconfig.json`, and checks all 15 projects, incluida la IaC TypeScript. The wrapper also
   accepts `--root` and a JSON `--inventory` for isolated probes. It passes the
   root Effect Language Service configuration explicitly, so a leaf `plugins`
   override cannot silently reduce coverage. Workspace tsconfigs include their
@@ -274,10 +278,10 @@ not add PostgreSQL or browser coverage. The separate CI `postgres` job is the
 real-PostgreSQL gate. CI pins the action commits, Node 22.22.2, Corepack 0.35.0
 and the repository's `pnpm@10.32.1`, and installs with `--frozen-lockfile`.
 
-### Current validation baseline (2026-07-21)
+### Current validation baseline (2026-08-13)
 
 `pnpm static` has no accepted-finding baseline: every finding must be fixed.
-The 15 Effect projects include current TypeScript configs; the same configs are
+The 15 workspace TypeScript projects include current configs; the same configs are
 covered by typecheck and type-aware ESLint. A green static run says nothing about
 the separate PostgreSQL gate or pending browser suites. Knip's dependency ignores are limited
 to dependencies loaded indirectly by Vite/Storybook builds, shared CSS or inline

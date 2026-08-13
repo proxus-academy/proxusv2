@@ -1,0 +1,8 @@
+secretsprovider: gcpkms://projects/proxus-v2/locations/europe-southwest1/keyRings/pulumi-state/cryptoKeys/pulumi-secrets
+config:
+  gcp:project: proxus-v2
+  gcp:region: europe-southwest1
+  proxus-foundation:githubRepository: proxus-academy/proxusv2
+  proxus-foundation:stateBucketName: proxus-v2-pulumi-state
+  proxus-foundation:stateKmsKeyId: projects/proxus-v2/locations/europe-southwest1/keyRings/pulumi-state/cryptoKeys/pulumi-secrets
+encryptedkey: CiQAsz6/jOpfyHOGFQBqIPGNEuFiVcdzi8Br2WSJxjd/Wzt7GK4SSQDyBsfnRL76Yon3TvHwSHrSXOqmMd2qaDrveD4wII8ECOK8xuz2ScRIkZtsaZdEzJnQLFO0CmQpgU9pzfZJJzsyhUCCo4WfYqs=

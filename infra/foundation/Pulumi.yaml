@@ -1,0 +1,9 @@
+name: proxus-foundation
+runtime:
+  name: nodejs
+  options:
+    typescript: true
+main: index.ts
+description: Non-destructive shared GCP foundation for Proxus v2
+backend:
+  url: gs://proxus-v2-pulumi-state

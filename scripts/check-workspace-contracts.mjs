@@ -38,6 +38,8 @@ const wildcardMatch = (pattern, value) => pattern.includes("*") && wildcardRegEx
 
 const discoverPackages = () => {
   const packageDirectories = []
+  const infrastructure = resolve(root, "infra")
+  if (existsSync(resolve(infrastructure, "package.json"))) packageDirectories.push(infrastructure)
   for (const parentName of ["apps", "packages"]) {
     const parent = resolve(root, parentName)
     if (!existsSync(parent)) continue
@@ -203,7 +205,7 @@ for (const workspacePackage of packages) {
   const declared = new Set(dependencySections.flatMap((section) => Object.keys(workspacePackage.manifest[section] ?? {})))
   for (const file of walkFiles(workspacePackage.directory, sourceExtensions)) {
     const source = readFileSync(file, "utf8")
-    const imports = ts.preProcessFile(source, true, true).importedFiles.map(({ fileName }) => fileName)
+    const imports = ts.preProcessFile(source, true, false).importedFiles.map(({ fileName }) => fileName)
 
     for (const specifier of imports) {
       if (specifier.includes("://") || specifier.startsWith("#") || isBuiltin(specifier)) continue

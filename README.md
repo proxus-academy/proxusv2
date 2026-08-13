@@ -258,6 +258,19 @@ La composición de desarrollo imprime únicamente los mensajes/códigos email en
 
 Los comandos QA actuales usan PGlite; mientras no acepten `DATABASE_URL`, los pasos 2–5 con ambas APIs requieren crear fixtures equivalentes en la base PostgreSQL de QA o quedan bloqueados. No se debe apuntar dos procesos al mismo PGlite.
 
+## Infraestructura GCP
+
+La foundation compartida vive en `infra/foundation`. Usa Pulumi TypeScript en `europe-southwest1`, state GCS versionado, cifrado KMS, Artifact Registry y WIF sin claves JSON. Es la única infraestructura aprobada para converger en esta fase.
+
+```bash
+GCP_PROJECT_ID=proxus-v2 infra/scripts/bootstrap-state.sh
+pnpm infra preview --environment foundation
+pnpm infra deploy --environment foundation
+pnpm infra outputs --environment foundation
+```
+
+No uses `allUsers`, no introduzcas valores secretos en config Pulumi y revisa siempre el preview antes de aplicar. Consulta la normativa [`docs/infrastructure/gcp-pulumi.md`](./docs/infrastructure/gcp-pulumi.md) y el [`runbook`](./docs/runbooks/gcp-pulumi.md).
+
 ## Referencias locales
 
 Los repositorios de referencia viven como submodules bajo `.repos/`:
