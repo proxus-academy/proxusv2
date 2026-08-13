@@ -6,6 +6,7 @@
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "build:backend": "node src/build/build-backend.mjs",
     "infra": "node src/cli.mjs"
   },
   "dependencies": {
@@ -14,6 +15,7 @@
   },
   "devDependencies": {
     "@types/node": "^25.0.0",
+    "esbuild": "0.28.2",
     "typescript": "^5.8.3",
     "vitest": "3.2.7"
   }

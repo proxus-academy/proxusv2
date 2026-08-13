@@ -1,0 +1,5 @@
+config:
+  gcp:project: proxus-v2
+  gcp:region: europe-southwest1
+  proxus-production:applicationRuntimeReady: false
+  proxus-production:deployServices: false

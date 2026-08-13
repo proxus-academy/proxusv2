@@ -1,0 +1,9 @@
+name: proxus-production
+runtime:
+  name: nodejs
+  options:
+    typescript: true
+main: index.ts
+description: Persistent production Cloud Run and private GCS/Cloud CDN deployment
+backend:
+  url: gs://proxus-v2-pulumi-state

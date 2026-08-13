@@ -1,6 +1,6 @@
 import { randomBytes, randomUUID } from "node:crypto"
 import { AuthChallengeRepository, AuthRepositoryError, AuthTransactions, SessionIssuer, UserRepository, makeSessionId, type AuthSession } from "@proxus/backend-domain/auth"
-import type { EffectPgQueryEffectHKT, EffectPgQueryResultHKT } from "drizzle-orm/effect-pglite"
+import type { EffectPgQueryEffectHKT, EffectPgQueryResultHKT } from "drizzle-orm/effect-postgres"
 import type { PgEffectDatabase } from "drizzle-orm/pg-core/effect"
 import { Clock, DateTime, Effect } from "effect"
 import { authSessions } from "../../database/schema.js"

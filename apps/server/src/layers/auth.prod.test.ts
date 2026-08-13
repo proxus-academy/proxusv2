@@ -1,6 +1,6 @@
 import { Effect } from "effect"
 import { describe, expect, test } from "vitest"
-import { validateProductionAuthAdapters } from "./auth.js"
+import { validateProductionAuthAdapters } from "./auth.prod.js"
 
 describe("production auth adapter safety", () => {
   test.each([

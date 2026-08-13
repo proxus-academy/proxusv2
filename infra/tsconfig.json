@@ -7,5 +7,5 @@
     "noEmit": true,
     "rootDir": "."
   },
-  "include": ["foundation/**/*.ts", "src/config.test.ts", "src/config.ts", "src/foundation/**/*.ts"]
+  "include": ["foundation/**/*.ts", "preview/**/*.ts", "production/**/*.ts", "src/**/*.ts"]
 }

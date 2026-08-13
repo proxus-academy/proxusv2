@@ -18,8 +18,8 @@
     "apps/*": {},
     "packages/*": {},
     "infra": {
-      "entry": ["foundation/index.ts", "src/**/*.test.ts"],
-      "project": ["foundation/**/*.ts", "src/config.ts", "src/foundation/**/*.ts", "src/**/*.test.ts"]
+      "entry": ["foundation/index.ts", "preview/index.ts", "production/index.ts", "src/**/*.test.ts", "src/**/*.mjs"],
+      "project": ["foundation/**/*.ts", "preview/**/*.ts", "production/**/*.ts", "src/**/*.{ts,mjs}"]
     }
   }
 }

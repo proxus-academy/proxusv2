@@ -1,22 +1,17 @@
 import { GoogleIdentityProvider, GoogleIdentityRejected, RegistrationAvailability, UserRepository, type User } from "@proxus/backend-domain/auth"
 import { makeGoogleFlowLive } from "@proxus/backend-domain/auth/google-live"
 import {
-  ConsoleEmailDelivery,
   GoogleSessionIssuerLive,
   PasswordsLive,
   ProductionEmailDeliveryUnavailable,
   SecureSessionRandomLive,
   SecureVerificationCodeGeneratorLive,
-  makeAuthPersistencePgliteLive,
   makeAuthPersistencePostgresLive,
   makeAuthenticationLive,
-  makeConsoleEmailDelivery,
   makeEmailRegistrationServiceLive,
-  makeFakeGoogleIdentityProvider,
   makeGoogleSecurityLive,
   makeOpaqueSessionsLive,
-} from "@proxus/backend-infra/auth"
-import { PgliteDevelopmentLive } from "@proxus/backend-infra/database/pglite"
+} from "@proxus/backend-infra/auth/production"
 import { makePostgresProductionLive } from "@proxus/backend-infra/database/postgres"
 import { AuthSessionView, makeAuthSessionCookies } from "@proxus/backend-transport/auth"
 import { AccountSummary, CurrentSession } from "@proxus/shared/auth"
@@ -27,6 +22,22 @@ const day = 86_400_000
 const sessionPolicy = { ttlMillis: 30 * day, renewalWindowMillis: 7 * day, rotationGraceMillis: 10_000 }
 const registrationPolicy = { challengeTtlMillis: 15 * 60_000, resendCooldownMillis: 60_000, maximumAttempts: 5 }
 const authenticationPolicy = { passwordResetTtlMillis: 15 * 60_000, passwordResetMaximumAttempts: 5 }
+
+class UnsafeProductionAuthAdapter extends Schema.TaggedErrorClass<UnsafeProductionAuthAdapter>()(
+  "UnsafeProductionAuthAdapter",
+  { message: Schema.String },
+) {}
+
+export const validateProductionAuthAdapters = (email: string, google: string) =>
+  email === "console" || google === "fake"
+    ? Effect.fail(new UnsafeProductionAuthAdapter({ message: "Development auth adapters are forbidden in production" }))
+    : Effect.void
+
+const ProductionAuthSafety = Layer.effectDiscard(Effect.gen(function*() {
+  const email = yield* Config.string("AUTH_EMAIL_ADAPTER").pipe(Config.withDefault("real"))
+  const google = yield* Config.string("AUTH_GOOGLE_ADAPTER").pipe(Config.withDefault("real"))
+  yield* validateProductionAuthAdapters(email, google)
+}))
 
 const AuthSessionViewLive = Layer.effect(AuthSessionView, Effect.gen(function*() {
   const users = yield* UserRepository
@@ -63,17 +74,28 @@ const services = Layer.mergeAll(
   makeAuthenticationLive(authenticationPolicy),
   makeGoogleFlowLive({ stateTtlMillis: 10 * 60_000, pendingTtlMillis: 30 * 60_000 }),
 ).pipe(Layer.provideMerge(sessionServices))
+const ProductionGoogleUnavailable = Layer.succeed(GoogleIdentityProvider, GoogleIdentityProvider.of({
+  authorizationUrl: () => Effect.fail(new GoogleIdentityRejected({ reason: "provider-failure" })),
+  exchangeCallback: () => Effect.fail(new GoogleIdentityRejected({ reason: "provider-failure" })),
+}))
+const persistence = makeAuthPersistencePostgresLive(sessionPolicy.ttlMillis).pipe(
+  Layer.provide(makePostgresProductionLive("proxus-server-auth")),
+)
+const dependencies = Layer.mergeAll(
+  PasswordsLive,
+  SecureVerificationCodeGeneratorLive,
+  SecureSessionRandomLive,
+  ProductionEmailDeliveryUnavailable,
+  ProductionGoogleUnavailable,
+  persistence,
+  Layer.unwrap(Config.redacted("AUTH_GOOGLE_SIGNING_SECRET").pipe(
+    Effect.map((secret) => makeGoogleSecurityLive(secret.toString())),
+  )),
+)
 
-const developmentCookies = makeAuthSessionCookies({ secure: false, sameSite: "lax" })
-const productionCookies = makeAuthSessionCookies({ secure: true, sameSite: "lax" })
-
-export const makeAuthDevLive = (email = ConsoleEmailDelivery, google = makeFakeGoogleIdentityProvider([
-  { code: "dev-google-new", identity: { subject: "dev-google-user", email: "google@example.test", emailVerified: true, displayName: "Development User" } },
-  { code: "dev-google-existing", identity: { subject: "qa-google:student-google", email: "student.google.qa@proxus.dev", emailVerified: true, displayName: "QA Existing User" } },
-]), persistence = makeAuthPersistencePgliteLive(sessionPolicy.ttlMillis).pipe(Layer.provide(PgliteDevelopmentLive))) => {
-  const dependencies = Layer.mergeAll(PasswordsLive, SecureVerificationCodeGeneratorLive, SecureSessionRandomLive, email, google,
-    makeGoogleSecurityLive("proxus-development-google-secret-32-bytes-minimum"), persistence)
-  return Layer.mergeAll(services.pipe(Layer.provide(dependencies)), AuthSessionViewLive.pipe(Layer.provide(persistence)), developmentCookies)
-}
-
-export const AuthDevLive = makeAuthDevLive()
+export const AuthProdLive = Layer.mergeAll(
+  services.pipe(Layer.provide(dependencies)),
+  AuthSessionViewLive.pipe(Layer.provide(persistence)),
+  makeAuthSessionCookies({ secure: true, sameSite: "lax" }),
+  ProductionAuthSafety,
+)

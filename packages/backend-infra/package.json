@@ -6,6 +6,7 @@
     "./database/pglite": "./src/database/pglite.ts",
     "./database/postgres": "./src/database/postgres.ts",
     "./auth": "./src/modules/auth/index.ts",
+    "./auth/production": "./src/modules/auth/production.ts",
     "./auth/authentication-live": "./src/modules/auth/authentication.live.ts",
     "./auth/google-fake": "./src/modules/auth/google.fake.ts",
     "./auth/google-security-live": "./src/modules/auth/google.security.live.ts",

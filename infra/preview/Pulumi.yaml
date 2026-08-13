@@ -1,0 +1,9 @@
+name: proxus-preview
+runtime:
+  name: nodejs
+  options:
+    typescript: true
+main: index.ts
+description: One IAP-protected Cloud Run preview stack per pull request
+backend:
+  url: gs://proxus-v2-pulumi-state

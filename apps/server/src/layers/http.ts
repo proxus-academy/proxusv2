@@ -11,12 +11,9 @@ import { Config, Effect, Layer, Redacted } from "effect"
 import { HttpRouter } from "effect/unstable/http"
 import { makePublicApiRoutes } from "../http.js"
 import { FeatureFlagsDevLive } from "./feature-flags.dev.js"
-import { FeatureFlagsProdLive } from "./feature-flags.prod.js"
 import { ProductAnalyticsDevLive } from "./product-analytics.dev.js"
-import { ProductAnalyticsProdLive } from "./product-analytics.prod.js"
 import { StudyCatalogDevLive } from "./study-catalog.dev.js"
-import { StudyCatalogProdLive } from "./study-catalog.prod.js"
-import { AuthDevLive, AuthProdLive } from "./auth.js"
+import { AuthDevLive } from "./auth.js"
 import { layer as localObjectStorageLayer } from "../infrastructure/object-storage/object-storage.local.js"
 import { LocalObjectStorageTransfers } from "../infrastructure/object-storage/object-storage.local.js"
 import { ObjectStorage } from "../infrastructure/object-storage/object-storage.js"
@@ -52,21 +49,12 @@ const DevObjectStorageLive = makeLocalObjectStorageLive(
     Config.withDefault(Redacted.make("proxus-development-object-storage-secret")),
   ),
 )
-const ProdObjectStorageLive = makeLocalObjectStorageLive(Config.redacted("OBJECT_STORAGE_SIGNING_SECRET"))
-
 const AccessLive = AccessControlServiceLive.pipe(Layer.provide(makeMemoryRoleAssignmentsRepository([])))
 const DevCatalogLive = StudyCatalogDevLive.pipe(Layer.provide(AccessLive))
-const ProdCatalogLive = StudyCatalogProdLive.pipe(Layer.provide(AccessLive))
 const devCatalogSupport = StudyPathValidator.layer.pipe(Layer.provide(DevCatalogLive))
-const prodCatalogSupport = StudyPathValidator.layer.pipe(Layer.provide(ProdCatalogLive))
 
 export const HttpDevLive = makeHttpLive(Layer.mergeAll(
   DevCatalogLive,
   ProductAnalyticsDevLive,
   FeatureFlagsDevLive,
 ), AuthDevLive, devCatalogSupport, DevObjectStorageLive).pipe(Layer.provide(AuthDevLive), Layer.provide(devCatalogSupport))
-export const HttpProdLive = makeHttpLive(Layer.mergeAll(
-  ProdCatalogLive,
-  ProductAnalyticsProdLive,
-  FeatureFlagsProdLive,
-), AuthProdLive, prodCatalogSupport, ProdObjectStorageLive).pipe(Layer.provide(AuthProdLive), Layer.provide(prodCatalogSupport))

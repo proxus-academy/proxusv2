@@ -10,7 +10,7 @@ import {
   type User,
 } from "@proxus/backend-domain/auth"
 import { and, desc, eq, gt, isNotNull, isNull, lt, or, sql } from "drizzle-orm"
-import type { EffectPgQueryEffectHKT, EffectPgQueryResultHKT } from "drizzle-orm/effect-pglite"
+import type { EffectPgQueryEffectHKT, EffectPgQueryResultHKT } from "drizzle-orm/effect-postgres"
 import type { PgEffectDatabase } from "drizzle-orm/pg-core/effect"
 import { Effect, Option, Semaphore } from "effect"
 import { authChallenges, users, type AuthChallengeRow, type UserRow } from "../../database/schema.js"
