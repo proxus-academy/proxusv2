@@ -22,8 +22,8 @@ export const forbidden = (input: {
 }): Forbidden =>
   new Forbidden({
     message: input.message ?? "Forbidden",
-    ...(input.permission !== undefined ? { permission: input.permission } : {}),
-    ...(input.subject !== undefined ? { subject: input.subject } : {}),
-    ...(input.resource !== undefined ? { resource: input.resource } : {}),
-    ...(input.reasons !== undefined ? { reasons: input.reasons } : {})
+    ...(input.permission !== undefined ? { permission: input.permission } : undefined),
+    ...(input.subject !== undefined ? { subject: input.subject } : undefined),
+    ...(input.resource !== undefined ? { resource: input.resource } : undefined),
+    ...(input.reasons !== undefined ? { reasons: input.reasons } : undefined)
   })

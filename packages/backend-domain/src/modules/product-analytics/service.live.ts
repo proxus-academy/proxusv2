@@ -214,9 +214,9 @@ export const makeProductAnalyticsLive = (options: ProductAnalyticsOptions = defa
         const now = DateTime.formatIso(DateTime.makeUnsafe(nowMs))
         const envelopes = yield* Effect.forEach(events, (event) => uuid.pipe(Effect.map((eventId): ProductAnalyticsEnvelope => ({
           eventId, receivedAt: now,
-          ...(event.occurredAt === undefined ? {} : { occurredAt: DateTime.formatIso(event.occurredAt) }),
+          ...(event.occurredAt === undefined ? undefined : { occurredAt: DateTime.formatIso(event.occurredAt) }),
           subjectId, flagKey: event.flagKey, variant: event.variant, revision: event.revision,
-          ...(context.sessionId === undefined ? {} : { sessionId: context.sessionId }), event,
+          ...(context.sessionId === undefined ? undefined : { sessionId: context.sessionId }), event,
         }))))
         const offered = yield* Semaphore.withPermit(lifecycle, Effect.gen(function*() {
           if (!(yield* Ref.get(accepting))) return false

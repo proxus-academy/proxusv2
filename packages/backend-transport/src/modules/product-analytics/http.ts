@@ -31,7 +31,7 @@ export const ProductAnalyticsHttpContextDevelopment = Layer.succeed(ProductAnaly
     const flagSubjectId = request.headers["x-proxus-dev-flag-subject"]
     return Effect.succeed({
       consent: request.headers["x-proxus-dev-analytics-consent"] === "granted" && isSameOriginDevelopmentRequest(request) ? "granted" : "unknown",
-      ...(flagSubjectId === undefined ? {} : { flagSubjectId }),
+      ...(flagSubjectId === undefined ? undefined : { flagSubjectId }),
     })
   },
 })

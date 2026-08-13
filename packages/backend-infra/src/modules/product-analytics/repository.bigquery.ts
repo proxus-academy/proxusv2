@@ -10,7 +10,7 @@ const loadConfig = Effect.gen(function*() {
   const dataset = yield* Config.string("PRODUCT_ANALYTICS_BIGQUERY_DATASET")
   const table = yield* Config.string("PRODUCT_ANALYTICS_BIGQUERY_TABLE")
   const key = yield* Config.option(Config.redacted("PRODUCT_ANALYTICS_BIGQUERY_KEY_FILE"))
-  const config: BigQueryConfig = { projectId, dataset, table, ...(key._tag === "Some" ? { keyFilename: Redacted.value(key.value) } : {}) }
+  const config: BigQueryConfig = { projectId, dataset, table, ...(key._tag === "Some" ? { keyFilename: Redacted.value(key.value) } : undefined) }
   if (!projectIdentifier.test(projectId) || !identifier.test(dataset) || !identifier.test(table) || config.keyFilename?.trim() === "") {
     return yield* Effect.die("Invalid Product Analytics BigQuery configuration")
   }
@@ -105,7 +105,7 @@ export const ProductAnalyticsRepositoryBigQuery = Layer.effect(ProductAnalyticsR
   const config = yield* loadConfig
   // BigQuery's Node client exposes no close operation. It is still constructed once per Layer,
   // but there is no SDK resource finalizer to invoke (an explicit production limitation).
-  const client = new BigQuery({ projectId: config.projectId, ...(config.keyFilename === undefined ? {} : { keyFilename: config.keyFilename }) })
+  const client = new BigQuery({ projectId: config.projectId, ...(config.keyFilename === undefined ? undefined : { keyFilename: config.keyFilename }) })
   const table = client.dataset(config.dataset).table(config.table)
   return ProductAnalyticsRepository.of({
     writeBatch: (batch) => Effect.tryPromise({
@@ -125,7 +125,7 @@ export const ProductAnalyticsRepositoryBigQuery = Layer.effect(ProductAnalyticsR
           operation: "insert",
           retryable: partial === undefined ? retryable(cause) : partial.retryableIndexes.length > 0,
           cause,
-          ...(partial === undefined ? {} : partial),
+          ...(partial === undefined ? undefined : partial),
         })
       },
     }).pipe(Effect.asVoid),

@@ -55,11 +55,11 @@ const onboardingOf = (draft: RegistrationDraft) => {
     username: draft.username,
     birthYear: draft.birthYear,
     problemKind: draft.problemKind,
-    ...(typeof draft.problemOtherText === "string" ? { problemOtherText: draft.problemOtherText } : {}),
+    ...(typeof draft.problemOtherText === "string" ? { problemOtherText: draft.problemOtherText } : undefined),
     acquisitionSource: draft.acquisitionSource,
     ...(typeof draft.acquisitionOtherText === "string"
       ? { acquisitionOtherText: draft.acquisitionOtherText }
-      : {}),
+      : undefined),
     study: {
       subjectId: subject.id,
     },

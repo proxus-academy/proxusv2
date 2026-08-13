@@ -108,7 +108,7 @@ const collecting = (
   _tag: "CollectingOnboarding",
   draft,
   step: firstIncompleteStep(draft),
-  ...(googleRegistration === undefined ? {} : { googleRegistration }),
+  ...(googleRegistration === undefined ? undefined : { googleRegistration }),
 })
 
 export const transitionRegistration = (state: RegistrationState, event: RegistrationEvent): RegistrationState => {

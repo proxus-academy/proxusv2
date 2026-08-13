@@ -11,7 +11,7 @@ describe("admin embedded HTTP API", () => {
       )
       const mutation = (name: string, cookie?: string) => request("/admin/study-catalog/nodes", {
         method: "POST",
-        headers: { "content-type": "application/json", ...(cookie === undefined ? {} : { cookie }) },
+        headers: { "content-type": "application/json", ...(cookie === undefined ? undefined : { cookie }) },
         body: `{"_tag":"CreateCountry","name":"${name}"}`,
       })
 

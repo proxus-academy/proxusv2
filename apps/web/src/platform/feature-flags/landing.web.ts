@@ -38,7 +38,7 @@ export const makeRegistrationLandingAnalyticsWeb = (
       flagKey: assignment.flagKey,
       variant: assignment.variant,
       revision: assignment.revision,
-      ...(step === undefined ? {} : step),
+      ...(step === undefined ? undefined : step),
     })
     const batch = yield* decodeAnalyticsBatch({ events: [event] })
     const body = yield* encodeAnalyticsBatch(batch)

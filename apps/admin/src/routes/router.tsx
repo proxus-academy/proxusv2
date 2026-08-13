@@ -4,7 +4,7 @@ import { routeTree } from "../routeTree.gen.js"
 const makeAdminRouter = (history?: RouterHistory) => createRouter({
   routeTree,
   defaultPreload: "intent",
-  ...(history === undefined ? {} : { history }),
+  ...(history === undefined ? undefined : { history }),
 })
 
 const router = makeAdminRouter()

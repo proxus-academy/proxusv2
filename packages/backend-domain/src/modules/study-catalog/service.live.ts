@@ -399,7 +399,7 @@ export const StudyCatalogLive: Layer.Layer<
       listNodes,
       listCountries,
       listRoots,
-      ...(userCountsByNodeIds === undefined ? {} : { userCountsByNodeIds }),
+      ...(userCountsByNodeIds === undefined ? undefined : { userCountsByNodeIds }),
       listChildren,
       createNode,
       getNode,

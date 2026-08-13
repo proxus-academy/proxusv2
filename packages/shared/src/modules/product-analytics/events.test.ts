@@ -63,7 +63,7 @@ describe("product analytics contract", () => {
     expect(encodeEvent(event)).toEqual({
       _tag: tag,
       ...context,
-      ...(tag.startsWith("registration_step_") ? step : {}),
+      ...(tag.startsWith("registration_step_") ? step : undefined),
     })
   })
 
