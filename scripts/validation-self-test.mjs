@@ -81,7 +81,7 @@ try {
   const eslintProbe = resolve(temporaryRoot, "eslint")
   mkdirSync(eslintProbe, { recursive: true })
   linkNodeModules(eslintProbe)
-  writeToolManifest(eslintProbe, { lint: rootManifest.scripts.lint })
+  writeToolManifest(eslintProbe, { lint: rootManifest.scripts["lint:eslint"] })
   cpSync(resolve(root, "eslint.config.mjs"), resolve(eslintProbe, "eslint.config.mjs"))
   writeJson(eslintProbe, "apps/probe/tsconfig.json", {
     compilerOptions: { module: "ESNext", noEmit: true, strict: true, target: "ES2022" },
