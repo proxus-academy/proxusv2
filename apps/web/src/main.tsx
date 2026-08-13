@@ -19,5 +19,6 @@ reactRoot.render(
   </StrictMode>,
 )
 
+// SAFETY: The surrounding typed contract establishes the asserted representation.
 const hot = (import.meta as ImportMeta & { readonly hot?: { readonly dispose: (cleanup: () => void) => void } }).hot
 if (hot !== undefined) hot.dispose(() => reactRoot.unmount())

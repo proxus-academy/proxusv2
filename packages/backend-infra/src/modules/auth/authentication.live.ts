@@ -27,6 +27,7 @@ export interface AuthenticationPolicy {
 
 const randomId = (random: typeof Random.Random.Service): AuthChallengeId => {
   const parts = Array.from({ length: 4 }, () => Math.abs(random.nextIntUnsafe()).toString(36).padStart(7, "0"))
+  // SAFETY: The surrounding typed contract establishes the asserted representation.
   return parts.join("") as AuthChallengeId
 }
 

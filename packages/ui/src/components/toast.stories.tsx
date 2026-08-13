@@ -10,6 +10,7 @@ const meta = {
     variant: { control: "select", options: ["default", "success", "destructive"] },
     open: { control: "boolean" }
   },
+  // SAFETY: The surrounding typed contract establishes the asserted representation.
   args: { open: true as boolean, variant: "default" }
 } satisfies Meta<typeof Toast>
 

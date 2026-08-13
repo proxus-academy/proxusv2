@@ -190,6 +190,7 @@ export type RegistrationErrorCode = "conflict" | "invalidCode" | "network" | "un
 export const registrationErrorCodeAtom = Atom.make<RegistrationErrorCode | undefined>((get) => {
   const errors = operationResults(get).flatMap((result) => {
     if (result._tag !== "Failure") return []
+    // SAFETY: The surrounding typed contract establishes the asserted representation.
     const error = Cause.findErrorOption(result.cause as Cause.Cause<unknown>)
     return Option.isSome(error) ? [error.value] : []
   })

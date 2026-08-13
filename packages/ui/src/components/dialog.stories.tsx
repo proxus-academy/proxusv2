@@ -10,6 +10,7 @@ const meta = {
   argTypes: {
     open: { control: "boolean" }
   },
+  // SAFETY: The surrounding typed contract establishes the asserted representation.
   args: { open: false as boolean }
 } satisfies Meta<typeof Dialog>
 

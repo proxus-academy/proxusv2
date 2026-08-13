@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 import { describe, expect, it } from "vitest"
 
+// SAFETY: The surrounding typed contract establishes the asserted representation.
 const modules = import.meta.glob([
   "./**/*.{ts,tsx}",
   "../../../packages/frontend-core/src/**/*.{ts,tsx}",

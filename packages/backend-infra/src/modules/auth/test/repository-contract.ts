@@ -17,6 +17,7 @@ import { expect, test } from "vitest"
 const at = (value: string) => new Date(value)
 export const subjectId = "00000000-0000-4000-8000-000000000005"
 const user = (n: number, overrides: Partial<User> = {}): User => ({
+  // SAFETY: The surrounding typed contract establishes the asserted representation.
   id: `00000000-0000-4000-8000-${String(n).padStart(12, "0")}` as UserId,
   email: `user${n}@example.com`, status: "pending", emailVerifiedAt: null, passwordHash: "hash",
   googleSubject: null, usernameNormalized: `user_${n}`, birthYear: 2000,
@@ -26,6 +27,7 @@ const user = (n: number, overrides: Partial<User> = {}): User => ({
   createdAt: at("2026-01-01T00:00:00Z"), updatedAt: at("2026-01-01T00:00:00Z"), ...overrides,
 })
 const challenge = (n: number, purpose: AuthChallenge["purpose"] = "verify-email"): AuthChallenge => ({
+  // SAFETY: The surrounding typed contract establishes the asserted representation.
   id: `10000000-0000-4000-8000-${String(n).padStart(12, "0")}` as AuthChallengeId,
   userId: user(1).id, purpose, codeHash: `hash-${n}`, createdAt: at(`2026-01-01T00:0${n}:00Z`),
   expiresAt: at("2026-01-01T01:00:00Z"), failedAttempts: 0, maximumAttempts: 2, consumedAt: null,

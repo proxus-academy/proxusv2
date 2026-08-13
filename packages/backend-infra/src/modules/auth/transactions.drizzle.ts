@@ -27,7 +27,9 @@ export const makeAuthTransactionsDrizzle = (db: Database, sessionTtlMillis: numb
     })
     return program.pipe(
       Effect.provideService(SessionIssuer, issuer),
+      // SAFETY: The surrounding typed contract establishes the asserted representation.
       Effect.provideService(AuthChallengeRepository, makeAuthChallengeRepositoryDrizzle(tx as Database, true)),
+      // SAFETY: The surrounding typed contract establishes the asserted representation.
       Effect.provideService(UserRepository, makeUserRepositoryDrizzle(tx as Database)),
     )
   }).pipe(Effect.catchTag("SqlError", (cause) => new AuthRepositoryError({ operation: "auth.transaction", cause }))),

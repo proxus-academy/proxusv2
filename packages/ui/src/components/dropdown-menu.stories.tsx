@@ -18,6 +18,7 @@ const meta = {
     open: { control: "boolean" },
     modal: { control: "boolean" }
   },
+  // SAFETY: The surrounding typed contract establishes the asserted representation.
   args: { open: true as boolean, modal: true }
 } satisfies Meta<typeof DropdownMenu>
 

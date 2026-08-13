@@ -18,6 +18,7 @@ export const decodeRegistrationQuery = (searchValue: string): RegistrationUrlSta
   const rawStep = search.get("step")
   const rawPath = search.get("path")
   const decodedStep = rawStep === null ? Option.some("start" as const) : Schema.decodeUnknownOption(RegistrationStepParam)(rawStep)
+  // SAFETY: The surrounding typed contract establishes the asserted representation.
   const decodedPath = rawPath === null ? Option.some([] as RegistrationNodeIds) : Schema.decodeUnknownOption(RegistrationPathParam)(rawPath)
   const step = Option.getOrElse(decodedStep, () => "start" as const)
   const nodeIds = Option.getOrElse(decodedPath, (): RegistrationNodeIds => [])

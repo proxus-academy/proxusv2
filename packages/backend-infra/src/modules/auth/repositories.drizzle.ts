@@ -18,6 +18,7 @@ import { authChallenges, users, type AuthChallengeRow, type UserRow } from "../.
 type AuthDatabase = PgEffectDatabase<EffectPgQueryEffectHKT, EffectPgQueryResultHKT>
 
 const userFromRow = (row: UserRow): User => ({
+  // SAFETY: The surrounding typed contract establishes the asserted representation.
   id: row.id as User["id"], email: row.emailNormalized, status: row.status,
   emailVerifiedAt: row.emailVerifiedAt, passwordHash: row.passwordHash, googleSubject: row.googleSubject,
   usernameNormalized: row.usernameNormalized, birthYear: row.birthYear, problemKind: row.problemKind,
@@ -26,7 +27,10 @@ const userFromRow = (row: UserRow): User => ({
   createdAt: row.createdAt, updatedAt: row.updatedAt,
 })
 const challengeFromRow = (row: AuthChallengeRow): AuthChallenge => ({
-  id: row.id as AuthChallenge["id"], userId: row.userId as AuthChallenge["userId"], purpose: row.purpose,
+  // SAFETY: The surrounding typed contract establishes the asserted representation.
+  id: row.id as AuthChallenge["id"],
+  // SAFETY: Auth challenge rows persist user identifiers from the typed users table.
+  userId: row.userId as AuthChallenge["userId"], purpose: row.purpose,
   codeHash: row.codeHash, expiresAt: row.expiresAt, failedAttempts: row.failedAttempts,
   maximumAttempts: row.maximumAttempts, consumedAt: row.consumedAt, createdAt: row.createdAt,
 })

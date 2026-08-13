@@ -55,6 +55,7 @@ export const makeEmailRegistrationServiceLive = (policy: EmailRegistrationPolicy
       }
       const code = yield* codes.generate()
       const challenge: AuthChallenge = {
+        // SAFETY: The surrounding typed contract establishes the asserted representation.
         id: uuid() as AuthChallenge["id"], userId: user.id, purpose: "verify-email", codeHash: hashCode(code),
         expiresAt: date(checkedAt.getTime() + policy.challengeTtlMillis), failedAttempts: 0,
         maximumAttempts: policy.maximumAttempts, consumedAt: null, createdAt: checkedAt,

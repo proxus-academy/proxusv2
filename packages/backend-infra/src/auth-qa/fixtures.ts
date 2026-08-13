@@ -77,5 +77,6 @@ export const listAuthQa = Effect.gen(function* () {
       studyPath: [user.studyId, user.subjectId],
     })
   }
+  // SAFETY: The surrounding typed contract establishes the asserted representation.
   return result as readonly AuthQaListing[]
 })

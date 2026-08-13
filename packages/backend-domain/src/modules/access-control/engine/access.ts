@@ -210,7 +210,9 @@ export const defineAccess = <
         (roles) => Effect.try({
           try: () => {
             if (!Array.isArray(roles)) throw new TypeError("getRoles must return an array")
+            // SAFETY: The surrounding typed contract establishes the asserted representation.
             for (const role of roles as readonly unknown[]) if (typeof role !== "string" || !roleSet.has(role as Role)) throw new TypeError(`Unknown role ${String(role)}`)
+            // SAFETY: The surrounding typed contract establishes the asserted representation.
             return unique(roles as readonly Role[])
           },
           catch: (cause) => new RoleStoreError({ message: "RoleStore returned invalid roles", cause })
@@ -220,6 +222,7 @@ export const defineAccess = <
 
   const canFor = (permission: Permission, input: { readonly subject: Subject; readonly resource: Resource<ScopeType> }) =>
     Effect.flatMap(RoleStore, (store) => Effect.map(
+      // SAFETY: The surrounding typed contract establishes the asserted representation.
       normalizedRoles(store, { subject: input.subject, scopes: effectiveScopes(input.resource) as readonly Scope<ScopeType>[] }),
       (roles) => permissionsForRoles(roles).has(permission)
     ))

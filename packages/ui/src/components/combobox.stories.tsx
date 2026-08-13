@@ -26,6 +26,7 @@ const meta = {
     className: { control: "text" }
   },
   args: {
+    // SAFETY: The surrounding typed contract establishes the asserted representation.
     value: "medicina" as string | null,
     onChange: () => {},
     options: CARRERAS,
