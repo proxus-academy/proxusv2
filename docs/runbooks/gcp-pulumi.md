@@ -114,10 +114,10 @@ Los workflows WIF solo son válidos desde sus rutas exactas en `refs/heads/main`
 
 Production y preview deben permanecer con `APPLICATION_RUNTIME_READY` ausente o distinto de `true` hasta completar y comprobar, como mínimo:
 
-1. adapters reales de email y Google; producción falla cerrada mientras no existan;
+1. dominio/remitente Mailgun verificados, API key en Secret Manager y smoke de entrega; el adapter Google real sigue pendiente y sus operaciones fallan cerradas;
 2. cuatro imágenes construibles desde el SHA autorizado y publicadas por digest con provenance coincidente;
 3. bases Neon y usuarios preparados fuera de Pulumi, con los `DATABASE_URL` guardados en versiones de Secret Manager;
-4. secretos de firma, dataset/tabla analytics y permisos efectivos;
+4. secretos de firma y Mailgun, dataset/tabla analytics y permisos efectivos;
 5. un grupo real autorizado para `IAP_GROUP_PRINCIPAL` en formato `group:<dirección>`;
 6. para production, dominio y nombre globalmente único del bucket web, más ownership y cambio DNS preparados;
 7. revisión explícita del riesgo actual de compartir una credencial de base entre APIs y migraciones;
@@ -125,7 +125,7 @@ Production y preview deben permanecer con `APPLICATION_RUNTIME_READY` ausente o 
 9. smoke tests autenticados de IAP, API pública/admin, assets CDN y ausencia de acceso directo no autorizado;
 10. para previews, procedimiento externo de alta/baja de base Neon y secreto por PR.
 
-No introducir valores de ejemplo como si fueran reales y no guardar valores secretos en config Pulumi. Las variables `NEON_PRODUCTION_DATABASE_SECRET_ID` y `NEON_PREVIEW_DATABASE_SECRET_ID_TEMPLATE` contienen **IDs de Secret Manager**, no URLs; la plantilla preview debe incluir `{pr}`.
+No introducir valores de ejemplo como si fueran reales y no guardar valores secretos en config Pulumi. Las variables `NEON_PRODUCTION_DATABASE_SECRET_ID`, `NEON_PREVIEW_DATABASE_SECRET_ID_TEMPLATE` y `MAILGUN_API_KEY_SECRET_ID` contienen **IDs de Secret Manager**, no URLs ni API keys; la plantilla preview debe incluir `{pr}`. `MAILGUN_DOMAIN` y `MAILGUN_FROM` son configuración no secreta, pero deben corresponder al dominio verificado real.
 
 ## Production: procedimiento preparado, aún no ejecutado
 

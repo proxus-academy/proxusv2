@@ -246,7 +246,7 @@ AUTH_GOOGLE_ADAPTER           fake solo desarrollo; producción exige un adapter
 AUTH_GOOGLE_SIGNING_SECRET    obligatorio y redacted en producción; mínimo 32 bytes
 ```
 
-La composición de desarrollo imprime únicamente los mensajes/códigos email en el sink consola y ofrece Google fake. La composición de producción rechaza explícitamente `console`/`fake` y actualmente falla cerrada para ambos proveedores porque los adapters reales aún no existen. No uses el secreto de desarrollo ni fixtures QA fuera de local/test. Consulta [`docs/architecture/identity-and-authentication.md`](./docs/architecture/identity-and-authentication.md).
+La composición de desarrollo imprime únicamente los mensajes/códigos email en el sink consola y ofrece Google fake. Producción exige `email=mailgun` y `google=real`: email usa el adapter Mailgun configurado desde Secret Manager, mientras Google continúa fallando cerrado hasta disponer de su adapter real. No uses el secreto de desarrollo ni fixtures QA fuera de local/test. Consulta [`docs/architecture/identity-and-authentication.md`](./docs/architecture/identity-and-authentication.md).
 
 ### Smoke QA de Identity y Admin
 

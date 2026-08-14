@@ -89,7 +89,7 @@ La IaC no provisiona Neon ni inventa URLs, passwords o nombres de bases. Recibe 
 - production: `NEON_PRODUCTION_DATABASE_SECRET_ID`;
 - preview: `NEON_PREVIEW_DATABASE_SECRET_ID_TEMPLATE`, que debe contener `{pr}`.
 
-La versión `latest` de cada secreto debe contener el `DATABASE_URL` preparado fuera de Pulumi. Los secretos y versiones deben existir antes del stack; sus valores nunca se pasan por config Pulumi ni por outputs. También son externos los secretos de firma, el dataset/tabla de analytics y su lifecycle.
+La versión `latest` de cada secreto de base debe contener el `DATABASE_URL` preparado fuera de Pulumi. Los secretos y versiones deben existir antes del stack; sus valores nunca se pasan por config Pulumi ni por outputs. La API key de Mailgun sigue el mismo patrón: `MAILGUN_API_KEY_SECRET_ID` identifica el secreto y los runtimes reciben su versión `latest`; dominio y remitente son variables no secretas obligatorias. También son externos los secretos de firma, el dataset/tabla de analytics y su lifecycle.
 
 Actualmente una misma referencia de secreto de base se concede a los runtimes y al job de migración de cada entorno. La separación de credenciales DML/DDL, la creación/destrucción de bases Neon por PR y la limpieza del secreto externo siguen pendientes; no debe afirmarse aislamiento o revocación que el programa aún no implementa.
 
@@ -101,7 +101,7 @@ Actualmente una misma referencia de secreto de base se concede a los runtimes y 
 - Production y preview usan pools WIF y deployers separados.
 - WIF restringe repositorio, GitHub environment y `workflow_ref` exacto en `refs/heads/main`.
 - El código de un PR no obtiene credenciales ni decide la IaC ejecutada.
-- `applicationRuntimeReady=true` es una afirmación operacional explícita, no un bypass. Debe permanecer desactivada mientras falten adapters reales de email/Google, secretos, datos, permisos, DNS o smoke tests.
+- `applicationRuntimeReady=true` es una afirmación operacional explícita, no un bypass. Debe permanecer desactivada mientras falten la validación real de Mailgun, el adapter Google, secretos, datos, permisos, DNS o smoke tests.
 - No usar `--target`, `--refresh=false`, `--skip-preview`, edición manual de state ni `pulumi cancel` salvo recuperación documentada.
 - No ejecutar `destroy` sobre foundation o production ni retirar protección para limpiar.
 

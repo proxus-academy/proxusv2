@@ -2,8 +2,8 @@ import { GoogleIdentityProvider, GoogleIdentityRejected, RegistrationAvailabilit
 import { makeGoogleFlowLive } from "@proxus/backend-domain/auth/google-live"
 import {
   GoogleSessionIssuerLive,
+  MailgunEmailDeliveryLive,
   PasswordsLive,
-  ProductionEmailDeliveryUnavailable,
   SecureSessionRandomLive,
   SecureVerificationCodeGeneratorLive,
   makeAuthPersistencePostgresLive,
@@ -15,7 +15,7 @@ import {
 import { makePostgresProductionLive } from "@proxus/backend-infra/database/postgres"
 import { AuthSessionView, makeAuthSessionCookies } from "@proxus/backend-transport/auth"
 import { AccountSummary, CurrentSession } from "@proxus/shared/auth"
-import { Config, Effect, Layer, Option, Schema } from "effect"
+import { Config, Effect, Layer, Option, Redacted, Schema } from "effect"
 import { HttpApiError } from "effect/unstable/httpapi"
 
 const day = 86_400_000
@@ -29,8 +29,8 @@ class UnsafeProductionAuthAdapter extends Schema.TaggedErrorClass<UnsafeProducti
 ) {}
 
 export const validateProductionAuthAdapters = (email: string, google: string) =>
-  email === "console" || google === "fake"
-    ? Effect.fail(new UnsafeProductionAuthAdapter({ message: "Development auth adapters are forbidden in production" }))
+  email !== "mailgun" || google !== "real"
+    ? Effect.fail(new UnsafeProductionAuthAdapter({ message: "Production auth requires email=mailgun and google=real" }))
     : Effect.void
 
 const ProductionAuthSafety = Layer.effectDiscard(Effect.gen(function*() {
@@ -85,11 +85,11 @@ const dependencies = Layer.mergeAll(
   PasswordsLive,
   SecureVerificationCodeGeneratorLive,
   SecureSessionRandomLive,
-  ProductionEmailDeliveryUnavailable,
+  MailgunEmailDeliveryLive,
   ProductionGoogleUnavailable,
   persistence,
   Layer.unwrap(Config.redacted("AUTH_GOOGLE_SIGNING_SECRET").pipe(
-    Effect.map((secret) => makeGoogleSecurityLive(secret.toString())),
+    Effect.map((secret) => makeGoogleSecurityLive(Redacted.value(secret))),
   )),
 )
 

@@ -44,6 +44,22 @@ export const requireImageDigest = (
   return value
 }
 
+export const validateMailgunDomain = (value: string): string => {
+  if (!/^(?=.{1,253}$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/.test(value)) {
+    throw new pulumi.RunError("Mailgun domain must be a valid lower-case DNS hostname.")
+  }
+  return value
+}
+
+export const validateMailgunFrom = (value: string): string => {
+  const address = "[^\\s<>@]+@[^\\s<>@]+"
+  const valid = new RegExp(`^(?:${address}|[^<>\\r\\n]{1,100} <${address}>)$`).test(value)
+  if (!valid || value.length > 320) {
+    throw new pulumi.RunError("Mailgun from must be an email or Name <email> without line breaks.")
+  }
+  return value
+}
+
 export const requireSecretId = (config: pulumi.Config, key: string): string => {
   const value = config.require(key)
   if (!/^[A-Za-z0-9_-]{1,255}$/.test(value)) {

@@ -181,12 +181,15 @@ jobs:
           DATABASE_TEMPLATE: ${{ vars.NEON_PREVIEW_DATABASE_SECRET_ID_TEMPLATE }}
           AUTH_SECRET: ${{ vars.AUTH_SIGNING_SECRET_ID }}
           OBJECT_SECRET: ${{ vars.OBJECT_STORAGE_SIGNING_SECRET_ID }}
+          MAILGUN_SECRET: ${{ vars.MAILGUN_API_KEY_SECRET_ID }}
+          MAILGUN_DOMAIN: ${{ vars.MAILGUN_DOMAIN }}
+          MAILGUN_FROM: ${{ vars.MAILGUN_FROM }}
           ANALYTICS_DATASET: ${{ vars.PRODUCT_ANALYTICS_DATASET }}
           ANALYTICS_TABLE: ${{ vars.PRODUCT_ANALYTICS_TABLE }}
           RUNTIME_READY: ${{ vars.APPLICATION_RUNTIME_READY }}
         run: |
           test "$(git rev-parse HEAD)" = "$IAC_SHA"
-          for value in "$GCP_PROJECT_ID" "$PROVIDER" "$BUILDER" "$IAP_PRINCIPAL" "$DATABASE_TEMPLATE" "$AUTH_SECRET" "$OBJECT_SECRET" "$ANALYTICS_DATASET" "$ANALYTICS_TABLE"; do
+          for value in "$GCP_PROJECT_ID" "$PROVIDER" "$BUILDER" "$IAP_PRINCIPAL" "$DATABASE_TEMPLATE" "$AUTH_SECRET" "$OBJECT_SECRET" "$MAILGUN_SECRET" "$MAILGUN_DOMAIN" "$MAILGUN_FROM" "$ANALYTICS_DATASET" "$ANALYTICS_TABLE"; do
             test -n "$value"
           done
           [[ "$DATABASE_TEMPLATE" == *'{pr}'* ]]
@@ -307,6 +310,9 @@ jobs:
           DATABASE_TEMPLATE: ${{ vars.NEON_PREVIEW_DATABASE_SECRET_ID_TEMPLATE }}
           AUTH_SECRET: ${{ vars.AUTH_SIGNING_SECRET_ID }}
           OBJECT_SECRET: ${{ vars.OBJECT_STORAGE_SIGNING_SECRET_ID }}
+          MAILGUN_SECRET: ${{ vars.MAILGUN_API_KEY_SECRET_ID }}
+          MAILGUN_DOMAIN: ${{ vars.MAILGUN_DOMAIN }}
+          MAILGUN_FROM: ${{ vars.MAILGUN_FROM }}
           IAP_PRINCIPAL: ${{ vars.IAP_GROUP_PRINCIPAL }}
           ANALYTICS_DATASET: ${{ vars.PRODUCT_ANALYTICS_DATASET }}
           ANALYTICS_TABLE: ${{ vars.PRODUCT_ANALYTICS_TABLE }}
@@ -325,6 +331,9 @@ jobs:
           $p config set --stack "$stack" databaseSecretId "$database_secret"
           $p config set --stack "$stack" authSigningSecretId "$AUTH_SECRET"
           $p config set --stack "$stack" objectStorageSigningSecretId "$OBJECT_SECRET"
+          $p config set --stack "$stack" mailgunApiKeySecretId "$MAILGUN_SECRET"
+          $p config set --stack "$stack" mailgunDomain "$MAILGUN_DOMAIN"
+          $p config set --stack "$stack" mailgunFrom "$MAILGUN_FROM"
           $p config set --stack "$stack" iapPrincipal "$IAP_PRINCIPAL"
           $p config set --stack "$stack" productAnalyticsDataset "$ANALYTICS_DATASET"
           $p config set --stack "$stack" productAnalyticsTable "$ANALYTICS_TABLE"

@@ -124,6 +124,9 @@ jobs:
           DATABASE_SECRET: ${{ vars.NEON_PRODUCTION_DATABASE_SECRET_ID }}
           AUTH_SECRET: ${{ vars.AUTH_SIGNING_SECRET_ID }}
           OBJECT_SECRET: ${{ vars.OBJECT_STORAGE_SIGNING_SECRET_ID }}
+          MAILGUN_SECRET: ${{ vars.MAILGUN_API_KEY_SECRET_ID }}
+          MAILGUN_DOMAIN: ${{ vars.MAILGUN_DOMAIN }}
+          MAILGUN_FROM: ${{ vars.MAILGUN_FROM }}
           WEBSITE_BUCKET: ${{ vars.PRODUCTION_WEBSITE_BUCKET }}
           ANALYTICS_DATASET: ${{ vars.PRODUCT_ANALYTICS_DATASET }}
           ANALYTICS_TABLE: ${{ vars.PRODUCT_ANALYTICS_TABLE }}
@@ -134,7 +137,7 @@ jobs:
           ADMIN_WEB_IMAGE: ${{ needs.build.outputs.admin_web_image }}
         run: |
           test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
-          for value in "$GCP_PROJECT_ID" "$PROVIDER" "$DEPLOYER" "$DOMAIN" "$IAP_PRINCIPAL" "$DATABASE_SECRET" "$AUTH_SECRET" "$OBJECT_SECRET" "$WEBSITE_BUCKET" "$ANALYTICS_DATASET" "$ANALYTICS_TABLE" "$PUBLIC_IMAGE" "$ADMIN_IMAGE" "$WEB_IMAGE" "$ADMIN_WEB_IMAGE"; do
+          for value in "$GCP_PROJECT_ID" "$PROVIDER" "$DEPLOYER" "$DOMAIN" "$IAP_PRINCIPAL" "$DATABASE_SECRET" "$AUTH_SECRET" "$OBJECT_SECRET" "$MAILGUN_SECRET" "$MAILGUN_DOMAIN" "$MAILGUN_FROM" "$WEBSITE_BUCKET" "$ANALYTICS_DATASET" "$ANALYTICS_TABLE" "$PUBLIC_IMAGE" "$ADMIN_IMAGE" "$WEB_IMAGE" "$ADMIN_WEB_IMAGE"; do
             test -n "$value"
           done
           test "$RUNTIME_READY" = true
@@ -157,6 +160,9 @@ jobs:
           DATABASE_SECRET: ${{ vars.NEON_PRODUCTION_DATABASE_SECRET_ID }}
           AUTH_SECRET: ${{ vars.AUTH_SIGNING_SECRET_ID }}
           OBJECT_SECRET: ${{ vars.OBJECT_STORAGE_SIGNING_SECRET_ID }}
+          MAILGUN_SECRET: ${{ vars.MAILGUN_API_KEY_SECRET_ID }}
+          MAILGUN_DOMAIN: ${{ vars.MAILGUN_DOMAIN }}
+          MAILGUN_FROM: ${{ vars.MAILGUN_FROM }}
           DOMAIN: ${{ vars.PRODUCTION_DOMAIN }}
           IAP_PRINCIPAL: ${{ vars.IAP_GROUP_PRINCIPAL }}
           WEBSITE_BUCKET: ${{ vars.PRODUCTION_WEBSITE_BUCKET }}
@@ -173,6 +179,9 @@ jobs:
           $p config set --stack production databaseSecretId "$DATABASE_SECRET"
           $p config set --stack production authSigningSecretId "$AUTH_SECRET"
           $p config set --stack production objectStorageSigningSecretId "$OBJECT_SECRET"
+          $p config set --stack production mailgunApiKeySecretId "$MAILGUN_SECRET"
+          $p config set --stack production mailgunDomain "$MAILGUN_DOMAIN"
+          $p config set --stack production mailgunFrom "$MAILGUN_FROM"
           $p config set --stack production domain "$DOMAIN"
           $p config set --stack production iapPrincipal "$IAP_PRINCIPAL"
           $p config set --stack production websiteBucketName "$WEBSITE_BUCKET"

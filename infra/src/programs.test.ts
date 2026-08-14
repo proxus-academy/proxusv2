@@ -55,6 +55,9 @@ beforeAll(async () => {
     "proxus-preview:databaseSecretId": "preview-database-pr-123",
     "proxus-preview:authSigningSecretId": "auth-signing",
     "proxus-preview:objectStorageSigningSecretId": "object-storage-signing",
+    "proxus-preview:mailgunApiKeySecretId": "mailgun-api-key",
+    "proxus-preview:mailgunDomain": "mail.example.test",
+    "proxus-preview:mailgunFrom": "Proxus <noreply@example.test>",
     "proxus-preview:productAnalyticsDataset": "product_analytics",
     "proxus-preview:productAnalyticsTable": "events",
     "proxus-preview:publicImage": image("fixture-project", "server"),
@@ -89,6 +92,21 @@ describe("preview Pulumi graph", () => {
     const serialized = JSON.stringify(resources)
     expect(serialized).not.toContain("allUsers")
     expect(serialized).not.toContain("allAuthenticatedUsers")
+  })
+
+  test("injects Mailgun through Secret Manager without putting its value in state", () => {
+    const access = ofType("gcp:secretmanager/secretIamMember:SecretIamMember")
+      .find(({ name }) => name === "mailgun-api-key-secret")
+    expect(access?.inputs.secretId).toBe("mailgun-api-key")
+
+    const services = ofType("gcp:cloudrunv2/service:Service")
+    const environments = services.flatMap(({ inputs }) =>
+      list(record(inputs.template).containers).flatMap((container) => list(record(container).envs).map(record)))
+    expect(environments).toContainEqual({
+      name: "MAILGUN_API_KEY",
+      valueSource: { secretKeyRef: { secret: "mailgun-api-key", version: "latest" } },
+    })
+    expect(JSON.stringify(resources)).not.toContain("MAILGUN_API_KEY=")
   })
 
   test("models frontend, public API and admin API as named containers", () => {

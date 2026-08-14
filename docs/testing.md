@@ -105,7 +105,7 @@ pending.
 
 Domain prueba normalización, path de onboarding, estados/proveedor derivado, auto-link solo de email verificado y policies RBAC con clocks/randomness deterministas. Infra ejecuta el mismo contrato de users/challenges/sessions contra memory y PGlite: unicidad, hashes, propósito/TTL/intentos/uso único, consumo/rotación atómicos y revocación global. Las pruebas de composición cubren email/Google fake, cookie opaca y la matriz admin anónimo/student/editor/admin.
 
-Los adapters consola/fake solo pertenecen a desarrollo/test. Producción tiene un gate que rechaza su selección; esto no prueba proveedores reales, que siguen pendientes. Los tests y listados QA nunca imprimen passwords, hashes, tokens ni códigos persistidos.
+Los adapters consola/fake solo pertenecen a desarrollo/test. Producción tiene un gate que rechaza su selección. El adapter Mailgun se prueba con un sender inyectado: payload de verificación/reset, TLS obligatorio, tracking desactivado, escape HTML y error redactado; el test no contacta Mailgun ni demuestra entrega real. El proveedor Google real sigue pendiente. Los tests y listados QA nunca imprimen passwords, hashes, tokens ni códigos persistidos.
 
 ### HTTP
 
@@ -181,7 +181,7 @@ un proceso vacío.
 
 Los Dockerfiles añaden comprobaciones de build —incluida la ausencia de PGlite/dev-server en bundles backend— y `build-images.sh` comprueba provenance/digests cuando Cloud Build se ejecuta. Esas comprobaciones no forman parte de Vitest ni acreditan una imagen si no se ha ejecutado el build remoto.
 
-Antes de cualquier apply es obligatorio un `pulumi preview --diff` real y revisado. Solo foundation se ha aplicado; el preview posterior registrado mostró 48 recursos sin cambios. Production y `pr-<number>` no se han aplicado ni probado mediante smoke tests cloud. Siguen pendientes adapters email/Google, configuración externa Neon/Secret Manager/analytics, DNS, privilegios DML/DDL separados, lifecycle de datos preview y journeys autenticados IAP/CDN/Cloud Run.
+Antes de cualquier apply es obligatorio un `pulumi preview --diff` real y revisado. Solo foundation se ha aplicado; el preview posterior registrado mostró 48 recursos sin cambios. Production y `pr-<number>` no se han aplicado ni probado mediante smoke tests cloud. Siguen pendientes la verificación cloud del adapter Mailgun, el adapter Google, configuración externa de base de datos/Secret Manager/analytics, DNS, privilegios DML/DDL separados, lifecycle de datos preview y journeys autenticados IAP/CDN/Cloud Run.
 
 ## Current CI gates and pending suites
 

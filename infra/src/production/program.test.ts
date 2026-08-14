@@ -64,6 +64,9 @@ beforeAll(async () => {
     "proxus-production:databaseSecretId": "production-database",
     "proxus-production:authSigningSecretId": "auth-signing",
     "proxus-production:objectStorageSigningSecretId": "object-storage-signing",
+    "proxus-production:mailgunApiKeySecretId": "mailgun-api-key",
+    "proxus-production:mailgunDomain": "mail.example.test",
+    "proxus-production:mailgunFrom": "Proxus <noreply@example.test>",
     "proxus-production:productAnalyticsDataset": "product_analytics",
     "proxus-production:productAnalyticsTable": "events",
     "proxus-production:publicImage": image("server"),
@@ -116,6 +119,10 @@ describe("production Pulumi graph", () => {
     expect(containers[0]?.dependsOns).toEqual(["public-api", "admin-api"])
 
     expect(ofType("gcp:bigquery/datasetIamMember:DatasetIamMember")).toHaveLength(2)
+    const mailgunAccess = ofType("gcp:secretmanager/secretIamMember:SecretIamMember")
+      .filter(({ name }) => name.endsWith("-mailgun-secret"))
+    expect(mailgunAccess).toHaveLength(2)
+    expect(mailgunAccess.every(({ inputs }) => inputs.secretId === "mailgun-api-key")).toBe(true)
 
     const serialized = JSON.stringify(resources)
     expect(serialized).not.toContain("allUsers")

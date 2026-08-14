@@ -336,7 +336,7 @@ La separación de procesos está completada, pero no debe presentarse como despl
 12. Provisionado: backend GCS/KMS y foundation; 48 recursos sin cambios en el preview posterior registrado.
 13. Completado en código, no desplegado: production, web GCS privada/CDN, IAP directo y principal de grupo configurable.
 14. Completado en código, no desplegado: stacks `pr-<number>`, label lifecycle y reconciliación desde IaC confiable de `main`.
-15. Pendiente: adapters reales email/Google, recursos/config externa Neon y secretos, datos analytics, DNS, revisión de privilegios de base y smoke tests.
+15. Pendiente: validar entrega Mailgun con dominio real, implementar Google, completar recursos/config externa de base de datos y secretos, datos analytics, DNS, revisión de privilegios de base y smoke tests.
 16. Pendiente: aplicar y verificar production/previews. No se implementarán `development`, `staging` o `preview-foundation` sin una decisión posterior.
 
 Cada fase debe conservar el flujo obligatorio:

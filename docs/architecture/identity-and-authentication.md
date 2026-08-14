@@ -32,15 +32,16 @@ Los códigos de verificación/reset son de seis dígitos, hasheados, de un uso, 
 
 ## Google y email: adapters actuales
 
-Desarrollo compone `ConsoleEmailDelivery` y `FakeGoogleIdentityProvider`. El email consola es el único lugar autorizado para mostrar códigos y el fake acepta el código determinista de desarrollo. Producción falla al seleccionar `AUTH_EMAIL_ADAPTER=console` o `AUTH_GOOGLE_ADAPTER=fake`; además, los placeholders reales fallan cerrados. Por tanto **email y Google reales aún no están implementados**.
+Desarrollo compone `ConsoleEmailDelivery` y `FakeGoogleIdentityProvider`. El email consola es el único lugar autorizado para mostrar códigos y el fake acepta el código determinista de desarrollo. Producción exige exactamente `AUTH_EMAIL_ADAPTER=mailgun` y `AUTH_GOOGLE_ADAPTER=real`; cualquier otro selector falla el arranque.
 
-Camino a producción, sin cambiar Domain ni contratos:
+El adapter productivo de email usa Mailgun mediante `mailgun.js`, el endpoint europeo por defecto y una llamada limitada a diez segundos. `MAILGUN_API_KEY` se lee con `Config.redacted`; dominio y remitente son configuración obligatoria. Los mensajes de verificación y reset exigen TLS y desactivan tracking de aperturas/clics para no exponer códigos. Los errores conservan únicamente proveedor, tipo y status seguro, nunca destinatario, código, API key ni cuerpo remoto. Preview/production reciben la API key desde Secret Manager y Pulumi solo conserva el ID del secreto.
 
-1. Implementar `EmailDelivery` con un proveedor transaccional; templates versionados, TLS, retries acotados, idempotency key y redacción de destinatario/código en logs.
-2. Implementar `GoogleIdentityProvider` authorization-code con discovery/JWKS y PKCE cuando aplique; validar `state`, `nonce`, issuer, audience, expiración y `email_verified` antes de producir `VerifiedGoogleIdentity`.
-3. Inyectar credenciales mediante `Config.redacted`, añadir health/observabilidad y pruebas contractuales contra sandbox; nunca hacer fallback a fake/console.
-4. Habilitar adapters mediante valores explícitos distintos de los reservados de desarrollo, validarlos en un entorno no productivo aprobado y conservar el gate fail-fast. La IaC actual no declara un stack `staging`.
-5. Revisar redirect URIs, orígenes, política de cookies y proxy TLS por entorno; rotar `AUTH_GOOGLE_SIGNING_SECRET` con estrategia compatible con pendientes en vuelo.
+El adapter real de Google continúa pendiente y falla sus operaciones de proveedor de forma cerrada. Antes de declarar el runtime listo aún hay que:
+
+1. Implementar `GoogleIdentityProvider` authorization-code con discovery/JWKS y PKCE cuando aplique; validar `state`, `nonce`, issuer, audience, expiración y `email_verified` antes de producir `VerifiedGoogleIdentity`.
+2. Validar Mailgun contra su dominio real y ejecutar pruebas de entrega sin registrar destinatarios/códigos. El port actual no ofrece una clave de idempotencia durable; por ello el adapter no hace retries automáticos de POST que puedan duplicar códigos.
+3. Añadir health/observabilidad segura y pruebas contractuales contra sandbox; nunca hacer fallback a fake/console.
+4. Revisar redirect URIs, orígenes, política de cookies y proxy TLS por entorno; rotar `AUTH_GOOGLE_SIGNING_SECRET` con estrategia compatible con pendientes en vuelo.
 
 ## Amenazas
 

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest"
-import { assertNoPublicPrincipal, defaultRegion, validateRegion } from "./config.ts"
+import { assertNoPublicPrincipal, defaultRegion, validateMailgunDomain, validateMailgunFrom, validateRegion } from "./config.ts"
 
 describe("infrastructure policy", () => {
   test("pins the Madrid region", () => {
@@ -14,5 +14,12 @@ describe("infrastructure policy", () => {
 
   test("accepts narrow principals", () => {
     expect(() => assertNoPublicPrincipal("group:admins@example.com")).not.toThrow()
+  })
+
+  test("validates non-secret Mailgun routing configuration", () => {
+    expect(validateMailgunDomain("mail.example.test")).toBe("mail.example.test")
+    expect(validateMailgunFrom("Proxus <noreply@example.test>")).toBe("Proxus <noreply@example.test>")
+    expect(() => validateMailgunDomain("https://mail.example.test")).toThrow(/lower-case DNS/)
+    expect(() => validateMailgunFrom("Proxus\nBcc: victim@example.test")).toThrow(/without line breaks/)
   })
 })

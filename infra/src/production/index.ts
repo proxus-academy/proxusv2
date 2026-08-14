@@ -17,6 +17,8 @@ import {
   requireGroupPrincipal,
   requireImageDigest,
   requireSecretId,
+  validateMailgunDomain,
+  validateMailgunFrom,
 } from "../config.ts"
 
 assertStack("production")
@@ -32,6 +34,9 @@ const iapPrincipal = requireGroupPrincipal(config, "iapPrincipal")
 const databaseSecretId = requireSecretId(config, "databaseSecretId")
 const authSigningSecretId = requireSecretId(config, "authSigningSecretId")
 const objectStorageSigningSecretId = requireSecretId(config, "objectStorageSigningSecretId")
+const mailgunApiKeySecretId = requireSecretId(config, "mailgunApiKeySecretId")
+const mailgunDomain = validateMailgunDomain(config.require("mailgunDomain"))
+const mailgunFrom = validateMailgunFrom(config.require("mailgunFrom"))
 const productAnalyticsDataset = requireBigQueryIdentifier(config, "productAnalyticsDataset")
 const productAnalyticsTable = requireBigQueryIdentifier(config, "productAnalyticsTable")
 const publicImage = requireImageDigest(config, "publicImage", project, location)
@@ -46,7 +51,7 @@ if (!/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.tes
 }
 if (deployServices && !runtimeReady) {
   throw new pulumi.RunError(
-    "applicationRuntimeReady must be explicitly true before production services are created; production email/Google adapters and operational controls currently fail closed.",
+    "applicationRuntimeReady must be explicitly true before production services are created; Mailgun, Google and operational controls require approval.",
   )
 }
 
@@ -82,6 +87,8 @@ const publicAuthAccess = grantSecret("public-auth-secret", authSigningSecretId, 
 const publicObjectAccess = grantSecret("public-object-secret", objectStorageSigningSecretId, publicRuntime.account)
 const adminAuthAccess = grantSecret("admin-auth-secret", authSigningSecretId, adminRuntime.account)
 const adminObjectAccess = grantSecret("admin-object-secret", objectStorageSigningSecretId, adminRuntime.account)
+const publicMailgunAccess = grantSecret("public-mailgun-secret", mailgunApiKeySecretId, publicRuntime.account)
+const adminMailgunAccess = grantSecret("admin-mailgun-secret", mailgunApiKeySecretId, adminRuntime.account)
 const grantAnalyticsWrite = (name: string, account: gcp.serviceaccount.Account) => new gcp.bigquery.DatasetIamMember(name, {
   project,
   datasetId: productAnalyticsDataset,
@@ -111,7 +118,10 @@ const backendEnvironment = [
   secretEnvironment("DATABASE_URL", databaseSecretId),
   secretEnvironment("AUTH_GOOGLE_SIGNING_SECRET", authSigningSecretId),
   secretEnvironment("OBJECT_STORAGE_SIGNING_SECRET", objectStorageSigningSecretId),
-  { name: "AUTH_EMAIL_ADAPTER", value: "real" },
+  secretEnvironment("MAILGUN_API_KEY", mailgunApiKeySecretId),
+  { name: "MAILGUN_DOMAIN", value: mailgunDomain },
+  { name: "MAILGUN_FROM", value: mailgunFrom },
+  { name: "AUTH_EMAIL_ADAPTER", value: "mailgun" },
   { name: "AUTH_GOOGLE_ADAPTER", value: "real" },
   { name: "DATABASE_MIGRATIONS_DIR", value: "/app/drizzle" },
   { name: "PRODUCT_ANALYTICS_GCP_PROJECT", value: project },
@@ -160,6 +170,7 @@ const publicApi = deployServices ? new gcp.cloudrunv2.Service("public-api", {
   ...(publicRuntime.databaseAccess === undefined ? [] : [publicRuntime.databaseAccess]),
   publicAuthAccess,
   publicObjectAccess,
+  publicMailgunAccess,
   publicAnalyticsWrite,
   migration,
 ] }) : undefined
@@ -184,6 +195,7 @@ const admin = deployServices ? createIapService("admin", {
     ...(adminRuntime.databaseAccess === undefined ? [] : [adminRuntime.databaseAccess]),
     adminAuthAccess,
     adminObjectAccess,
+    adminMailgunAccess,
     adminAnalyticsWrite,
     migration,
   ],

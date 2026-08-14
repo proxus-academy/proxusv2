@@ -10,6 +10,8 @@ import {
   requireImageDigest,
   requirePrNumber,
   requireSecretId,
+  validateMailgunDomain,
+  validateMailgunFrom,
 } from "../config.ts"
 
 const config = new pulumi.Config()
@@ -24,6 +26,9 @@ const iapPrincipal = requireGroupPrincipal(config, "iapPrincipal")
 const databaseSecretId = requireSecretId(config, "databaseSecretId")
 const authSigningSecretId = requireSecretId(config, "authSigningSecretId")
 const objectStorageSigningSecretId = requireSecretId(config, "objectStorageSigningSecretId")
+const mailgunApiKeySecretId = requireSecretId(config, "mailgunApiKeySecretId")
+const mailgunDomain = validateMailgunDomain(config.require("mailgunDomain"))
+const mailgunFrom = validateMailgunFrom(config.require("mailgunFrom"))
 const productAnalyticsDataset = requireBigQueryIdentifier(config, "productAnalyticsDataset")
 const productAnalyticsTable = requireBigQueryIdentifier(config, "productAnalyticsTable")
 const publicImage = requireImageDigest(config, "publicImage", project, location)
@@ -36,7 +41,7 @@ const deployerEmail = foundation.requireOutput("previewDeployerEmail")
 
 if (deployServices && !runtimeReady) {
   throw new pulumi.RunError(
-    "applicationRuntimeReady must be explicitly true before creating preview services; production email/Google adapters and runtime configuration currently fail closed.",
+    "applicationRuntimeReady must be explicitly true before creating preview services; Mailgun, Google and runtime configuration require operational approval.",
   )
 }
 
@@ -56,6 +61,7 @@ const grantSecret = (name: string, secretId: string) => new gcp.secretmanager.Se
 }, { dependsOn: [runtime.account] })
 const authSecretAccess = grantSecret("auth-signing-secret", authSigningSecretId)
 const objectSecretAccess = grantSecret("object-signing-secret", objectStorageSigningSecretId)
+const mailgunSecretAccess = grantSecret("mailgun-api-key-secret", mailgunApiKeySecretId)
 const analyticsWrite = new gcp.bigquery.DatasetIamMember("analytics-writer", {
   project,
   datasetId: productAnalyticsDataset,
@@ -66,6 +72,7 @@ const identityDependencies: pulumi.Resource[] = [
   runtime.deployerCanUse,
   authSecretAccess,
   objectSecretAccess,
+  mailgunSecretAccess,
   analyticsWrite,
 ]
 if (runtime.databaseAccess !== undefined) identityDependencies.push(runtime.databaseAccess)
@@ -88,7 +95,10 @@ const backendEnvironment = [
   secretEnvironment("DATABASE_URL", databaseSecretId),
   secretEnvironment("AUTH_GOOGLE_SIGNING_SECRET", authSigningSecretId),
   secretEnvironment("OBJECT_STORAGE_SIGNING_SECRET", objectStorageSigningSecretId),
-  { name: "AUTH_EMAIL_ADAPTER", value: "real" },
+  secretEnvironment("MAILGUN_API_KEY", mailgunApiKeySecretId),
+  { name: "MAILGUN_DOMAIN", value: mailgunDomain },
+  { name: "MAILGUN_FROM", value: mailgunFrom },
+  { name: "AUTH_EMAIL_ADAPTER", value: "mailgun" },
   { name: "AUTH_GOOGLE_ADAPTER", value: "real" },
   { name: "DATABASE_MIGRATIONS_DIR", value: "/app/drizzle" },
   { name: "PRODUCT_ANALYTICS_GCP_PROJECT", value: project },
