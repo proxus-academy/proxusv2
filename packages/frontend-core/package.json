@@ -23,7 +23,7 @@
     "@lucas-barake/effect-form": "0.25.0-beta.6",
     "@proxus/product-messages": "workspace:*",
     "@proxus/shared": "workspace:*",
-    "effect": "4.0.0-beta.98"
+    "effect": "4.0.0-beta.100"
   },
   "devDependencies": {
     "typescript": "^5.8.3",

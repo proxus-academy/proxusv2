@@ -260,22 +260,21 @@ Los comandos QA actuales usan PGlite; mientras no acepten `DATABASE_URL`, los pa
 
 ## Infraestructura GCP
 
-`@proxus/infra` declara Pulumi TypeScript para `foundation`, `production` y previews `pr-<number>` en `europe-southwest1`. Los tres proyectos usan state GCS versionado y secretos de state cifrados con KMS; production/preview referencian foundation mediante `organization/proxus-foundation/foundation` en el backend DIY.
+`@proxus/infra` declara Alchemy TypeScript para `bootstrap`, `foundation`, `preview-platform`, `production` y previews `pr-<number>` en `europe-southwest1`. Usa state GCS cifrado con KMS y lease externo, salvo el bootstrap local excepcional.
 
-Solo foundation y su bootstrap GCS/KMS han sido provisionados. El preview posterior registrado mostró 48 recursos sin cambios. Production y previews están implementados, pero no aplicados: faltan los gates manuales de runtime, datos/secretos, DNS y smoke tests del runbook. No uses estos comandos para desplegar sin aprobación operativa.
+El cutover a Alchemy está completado: foundation converge 36 recursos sin cambios y preview-platform 8 sin cambios. Production y previews tienen código/workflows implementados, pero aún no se han aplicado ni sometido a smoke tests cloud.
 
-Cloud Build construye/publica cuatro imágenes (`server`, `admin-server`, `web`, `admin-web`), verifica el SHA de provenance y entrega digests a Pulumi; no despliega. Los backends cloud usan los roots productivos Node/PostgreSQL, nunca `apps/dev-server` ni PGlite. Production declara web GCS privada + Cloud CDN y Admin con IAP directo; previews protegen con IAP tanto la web pública como Admin. El grupo IAP y los IDs de Secret Manager/Neon son configuración externa, no valores fijados en el repositorio.
+Cloud Build solo construye/publica cuatro imágenes, verifica provenance y entrega digests a Alchemy. Los runtimes usan Node/PostgreSQL productivo. Production prepara web privada/CDN y Admin IAP; previews preparan Cloud SQL IAM, bootstrap/migración y dos servicios IAP.
 
-Validación local sin apply:
+Validación local sin deploy:
 
 ```bash
 pnpm --filter @proxus/infra typecheck
 pnpm --filter @proxus/infra test
-bash -n infra/scripts/bootstrap-state.sh
-pnpm infra preview --environment foundation
+pnpm --filter @proxus/infra alchemy:infra -- plan --stage foundation --adopt-existing false
 ```
 
-No uses principals públicos, claves JSON o valores secretos en config Pulumi. Consulta la normativa [`docs/infrastructure/gcp-pulumi.md`](./docs/infrastructure/gcp-pulumi.md) y el [`runbook`](./docs/runbooks/gcp-pulumi.md) antes de cualquier operación.
+No uses principals públicos, claves JSON, secretos en state/config ni writers de IaC concurrentes. Consulta la normativa [`docs/infrastructure/gcp-alchemy.md`](./docs/infrastructure/gcp-alchemy.md) y el [`runbook`](./docs/runbooks/gcp-alchemy.md) antes de operar.
 
 ## Referencias locales
 

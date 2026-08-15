@@ -407,7 +407,7 @@ const routerLocationAtom = Atom.make(initialRouterLocation).pipe(
 )
 ```
 
-La API sigue siendo inestable en `effect@4.0.0-beta.98`; se fijará su
+La API sigue siendo inestable en `effect@4.0.0-beta.100`; se fijará su
 comportamiento mediante pruebas antes de depender de ella.
 
 ### Estado derivado

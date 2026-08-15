@@ -177,11 +177,11 @@ un proceso vacío.
 
 ### Infrastructure as code
 
-`infra/src/**/*.test.ts` cubre validación de configuración e inspecciona con mocks los grafos Pulumi de production/preview: región, referencia DIY exacta a foundation, migración antes de servicios, IAP sin principals públicos, límites de instancias y bucket web privado/CDN. TypeScript valida los tres programas Pulumi. Son pruebas de programa; no contactan GCP, Neon, Secret Manager, IAP ni Cloud Build y no demuestran que un recurso exista.
+`infra/src/**/*.test.ts` cubre configuración, wrapper CLI, providers/componentes Alchemy, state GCS/KMS y lease con clientes inyectados, además de inspección mock de foundation, preview-platform, production y previews: región, orden bootstrap/migración/servicios, IAP sin principals públicos, límites de instancias y bucket privado/CDN. Son pruebas de programa; no contactan GCP, Cloud SQL, Secret Manager, IAP ni Cloud Build y no demuestran que un recurso exista.
 
 Los Dockerfiles añaden comprobaciones de build —incluida la ausencia de PGlite/dev-server en bundles backend— y `build-images.sh` comprueba provenance/digests cuando Cloud Build se ejecuta. Esas comprobaciones no forman parte de Vitest ni acreditan una imagen si no se ha ejecutado el build remoto.
 
-Antes de cualquier apply es obligatorio un `pulumi preview --diff` real y revisado. Solo foundation se ha aplicado; el preview posterior registrado mostró 48 recursos sin cambios. Production y `pr-<number>` no se han aplicado ni probado mediante smoke tests cloud. Siguen pendientes la verificación cloud del adapter Mailgun, el adapter Google, configuración externa de base de datos/Secret Manager/analytics, DNS, privilegios DML/DDL separados, lifecycle de datos preview y journeys autenticados IAP/CDN/Cloud Run.
+Antes de cualquier deploy es obligatorio un plan Alchemy real y revisado. Tras el cutover, foundation converge 36 recursos sin cambios y preview-platform 8; Alchemy es el único writer. Production y `pr-<number>` no se han aplicado ni probado con smoke tests cloud. Siguen pendientes Mailgun/Google, configuración externa de base/Secret Manager/analytics, DNS, grants, lifecycle de datos preview y journeys autenticados IAP/CDN/Cloud Run.
 
 ## Current CI gates and pending suites
 

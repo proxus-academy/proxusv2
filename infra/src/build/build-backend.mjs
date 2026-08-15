@@ -14,6 +14,7 @@ const entryPoints = {
   server: resolve(repository, "apps/server/src/prod.ts"),
   "admin-server": resolve(repository, "apps/admin-server/src/prod.ts"),
   migrate: resolve(repository, "packages/backend-infra/src/database/migrate.postgres.ts"),
+  "database-bootstrap": resolve(repository, "packages/backend-infra/src/database/bootstrap-preview.postgres.ts"),
 }
 
 for (const [name, entryPoint] of Object.entries(entryPoints)) {

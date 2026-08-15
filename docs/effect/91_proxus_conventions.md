@@ -11,7 +11,7 @@ Use this order when sources disagree:
 3. Project documents under `docs/`.
 4. The pinned upstream source recorded in [`SOURCE.md`](./SOURCE.md).
 
-Proxus currently installs `effect@4.0.0-beta.98`. Upstream examples were ported from `4.0.0-beta.101`, so imports and signatures must be checked before use. Localize `effect/unstable/*` behind application-owned modules and revalidate it on upgrades.
+Proxus currently installs `effect@4.0.0-beta.100`. Upstream examples were ported from `4.0.0-beta.101`, so imports and signatures must be checked before use. Localize `effect/unstable/*` behind application-owned modules and revalidate it on upgrades.
 
 ## Required backend flow
 

@@ -7,15 +7,19 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "build:backend": "node src/build/build-backend.mjs",
-    "infra": "node src/cli.mjs"
+    "alchemy:infra": "tsx src/alchemy/cli.ts"
   },
   "dependencies": {
-    "@pulumi/gcp": "9.34.1",
-    "@pulumi/pulumi": "3.257.0"
+    "@distilled.cloud/gcp": "0.30.2",
+    "@distilled.cloud/kubernetes": "0.30.2",
+    "@microagi/alchemy-gcp": "0.11.7",
+    "alchemy": "2.0.0-beta.65",
+    "effect": "4.0.0-beta.100"
   },
   "devDependencies": {
     "@types/node": "^25.0.0",
     "esbuild": "0.28.2",
+    "tsx": "^4.21.0",
     "typescript": "^5.8.3",
     "vitest": "3.2.7"
   }

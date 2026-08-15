@@ -2,3 +2,5 @@ packages:
   - "apps/*"
   - "packages/*"
   - "infra"
+patchedDependencies:
+  '@microagi/alchemy-gcp@0.11.7': patches/@microagi__alchemy-gcp@0.11.7.patch

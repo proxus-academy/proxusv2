@@ -14,7 +14,6 @@
     "dev:api": "pnpm dev:server",
     "dev:admin-api": "pnpm dev:admin-server",
     "dev:storybook": "pnpm --filter @proxus/storybook storybook",
-    "infra": "pnpm --filter @proxus/infra infra",
     "auth:qa:seed": "PGLITE_DATA_DIR=../../apps/dev-server/.data pnpm --filter @proxus/backend-infra auth:qa:seed",
     "auth:qa:list": "PGLITE_DATA_DIR=../../apps/dev-server/.data pnpm --filter @proxus/backend-infra auth:qa:list",
     "db:dev:seed": "PGLITE_DATA_DIR=../../apps/dev-server/.data pnpm --filter @proxus/backend-infra db:seed:pglite && pnpm auth:qa:seed",

@@ -15,8 +15,8 @@ concurrency:
 env:
   GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
   GCP_REGION: europe-southwest1
-  PULUMI_BACKEND_URL: gs://proxus-v2-pulumi-state
-  PULUMI_SECRETS_PROVIDER: gcpkms://projects/proxus-v2/locations/europe-southwest1/keyRings/pulumi-state/cryptoKeys/pulumi-secrets
+  ALCHEMY_STATE_BUCKET: ${{ vars.ALCHEMY_STATE_BUCKET }}
+  ALCHEMY_STATE_KMS_KEY: ${{ vars.ALCHEMY_STATE_KMS_KEY }}
 
 jobs:
   authorize:
@@ -82,7 +82,7 @@ jobs:
         env:
           SOURCE_SHA: ${{ needs.authorize.outputs.sha }}
           SOURCE_REVISION: ${{ needs.authorize.outputs.sha }}
-          SOURCE_URL: https://github.com/${{ github.repository }}
+          SOURCE_URL: https://github.com/${{ github.repository }}.git
           IMAGE_TAG_SUFFIX: ${{ github.run_id }}-${{ github.run_attempt }}
         run: infra/scripts/build-images.sh
 
@@ -94,6 +94,26 @@ jobs:
       id-token: write
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    env:
+      GCP_PROJECT_NUMBER: ${{ vars.GCP_PROJECT_NUMBER }}
+      GCP_PRODUCTION_DEPLOYER_PRINCIPAL: serviceAccount:${{ vars.GCP_PRODUCTION_DEPLOYER_SERVICE_ACCOUNT }}
+      IMAGE_PUBLIC_API: ${{ needs.build.outputs.public_image }}
+      IMAGE_ADMIN_API: ${{ needs.build.outputs.admin_image }}
+      IMAGE_WEB: ${{ needs.build.outputs.web_image }}
+      IMAGE_ADMIN_WEB: ${{ needs.build.outputs.admin_web_image }}
+      DATABASE_SECRET_ID: ${{ vars.POSTGRES_PRODUCTION_DATABASE_SECRET_ID }}
+      AUTH_GOOGLE_SIGNING_SECRET_ID: ${{ vars.AUTH_SIGNING_SECRET_ID }}
+      OBJECT_STORAGE_SIGNING_SECRET_ID: ${{ vars.OBJECT_STORAGE_SIGNING_SECRET_ID }}
+      MAILGUN_API_KEY_SECRET_ID: ${{ vars.MAILGUN_API_KEY_SECRET_ID }}
+      MAILGUN_DOMAIN: ${{ vars.MAILGUN_DOMAIN }}
+      MAILGUN_FROM: ${{ vars.MAILGUN_FROM }}
+      ANALYTICS_PROJECT_ID: ${{ vars.PRODUCT_ANALYTICS_PROJECT_ID }}
+      ANALYTICS_DATASET: ${{ vars.PRODUCT_ANALYTICS_DATASET }}
+      ANALYTICS_TABLE: ${{ vars.PRODUCT_ANALYTICS_TABLE }}
+      PRODUCTION_DOMAIN: ${{ vars.PRODUCTION_DOMAIN }}
+      PRODUCTION_WEB_BUCKET: ${{ vars.PRODUCTION_WEBSITE_BUCKET }}
+      IAP_ACCESS_PRINCIPAL: ${{ vars.IAP_ACCESS_PRINCIPAL }}
+      APPLICATION_RUNTIME_READY: ${{ vars.APPLICATION_RUNTIME_READY }}
     steps:
       - name: Authenticate as the production deployer without a key
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
@@ -113,99 +133,117 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22.22.2
-      - name: Verify deployment gates and immutable image outputs
+      - name: Verify trusted checkout, runtime gates and immutable inputs
         working-directory: trusted
         env:
           SOURCE_SHA: ${{ needs.authorize.outputs.sha }}
           PROVIDER: ${{ vars.GCP_PRODUCTION_WORKLOAD_IDENTITY_PROVIDER }}
           DEPLOYER: ${{ vars.GCP_PRODUCTION_DEPLOYER_SERVICE_ACCOUNT }}
-          DOMAIN: ${{ vars.PRODUCTION_DOMAIN }}
-          IAP_PRINCIPAL: ${{ vars.IAP_GROUP_PRINCIPAL }}
-          DATABASE_SECRET: ${{ vars.NEON_PRODUCTION_DATABASE_SECRET_ID }}
-          AUTH_SECRET: ${{ vars.AUTH_SIGNING_SECRET_ID }}
-          OBJECT_SECRET: ${{ vars.OBJECT_STORAGE_SIGNING_SECRET_ID }}
-          MAILGUN_SECRET: ${{ vars.MAILGUN_API_KEY_SECRET_ID }}
-          MAILGUN_DOMAIN: ${{ vars.MAILGUN_DOMAIN }}
-          MAILGUN_FROM: ${{ vars.MAILGUN_FROM }}
-          WEBSITE_BUCKET: ${{ vars.PRODUCTION_WEBSITE_BUCKET }}
-          ANALYTICS_DATASET: ${{ vars.PRODUCT_ANALYTICS_DATASET }}
-          ANALYTICS_TABLE: ${{ vars.PRODUCT_ANALYTICS_TABLE }}
-          RUNTIME_READY: ${{ vars.APPLICATION_RUNTIME_READY }}
-          PUBLIC_IMAGE: ${{ needs.build.outputs.public_image }}
-          ADMIN_IMAGE: ${{ needs.build.outputs.admin_image }}
-          WEB_IMAGE: ${{ needs.build.outputs.web_image }}
-          ADMIN_WEB_IMAGE: ${{ needs.build.outputs.admin_web_image }}
         run: |
           test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
-          for value in "$GCP_PROJECT_ID" "$PROVIDER" "$DEPLOYER" "$DOMAIN" "$IAP_PRINCIPAL" "$DATABASE_SECRET" "$AUTH_SECRET" "$OBJECT_SECRET" "$MAILGUN_SECRET" "$MAILGUN_DOMAIN" "$MAILGUN_FROM" "$WEBSITE_BUCKET" "$ANALYTICS_DATASET" "$ANALYTICS_TABLE" "$PUBLIC_IMAGE" "$ADMIN_IMAGE" "$WEB_IMAGE" "$ADMIN_WEB_IMAGE"; do
+          for value in "$GCP_PROJECT_ID" "$GCP_PROJECT_NUMBER" "$PROVIDER" "$DEPLOYER" "$ALCHEMY_STATE_BUCKET" "$ALCHEMY_STATE_KMS_KEY" "$DATABASE_SECRET_ID" "$AUTH_GOOGLE_SIGNING_SECRET_ID" "$OBJECT_STORAGE_SIGNING_SECRET_ID" "$MAILGUN_API_KEY_SECRET_ID" "$MAILGUN_DOMAIN" "$MAILGUN_FROM" "$ANALYTICS_PROJECT_ID" "$ANALYTICS_DATASET" "$ANALYTICS_TABLE" "$PRODUCTION_DOMAIN" "$PRODUCTION_WEB_BUCKET" "$IAP_ACCESS_PRINCIPAL"; do
             test -n "$value"
           done
-          test "$RUNTIME_READY" = true
+          test "$APPLICATION_RUNTIME_READY" = true
+          [[ "$GCP_PROJECT_NUMBER" =~ ^[0-9]+$ ]]
+          [[ "$IAP_ACCESS_PRINCIPAL" =~ ^(user|group):[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$ ]]
+          for image in "$IMAGE_PUBLIC_API" "$IMAGE_ADMIN_API" "$IMAGE_WEB" "$IMAGE_ADMIN_WEB"; do
+            [[ "$image" =~ ^${GCP_REGION}-docker\.pkg\.dev/${GCP_PROJECT_ID}/[a-z0-9._/-]+@sha256:[a-f0-9]{64}$ ]]
+          done
       - name: Install frozen dependencies
         working-directory: trusted
         run: |
           npm install --global corepack@0.35.0
           corepack enable pnpm
           pnpm install --frozen-lockfile
-      - name: Install pinned Pulumi CLI
-        uses: pulumi/setup-pulumi@b374ceb6168550de27c6eba92e01c1a774040e11 # v2
-        with:
-          pulumi-version: 3.257.0
-      - name: Select and configure the production stack
+      - name: Prepare a non-deployable manifest for the migration-only phase
+        working-directory: trusted
+        run: |
+          manifest="$RUNNER_TEMP/production-static-manifest.json"
+          printf '{"files":[]}\n' > "$manifest"
+          printf 'STATIC_MANIFEST_JSON_PATH=%s\n' "$manifest" >> "$GITHUB_ENV"
+          printf 'STATIC_MANIFEST_SHA256=%s\n' "$(sha256sum "$manifest" | cut -d ' ' -f 1)" >> "$GITHUB_ENV"
+      - name: Plan migration infrastructure only
         working-directory: trusted
         env:
-          PUBLIC_IMAGE: ${{ needs.build.outputs.public_image }}
-          ADMIN_IMAGE: ${{ needs.build.outputs.admin_image }}
-          ADMIN_WEB_IMAGE: ${{ needs.build.outputs.admin_web_image }}
-          DATABASE_SECRET: ${{ vars.NEON_PRODUCTION_DATABASE_SECRET_ID }}
-          AUTH_SECRET: ${{ vars.AUTH_SIGNING_SECRET_ID }}
-          OBJECT_SECRET: ${{ vars.OBJECT_STORAGE_SIGNING_SECRET_ID }}
-          MAILGUN_SECRET: ${{ vars.MAILGUN_API_KEY_SECRET_ID }}
-          MAILGUN_DOMAIN: ${{ vars.MAILGUN_DOMAIN }}
-          MAILGUN_FROM: ${{ vars.MAILGUN_FROM }}
-          DOMAIN: ${{ vars.PRODUCTION_DOMAIN }}
-          IAP_PRINCIPAL: ${{ vars.IAP_GROUP_PRINCIPAL }}
-          WEBSITE_BUCKET: ${{ vars.PRODUCTION_WEBSITE_BUCKET }}
-          ANALYTICS_DATASET: ${{ vars.PRODUCT_ANALYTICS_DATASET }}
-          ANALYTICS_TABLE: ${{ vars.PRODUCT_ANALYTICS_TABLE }}
-        run: |
-          pnpm infra outputs --environment production >/dev/null
-          p="pulumi --cwd infra/production"
-          $p config set --stack production gcp:project "$GCP_PROJECT_ID"
-          $p config set --stack production gcp:region "$GCP_REGION"
-          $p config set --stack production publicImage "$PUBLIC_IMAGE"
-          $p config set --stack production adminImage "$ADMIN_IMAGE"
-          $p config set --stack production adminWebImage "$ADMIN_WEB_IMAGE"
-          $p config set --stack production databaseSecretId "$DATABASE_SECRET"
-          $p config set --stack production authSigningSecretId "$AUTH_SECRET"
-          $p config set --stack production objectStorageSigningSecretId "$OBJECT_SECRET"
-          $p config set --stack production mailgunApiKeySecretId "$MAILGUN_SECRET"
-          $p config set --stack production mailgunDomain "$MAILGUN_DOMAIN"
-          $p config set --stack production mailgunFrom "$MAILGUN_FROM"
-          $p config set --stack production domain "$DOMAIN"
-          $p config set --stack production iapPrincipal "$IAP_PRINCIPAL"
-          $p config set --stack production websiteBucketName "$WEBSITE_BUCKET"
-          $p config set --stack production productAnalyticsDataset "$ANALYTICS_DATASET"
-          $p config set --stack production productAnalyticsTable "$ANALYTICS_TABLE"
-          $p config set --stack production applicationRuntimeReady true
-          $p config set --stack production deployServices false
-      - name: Converge migration infrastructure only
+          DEPLOY_SERVICES: "false"
+        run: pnpm --filter @proxus/infra alchemy:infra -- plan --stage production
+      - name: Deploy migration infrastructure only
         working-directory: trusted
-        run: pnpm infra deploy --environment production
+        env:
+          DEPLOY_SERVICES: "false"
+        run: pnpm --filter @proxus/infra alchemy:infra -- deploy --stage production
+      - name: Read the ordered migration job output
+        id: migration
+        working-directory: trusted
+        env:
+          DEPLOY_SERVICES: "false"
+        run: |
+          output="$RUNNER_TEMP/production-migration-outputs.json"
+          pnpm --filter @proxus/infra alchemy:infra -- outputs --stage production > "$output"
+          printf 'job=%s\n' "$(jq -er '.migrationJob.name' "$output")" >> "$GITHUB_OUTPUT"
+          rm -f "$output"
       - name: Run the ordered database migration job
-        working-directory: trusted
-        run: |
-          job="$(pulumi --cwd infra/production stack output migrationJobName --stack production)"
-          gcloud run jobs execute "$job" --project "$GCP_PROJECT_ID" --region "$GCP_REGION" --wait
+        run: gcloud run jobs execute "${{ steps.migration.outputs.job }}" --project "$GCP_PROJECT_ID" --region "$GCP_REGION" --wait
       - name: Extract the web artifact from its immutable image
         working-directory: trusted
         env:
           WEB_IMAGE: ${{ needs.build.outputs.web_image }}
-          OUTPUT_DIRECTORY: ${{ github.workspace }}/trusted/artifacts/production-web
+          OUTPUT_DIRECTORY: ${{ runner.temp }}/production-web
         run: infra/scripts/extract-web-artifact.sh
+      - name: Generate and authenticate the static artifact manifest
+        working-directory: trusted
+        env:
+          ARTIFACT_DIRECTORY: ${{ runner.temp }}/production-web
+        run: |
+          manifest="$RUNNER_TEMP/production-static-manifest.json"
+          python3 - "$ARTIFACT_DIRECTORY" "$manifest" <<'PY'
+          import hashlib, json, pathlib, sys
+          root = pathlib.Path(sys.argv[1]).resolve()
+          files = []
+          for path in sorted(p for p in root.rglob("*") if p.is_file()):
+              relative = path.relative_to(root).as_posix()
+              data = path.read_bytes()
+              files.append({"name": relative, "path": str(path), "sha256": hashlib.sha256(data).hexdigest(), "size": len(data)})
+          if not any(entry["name"] == "index.html" for entry in files):
+              raise SystemExit("static artifact has no index.html")
+          pathlib.Path(sys.argv[2]).write_text(json.dumps({"files": files}, separators=(",", ":")) + "\n")
+          PY
+          printf 'STATIC_MANIFEST_JSON_PATH=%s\n' "$manifest" >> "$GITHUB_ENV"
+          printf 'STATIC_MANIFEST_SHA256=%s\n' "$(sha256sum "$manifest" | cut -d ' ' -f 1)" >> "$GITHUB_ENV"
+      - name: Plan application services and private static CDN
+        working-directory: trusted
+        env:
+          DEPLOY_SERVICES: "true"
+        run: pnpm --filter @proxus/infra alchemy:infra -- plan --stage production
       - name: Deploy application services and private static CDN
         working-directory: trusted
+        env:
+          DEPLOY_SERVICES: "true"
+        run: pnpm --filter @proxus/infra alchemy:infra -- deploy --stage production
+      - name: Read deployment outputs and record the manual DNS action
+        working-directory: trusted
+        env:
+          DEPLOY_SERVICES: "true"
         run: |
-          pulumi --cwd infra/production config set --stack production webDistPath "$GITHUB_WORKSPACE/trusted/artifacts/production-web"
-          pulumi --cwd infra/production config set --stack production deployServices true
-          pnpm infra deploy --environment production
+          output="$RUNNER_TEMP/production-outputs.json"
+          pnpm --filter @proxus/infra alchemy:infra -- outputs --stage production > "$output"
+          dns="$(jq -er '.requiredDnsARecord' "$output")"
+          public_url="$(jq -er '.publicApiUrl' "$output")"
+          admin_url="$(jq -er '.adminUrl' "$output")"
+          website_url="$(jq -er '.websiteUrl' "$output")"
+          {
+            echo '## Production deployment outputs'
+            printf -- '- Required manual DNS A record: `%s`\n' "$dns"
+            printf -- '- Public API: `%s`\n- Admin: `%s`\n- Website: `%s`\n' "$public_url" "$admin_url" "$website_url"
+            echo '- DNS was not modified by this workflow.'
+          } >> "$GITHUB_STEP_SUMMARY"
+          rm -f "$output"
+      - name: Record safe smoke-test placeholders
+        run: |
+          {
+            echo '## Post-deploy gates still requiring an operator'
+            echo '- Wait for the managed certificate before testing the public hostname.'
+            echo '- Run authenticated IAP, public/admin API, private CDN, and direct-access-denial smoke tests.'
+            echo '- No placeholder performs network requests or claims that a smoke test passed.'
+          } >> "$GITHUB_STEP_SUMMARY"

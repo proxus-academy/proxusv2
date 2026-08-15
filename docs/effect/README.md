@@ -16,7 +16,7 @@ This directory is a numbered, progressively loadable port of the official [`Effe
 ## Authority and compatibility
 
 - Upstream snapshot: `b49284193f86737e411dc3dd19cfb1a8b9fa5d95` (`effect@4.0.0-beta.101`).
-- Installed Proxus version: `effect@4.0.0-beta.98`.
+- Installed Proxus version: `effect@4.0.0-beta.100`.
 - Installed package types, project tests, `AGENTS.md`, and project architecture decisions override upstream examples.
 - Files `01`–`80` preserve upstream ordering. Files `90`–`91` are Proxus extensions.
 - APIs under `effect/unstable/*` must remain localized behind an application-owned seam.

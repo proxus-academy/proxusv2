@@ -9,10 +9,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@effect/atom-react": "4.0.0-beta.98",
+    "@effect/atom-react": "4.0.0-beta.100",
     "@proxus/shared": "workspace:*",
     "@proxus/ui": "workspace:*",
-    "effect": "4.0.0-beta.98",
+    "effect": "4.0.0-beta.100",
     "react": "^19.2.3",
     "react-dom": "^19.2.3"
   },

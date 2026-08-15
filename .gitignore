@@ -17,6 +17,7 @@ coverage
 *storybook.log
 storybook-static
 .pi/
+infra/.alchemy/
 artifacts/
 test-results/
 nohup.out

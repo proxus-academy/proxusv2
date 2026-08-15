@@ -1,5 +1,5 @@
 > Portado de [`Effect-TS/effect/ai-docs/src/04_integration`](https://github.com/Effect-TS/effect/tree/b49284193f86737e411dc3dd19cfb1a8b9fa5d95/ai-docs/src/04_integration) en el commit `b49284193f86737e411dc3dd19cfb1a8b9fa5d95` (licencia MIT).
-> Upstream usa Effect `4.0.0-beta.101`; Proxus usa `4.0.0-beta.98`. Verifica los tipos instalados antes de adoptar un ejemplo.
+> Upstream usa Effect `4.0.0-beta.101`; Proxus usa `4.0.0-beta.100`. Verifica los tipos instalados antes de adoptar un ejemplo.
 
 
 ## Integrating Effect into existing applications

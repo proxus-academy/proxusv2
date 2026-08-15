@@ -40,14 +40,15 @@
     "auth:qa:list": "tsx src/auth-qa/command.ts list"
   },
   "dependencies": {
-    "@effect/sql-pg": "4.0.0-beta.98",
-    "@effect/sql-pglite": "4.0.0-beta.98",
+    "@effect/sql-pg": "4.0.0-beta.100",
+    "@effect/sql-pglite": "4.0.0-beta.100",
     "@electric-sql/pglite": "0.5.4",
     "@google-cloud/bigquery": "8.3.1",
+    "@google-cloud/cloud-sql-connector": "1.8.3",
     "@proxus/backend-domain": "workspace:*",
     "@proxus/shared": "workspace:*",
     "drizzle-orm": "1.0.0-rc.4",
-    "effect": "4.0.0-beta.98",
+    "effect": "4.0.0-beta.100",
     "form-data": "4.0.4",
     "mailgun.js": "12.1.0",
     "pg": "8.16.3"

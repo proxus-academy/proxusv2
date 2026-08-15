@@ -4,7 +4,7 @@
 
 | Source | Version / commit | Role |
 | --- | --- | --- |
-| Proxus installation | `effect@4.0.0-beta.98` | Compile-time authority |
+| Proxus installation | `effect@4.0.0-beta.100` | Compile-time authority |
 | Effect AI docs | `b49284193f86737e411dc3dd19cfb1a8b9fa5d95` | Documentation snapshot |
 | Snapshot package | `effect@4.0.0-beta.101` | Upstream example version |
 

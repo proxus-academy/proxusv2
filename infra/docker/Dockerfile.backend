@@ -7,6 +7,7 @@ WORKDIR /workspace
 RUN test -n "$SOURCE_SHA"
 RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
+COPY patches patches
 COPY apps/server/package.json apps/server/package.json
 COPY apps/admin-server/package.json apps/admin-server/package.json
 COPY packages/backend-admin-transport/package.json packages/backend-admin-transport/package.json
@@ -25,6 +26,10 @@ COPY packages/backend-transport packages/backend-transport
 COPY packages/shared packages/shared
 COPY infra infra
 RUN pnpm --filter @proxus/infra build:backend
+RUN test -r dist/production-backend/migrate.mjs \
+  && test -r dist/production-backend/database-bootstrap.mjs \
+  && node --check dist/production-backend/migrate.mjs \
+  && node --check dist/production-backend/database-bootstrap.mjs
 RUN ! grep -R -E '@electric-sql/pglite|@effect/sql-pglite|PGLITE_DATA_DIR|dev-server|src/database/pglite' dist/production-backend/*.mjs
 
 FROM node:22.22.2-bookworm-slim@sha256:9f6d5975c7dca860947d3915877f85607946403fc55349f39b4bc3688448bb6e AS runtime

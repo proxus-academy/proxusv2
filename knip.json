@@ -16,10 +16,14 @@
       "ignoreDependencies": ["tailwindcss"]
     },
     "apps/*": {},
+    "packages/backend-infra": {
+      "entry": ["src/database/bootstrap-preview.postgres.ts"]
+    },
     "packages/*": {},
     "infra": {
-      "entry": ["foundation/index.ts", "preview/index.ts", "production/index.ts", "src/**/*.test.ts", "src/**/*.mjs"],
-      "project": ["foundation/**/*.ts", "preview/**/*.ts", "production/**/*.ts", "src/**/*.{ts,mjs}"]
+      "entry": ["alchemy.*.ts", "src/**/*.test.ts", "src/**/*.mjs"],
+      "project": ["src/**/*.{ts,mjs}"],
+      "ignoreBinaries": ["jq"]
     }
   }
 }

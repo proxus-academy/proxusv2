@@ -1,8 +1,7 @@
 # Plan de refactor: servidores público y administrativo independientes
 
 > **Estado:** implementado (etapas 1–8)  
-> **Propuesta relacionada:** [`separate-public-admin-deployments-and-pulumi.md`](separate-public-admin-deployments-and-pulumi.md)  
-> **Alcance:** separación de procesos y packages backend; excluye Docker, Pulumi, GCP, IAM e IAP  
+> **Alcance:** separación de procesos y packages backend; excluye Docker, IaC, GCP, IAM e IAP
 > **Fecha:** 2026-07-16
 
 ## Objetivo
@@ -105,7 +104,7 @@ Depende de `shared` y `backend-domain`. No depende de `backend-infra` ni contien
 Quedan fuera:
 
 - Dockerfiles y artefactos compilados de producción;
-- Pulumi, GCS, Cloud Run y Cloud SQL gestionado;
+- IaC, GCS, Cloud Run y Cloud SQL gestionado;
 - IAM, IAP y autorización final;
 - previews por PR;
 - rediseñar Study Catalog;
@@ -489,7 +488,7 @@ Documentación:
 - conservar organización por bounded context dentro de cada uno;
 - documentar ambos ejecutables y puertos;
 - mantener advertencia de que Admin sigue temporalmente sin autenticación;
-- dejar Pulumi/IAP fuera de esta entrega.
+- dejar IaC/IAP fuera de esta entrega.
 
 Limpieza, solo después de actualizar todos los imports:
 
@@ -599,4 +598,4 @@ Mitigación principal: exports pequeños, dependencias unidireccionales, tests p
 7. `refactor(frontend): use separate public and admin clients`
 8. `docs: document backend package architecture`
 
-Cada commit debe conservar una interface estable y no mezclar Pulumi, Docker o autenticación.
+Cada commit debe conservar una interface estable y no mezclar IaC, Docker o autenticación.

@@ -1,0 +1,233 @@
+{
+  "artifacts": {
+    "images": [
+      "europe-southwest1-docker.pkg.dev/proxus-v2/proxus/proxus-server:sha-c269cec287856a166f7dac8befc357800d84ccf8-dirty-20260815T033232Z",
+      "europe-southwest1-docker.pkg.dev/proxus-v2/proxus/proxus-admin-server:sha-c269cec287856a166f7dac8befc357800d84ccf8-dirty-20260815T033232Z",
+      "europe-southwest1-docker.pkg.dev/proxus-v2/proxus/proxus-web:sha-c269cec287856a166f7dac8befc357800d84ccf8-dirty-20260815T033232Z",
+      "europe-southwest1-docker.pkg.dev/proxus-v2/proxus/proxus-admin-web:sha-c269cec287856a166f7dac8befc357800d84ccf8-dirty-20260815T033232Z"
+    ]
+  },
+  "createTime": "2026-08-15T03:32:47.658474713Z",
+  "finishTime": "2026-08-15T03:37:01.741051Z",
+  "id": "7e226605-bce8-4079-ab26-f9af46289b6e",
+  "images": [
+    "europe-southwest1-docker.pkg.dev/proxus-v2/proxus/proxus-server:sha-c269cec287856a166f7dac8befc357800d84ccf8-dirty-20260815T033232Z",
+    "europe-southwest1-docker.pkg.dev/proxus-v2/proxus/proxus-admin-server:sha-c269cec287856a166f7dac8befc357800d84ccf8-dirty-20260815T033232Z",
+    "europe-southwest1-docker.pkg.dev/proxus-v2/proxus/proxus-web:sha-c269cec287856a166f7dac8befc357800d84ccf8-dirty-20260815T033232Z",
+    "europe-southwest1-docker.pkg.dev/proxus-v2/proxus/proxus-admin-web:sha-c269cec287856a166f7dac8befc357800d84ccf8-dirty-20260815T033232Z"
+  ],
+  "logUrl": "https://console.cloud.google.com/cloud-build/builds;region=europe-southwest1/7e226605-bce8-4079-ab26-f9af46289b6e?project=474767709287",
+  "name": "projects/474767709287/locations/europe-southwest1/builds/7e226605-bce8-4079-ab26-f9af46289b6e",
+  "options": {
+    "dynamicSubstitutions": true,
+    "logging": "CLOUD_LOGGING_ONLY",
+    "machineType": "E2_HIGHCPU_8",
+    "pool": {}
+  },
+  "projectId": "proxus-v2",
+  "queueTtl": "3600s",
+  "results": {
+    "buildStepImages": [
+      "sha256:661e95acd923514f71f47ce7b390e06a8d31b15febecf772e506babf62960528",
+      "sha256:661e95acd923514f71f47ce7b390e06a8d31b15febecf772e506babf62960528",
+      "sha256:661e95acd923514f71f47ce7b390e06a8d31b15febecf772e506babf62960528",
+      "sha256:661e95acd923514f71f47ce7b390e06a8d31b15febecf772e506babf62960528"
+    ],
+    "buildStepOutputs": [
+      "",
+      "",
+      "",
+      ""
+    ],
+    "buildStepResults": {
+      "admin-backend": {},
+      "admin-web": {},
+      "public-backend": {},
+      "public-web": {}
+    },
+    "images": [
+      {
+        "artifactRegistryPackage": "projects/proxus-v2/locations/europe-southwest1/repositories/proxus/packages/proxus-server/versions/sha256:961feac3789f3a413a5d6922e64961c4749154e7859d2f88ecb18a0c71e550fd",
+        "digest": "sha256:961feac3789f3a413a5d6922e64961c4749154e7859d2f88ecb18a0c71e550fd",
+        "name": "europe-southwest1-docker.pkg.dev/proxus-v2/proxus/proxus-server:sha-c269cec287856a166f7dac8befc357800d84ccf8-dirty-20260815T033232Z",
+        "pushTiming": {
+          "endTime": "2026-08-15T03:36:56.859715511Z",
+          "startTime": "2026-08-15T03:36:51.327836953Z"
+        }
+      },
+      {
+        "artifactRegistryPackage": "projects/proxus-v2/locations/europe-southwest1/repositories/proxus/packages/proxus-admin-server/versions/sha256:2ab9f1fd6caab9431158e19291279790d2468998e39657faab1d8547f1623c78",
+        "digest": "sha256:2ab9f1fd6caab9431158e19291279790d2468998e39657faab1d8547f1623c78",
+        "name": "europe-southwest1-docker.pkg.dev/proxus-v2/proxus/proxus-admin-server:sha-c269cec287856a166f7dac8befc357800d84ccf8-dirty-20260815T033232Z",
+        "pushTiming": {
+          "endTime": "2026-08-15T03:36:58.074193180Z",
+          "startTime": "2026-08-15T03:36:56.859874671Z"
+        }
+      },
+      {
+        "artifactRegistryPackage": "projects/proxus-v2/locations/europe-southwest1/repositories/proxus/packages/proxus-web/versions/sha256:a40f7b90fdd2e4149c36404c218a95a2f41b17ecb4c254ae01c26d4dde2d4367",
+        "digest": "sha256:a40f7b90fdd2e4149c36404c218a95a2f41b17ecb4c254ae01c26d4dde2d4367",
+        "name": "europe-southwest1-docker.pkg.dev/proxus-v2/proxus/proxus-web:sha-c269cec287856a166f7dac8befc357800d84ccf8-dirty-20260815T033232Z",
+        "pushTiming": {
+          "endTime": "2026-08-15T03:36:59.546362821Z",
+          "startTime": "2026-08-15T03:36:58.074259901Z"
+        }
+      },
+      {
+        "artifactRegistryPackage": "projects/proxus-v2/locations/europe-southwest1/repositories/proxus/packages/proxus-admin-web/versions/sha256:c8af72d4c09ca684a23a98602109ae932fa1d0588c29eb8fd2db9973f402e217",
+        "digest": "sha256:c8af72d4c09ca684a23a98602109ae932fa1d0588c29eb8fd2db9973f402e217",
+        "name": "europe-southwest1-docker.pkg.dev/proxus-v2/proxus/proxus-admin-web:sha-c269cec287856a166f7dac8befc357800d84ccf8-dirty-20260815T033232Z",
+        "pushTiming": {
+          "endTime": "2026-08-15T03:37:00.958052658Z",
+          "startTime": "2026-08-15T03:36:59.546429660Z"
+        }
+      }
+    ]
+  },
+  "serviceAccount": "projects/proxus-v2/serviceAccounts/proxus-cloud-build@proxus-v2.iam.gserviceaccount.com",
+  "source": {
+    "storageSource": {
+      "bucket": "proxus-v2_cloudbuild",
+      "generation": "1786764767287579",
+      "object": "source/1786764766.451568-6449c3700437458a8a79e7e70e85a404.gz"
+    }
+  },
+  "sourceProvenance": {
+    "fileHashes": {
+      "gs://proxus-v2_cloudbuild/source/1786764766.451568-6449c3700437458a8a79e7e70e85a404.gz#1786764767287579": {
+        "fileHash": [
+          {
+            "type": "MD5",
+            "value": "-LkE_3TOWaWSGJlI1A2YBg=="
+          },
+          {
+            "type": "SHA256",
+            "value": "78b2mnMVuXzB2gS_88Y9sWBraJ9wnTtDTHyVG1j90FU="
+          }
+        ]
+      }
+    },
+    "resolvedStorageSource": {
+      "bucket": "proxus-v2_cloudbuild",
+      "generation": "1786764767287579",
+      "object": "source/1786764766.451568-6449c3700437458a8a79e7e70e85a404.gz"
+    }
+  },
+  "startTime": "2026-08-15T03:33:35.515749836Z",
+  "status": "SUCCESS",
+  "steps": [
+    {
+      "args": [
+        "build",
+        "--file=infra/docker/Dockerfile.backend",
+        "--target=server",
+        "--build-arg=SOURCE_SHA=c269cec287856a166f7dac8befc357800d84ccf8",
+        "--label=dev.proxus.source-context-sha256=efc6f69a7315b97cc1da04bff3c63db1606b689f709d3b434c7c951b58fdd055",
+        "--tag=europe-southwest1-docker.pkg.dev/proxus-v2/proxus/proxus-server:sha-c269cec287856a166f7dac8befc357800d84ccf8-dirty-20260815T033232Z",
+        "."
+      ],
+      "id": "public-backend",
+      "name": "gcr.io/cloud-builders/docker@sha256:661e95acd923514f71f47ce7b390e06a8d31b15febecf772e506babf62960528",
+      "pullTiming": {
+        "endTime": "2026-08-15T03:33:56.166702909Z",
+        "startTime": "2026-08-15T03:33:41.145477961Z"
+      },
+      "status": "SUCCESS",
+      "timing": {
+        "endTime": "2026-08-15T03:35:21.756616513Z",
+        "startTime": "2026-08-15T03:33:41.145477961Z"
+      }
+    },
+    {
+      "args": [
+        "build",
+        "--file=infra/docker/Dockerfile.backend",
+        "--target=admin-server",
+        "--build-arg=SOURCE_SHA=c269cec287856a166f7dac8befc357800d84ccf8",
+        "--label=dev.proxus.source-context-sha256=efc6f69a7315b97cc1da04bff3c63db1606b689f709d3b434c7c951b58fdd055",
+        "--tag=europe-southwest1-docker.pkg.dev/proxus-v2/proxus/proxus-admin-server:sha-c269cec287856a166f7dac8befc357800d84ccf8-dirty-20260815T033232Z",
+        "."
+      ],
+      "id": "admin-backend",
+      "name": "gcr.io/cloud-builders/docker@sha256:661e95acd923514f71f47ce7b390e06a8d31b15febecf772e506babf62960528",
+      "pullTiming": {
+        "endTime": "2026-08-15T03:35:21.757807183Z",
+        "startTime": "2026-08-15T03:35:21.756709962Z"
+      },
+      "status": "SUCCESS",
+      "timing": {
+        "endTime": "2026-08-15T03:35:22.770999306Z",
+        "startTime": "2026-08-15T03:35:21.756709962Z"
+      }
+    },
+    {
+      "args": [
+        "build",
+        "--file=infra/docker/Dockerfile.frontend",
+        "--build-arg=APP=web",
+        "--build-arg=SOURCE_SHA=c269cec287856a166f7dac8befc357800d84ccf8",
+        "--label=dev.proxus.source-context-sha256=efc6f69a7315b97cc1da04bff3c63db1606b689f709d3b434c7c951b58fdd055",
+        "--tag=europe-southwest1-docker.pkg.dev/proxus-v2/proxus/proxus-web:sha-c269cec287856a166f7dac8befc357800d84ccf8-dirty-20260815T033232Z",
+        "."
+      ],
+      "id": "public-web",
+      "name": "gcr.io/cloud-builders/docker@sha256:661e95acd923514f71f47ce7b390e06a8d31b15febecf772e506babf62960528",
+      "pullTiming": {
+        "endTime": "2026-08-15T03:35:22.772049726Z",
+        "startTime": "2026-08-15T03:35:22.771084179Z"
+      },
+      "status": "SUCCESS",
+      "timing": {
+        "endTime": "2026-08-15T03:36:07.164442448Z",
+        "startTime": "2026-08-15T03:35:22.771084179Z"
+      }
+    },
+    {
+      "args": [
+        "build",
+        "--file=infra/docker/Dockerfile.frontend",
+        "--build-arg=APP=admin",
+        "--build-arg=SOURCE_SHA=c269cec287856a166f7dac8befc357800d84ccf8",
+        "--label=dev.proxus.source-context-sha256=efc6f69a7315b97cc1da04bff3c63db1606b689f709d3b434c7c951b58fdd055",
+        "--tag=europe-southwest1-docker.pkg.dev/proxus-v2/proxus/proxus-admin-web:sha-c269cec287856a166f7dac8befc357800d84ccf8-dirty-20260815T033232Z",
+        "."
+      ],
+      "id": "admin-web",
+      "name": "gcr.io/cloud-builders/docker@sha256:661e95acd923514f71f47ce7b390e06a8d31b15febecf772e506babf62960528",
+      "pullTiming": {
+        "endTime": "2026-08-15T03:36:07.165504162Z",
+        "startTime": "2026-08-15T03:36:07.164522075Z"
+      },
+      "status": "SUCCESS",
+      "timing": {
+        "endTime": "2026-08-15T03:36:51.127319361Z",
+        "startTime": "2026-08-15T03:36:07.164522075Z"
+      }
+    }
+  ],
+  "substitutions": {
+    "_IMAGE_PREFIX": "europe-southwest1-docker.pkg.dev/proxus-v2/proxus",
+    "_IMAGE_TAG": "sha-c269cec287856a166f7dac8befc357800d84ccf8-dirty-20260815T033232Z",
+    "_SOURCE_CONTEXT_SHA256": "efc6f69a7315b97cc1da04bff3c63db1606b689f709d3b434c7c951b58fdd055",
+    "_SOURCE_SHA": "c269cec287856a166f7dac8befc357800d84ccf8"
+  },
+  "timeout": "1800s",
+  "timing": {
+    "BUILD": {
+      "endTime": "2026-08-15T03:36:51.327750658Z",
+      "startTime": "2026-08-15T03:33:40.628183845Z"
+    },
+    "FETCHSOURCE": {
+      "endTime": "2026-08-15T03:33:40.628097388Z",
+      "startTime": "2026-08-15T03:33:36.917037827Z"
+    },
+    "PUSH": {
+      "endTime": "2026-08-15T03:37:00.958129417Z",
+      "startTime": "2026-08-15T03:36:51.327835981Z"
+    },
+    "STORAGE_SOURCE": {
+      "endTime": "2026-08-15T03:33:40.628097388Z",
+      "startTime": "2026-08-15T03:33:36.917037827Z"
+    }
+  }
+}

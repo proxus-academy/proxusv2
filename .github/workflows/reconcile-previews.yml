@@ -14,8 +14,9 @@ concurrency:
 
 env:
   GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
-  PULUMI_BACKEND_URL: gs://proxus-v2-pulumi-state
-  PULUMI_SECRETS_PROVIDER: gcpkms://projects/proxus-v2/locations/europe-southwest1/keyRings/pulumi-state/cryptoKeys/pulumi-secrets
+  GCP_REGION: europe-southwest1
+  ALCHEMY_STATE_BUCKET: ${{ vars.ALCHEMY_STATE_BUCKET }}
+  ALCHEMY_STATE_KMS_KEY: ${{ vars.ALCHEMY_STATE_KMS_KEY }}
 
 jobs:
   authorize:
@@ -66,34 +67,56 @@ jobs:
           npm install --global corepack@0.35.0
           corepack enable pnpm
           pnpm install --frozen-lockfile
-      - name: Install pinned Pulumi CLI
-        uses: pulumi/setup-pulumi@b374ceb6168550de27c6eba92e01c1a774040e11 # v2
-        with:
-          pulumi-version: 3.257.0
-      - name: Destroy stacks without a current open labeled pull request
+      - name: Destroy Alchemy stages without a current eligible pull request
         working-directory: trusted
         env:
           GH_TOKEN: ${{ github.token }}
           IAC_SHA: ${{ needs.authorize.outputs.iac_sha }}
+          DEPLOY_SERVICES: "false"
+          GCP_PROJECT_NUMBER: ${{ vars.GCP_PROJECT_NUMBER }}
+          GCP_PREVIEW_DEPLOYER_PRINCIPAL: serviceAccount:${{ vars.GCP_PREVIEW_DEPLOYER_SERVICE_ACCOUNT }}
+          AUTH_GOOGLE_SIGNING_SECRET_ID: ${{ vars.AUTH_SIGNING_SECRET_ID }}
+          OBJECT_STORAGE_SIGNING_SECRET_ID: ${{ vars.OBJECT_STORAGE_SIGNING_SECRET_ID }}
+          MAILGUN_API_KEY_SECRET_ID: ${{ vars.MAILGUN_API_KEY_SECRET_ID }}
+          DATABASE_BOOTSTRAP_PASSWORD_SECRET_ID: ${{ vars.DATABASE_BOOTSTRAP_PASSWORD_SECRET_ID }}
+          MAILGUN_DOMAIN: ${{ vars.MAILGUN_DOMAIN }}
+          MAILGUN_FROM: ${{ vars.MAILGUN_FROM }}
+          ANALYTICS_PROJECT_ID: ${{ vars.PRODUCT_ANALYTICS_PROJECT_ID }}
+          ANALYTICS_DATASET: ${{ vars.PRODUCT_ANALYTICS_DATASET }}
+          ANALYTICS_TABLE: ${{ vars.PRODUCT_ANALYTICS_TABLE }}
+          IAP_ACCESS_PRINCIPAL: ${{ vars.IAP_ACCESS_PRINCIPAL }}
+          CLOUD_SQL_PROJECT_ID: ${{ vars.CLOUD_SQL_PROJECT_ID }}
+          CLOUD_SQL_INSTANCE_NAME: ${{ vars.CLOUD_SQL_INSTANCE_NAME }}
+          CLOUD_SQL_CONNECTION_NAME: ${{ vars.CLOUD_SQL_CONNECTION_NAME }}
         run: |
+          set -euo pipefail
           test "$(git rev-parse HEAD)" = "$IAC_SHA"
-          test -n "$GCP_PROJECT_ID"
-          pulumi login "$PULUMI_BACKEND_URL"
-          stacks_file="$(mktemp)"
-          trap 'rm -f "$stacks_file"' EXIT
-          pulumi --cwd infra/preview stack ls --json > "$stacks_file"
-          mapfile -t stacks < <(jq -r '.[].name | select(test("^pr-[1-9][0-9]{0,5}$"))' "$stacks_file")
-          for stack in "${stacks[@]}"; do
-            pr="${stack#pr-}"
-            pr_json="$(gh api "repos/$GITHUB_REPOSITORY/pulls/$pr")"
-            active="$(jq -r --arg repository "$GITHUB_REPOSITORY" '
-              .state == "open" and
-              .base.ref == "main" and
-              .base.repo.full_name == $repository and
-              .head.repo.full_name == $repository and
-              any(.labels[]?; .name == "deploy-preview")
-            ' <<< "$pr_json")"
-            if [[ "$active" != true ]]; then
-              pnpm infra destroy --pr "$pr"
-            fi
+          for value in "$GCP_PROJECT_ID" "$MAILGUN_DOMAIN" "$MAILGUN_FROM" "$CLOUD_SQL_PROJECT_ID" "$CLOUD_SQL_INSTANCE_NAME" "$CLOUD_SQL_CONNECTION_NAME"; do
+            test -n "$value"
+          done
+          [[ "$CLOUD_SQL_CONNECTION_NAME" == "$CLOUD_SQL_PROJECT_ID:$GCP_REGION:$CLOUD_SQL_INSTANCE_NAME" ]]
+
+          stages_file="$(mktemp)"
+          prs_file="$(mktemp)"
+          trap 'rm -f "$stages_file" "$prs_file"' EXIT
+          pnpm --filter @proxus/infra alchemy:infra -- list-preview-stages > "$stages_file"
+          gh api --method GET --paginate "repos/$GITHUB_REPOSITORY/pulls" -f state=open -f base=main -f per_page=100 \
+            | jq -s --arg repository "$GITHUB_REPOSITORY" '[.[][] | select(
+                .state == "open" and .base.ref == "main" and
+                .base.repo.full_name == $repository and .head.repo.full_name == $repository and
+                any(.labels[]?; .name == "deploy-preview")
+              ) | .number] | unique' > "$prs_file"
+
+          mapfile -t orphan_stages < <(jq -r --slurpfile prs "$prs_file" '.[] | select((.[3:] | tonumber) as $pr | ($prs[0] | index($pr) | not))' "$stages_file")
+          for stage in "${orphan_stages[@]}"; do
+            [[ "$stage" =~ ^pr-([1-9][0-9]{0,5})$ ]]
+            pr="${BASH_REMATCH[1]}"
+            export PR_NUMBER="$pr"
+            digest="$(printf '0%.0s' {1..64})"
+            export IMAGE_PUBLIC_API="$GCP_REGION-docker.pkg.dev/$GCP_PROJECT_ID/proxus/proxus-server@sha256:$digest"
+            export IMAGE_ADMIN_API="$GCP_REGION-docker.pkg.dev/$GCP_PROJECT_ID/proxus/proxus-admin-server@sha256:$digest"
+            export IMAGE_WEB="$GCP_REGION-docker.pkg.dev/$GCP_PROJECT_ID/proxus/proxus-web@sha256:$digest"
+            export IMAGE_ADMIN_WEB="$GCP_REGION-docker.pkg.dev/$GCP_PROJECT_ID/proxus/proxus-admin-web@sha256:$digest"
+            # The wrapper acquires and renews the fenced GCS/KMS lease for this exact stage.
+            pnpm --filter @proxus/infra alchemy:infra -- destroy --pr "$pr"
           done

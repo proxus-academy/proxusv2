@@ -1,0 +1,69 @@
+diff --git a/lib/Run/Job.js b/lib/Run/Job.js
+index 20d692d921c74d285d7da226cc0322829840e47c..2822396d4c3235dcf7ea5a70ad897933e0b1761c 100644
+--- a/lib/Run/Job.js
++++ b/lib/Run/Job.js
+@@ -86,6 +86,15 @@ const jobMutated = (observed, news, desiredLabels) => {
+         return true;
+     return false;
+ };
++const jobObservationFields = new Set(["createTime", "etag", "executionCount", "generation", "labels", "latestCreatedExecution", "observedGeneration", "reconciling", "terminalCondition", "updateTime"]);
++const normalizeJobDependencies = (props) => ({
++    ...props,
++    ...(props.dependsOn === undefined ? {} : {
++        dependsOn: props.dependsOn.map((dependency) => dependency !== null && typeof dependency === "object"
++            ? Object.fromEntries(Object.entries(dependency).filter(([key]) => !jobObservationFields.has(key)))
++            : dependency),
++    }),
++});
+ export const JobProvider = () => Provider.effect(Job, Effect.gen(function* () {
+     const getJob = yield* run.getProjectsLocationsJobs;
+     const createJob = yield* run.createProjectsLocationsJobs;
+@@ -125,6 +134,8 @@ export const JobProvider = () => Provider.effect(Job, Effect.gen(function* () {
+             ])) {
+                 return { action: "replace" };
+             }
++            if (deepEqual(normalizeJobDependencies(olds), normalizeJobDependencies(news)))
++                return { action: "noop" };
+             return undefined;
+         }),
+         reconcile: Effect.fn(function* ({ id, news, session, bindings }) {
+diff --git a/src/Run/Job.ts b/src/Run/Job.ts
+index fed95c7bb0b66354f4abc5dba7d74689c0974c15..68309e9af774b50e9d694e771359eabd3fe988eb 100644
+--- a/src/Run/Job.ts
++++ b/src/Run/Job.ts
+@@ -290,6 +290,21 @@ const jobMutated = (
+   return false;
+ };
+ 
++const jobObservationFields = new Set([
++  "createTime", "etag", "executionCount", "generation", "labels",
++  "latestCreatedExecution", "observedGeneration", "reconciling",
++  "terminalCondition", "updateTime",
++]);
++
++const normalizeJobDependencies = (props: JobProps & { dependsOn?: ReadonlyArray<unknown> }) => ({
++  ...props,
++  ...(props.dependsOn === undefined ? {} : {
++    dependsOn: props.dependsOn.map((dependency) => dependency !== null && typeof dependency === "object"
++      ? Object.fromEntries(Object.entries(dependency).filter(([key]) => !jobObservationFields.has(key)))
++      : dependency),
++  }),
++});
++
+ export const JobProvider = () =>
+   Provider.effect(
+     Job,
+@@ -350,6 +365,13 @@ export const JobProvider = () =>
+           ) {
+             return { action: "replace" } as const;
+           }
++          // Cloud Run Job dependencies can themselves be Jobs. Their resolved
++          // attributes include execution counters and timestamps which are not
++          // desired configuration and change after every run.
++          if (deepEqual(
++            normalizeJobDependencies(olds as JobProps & { dependsOn?: ReadonlyArray<unknown> }),
++            normalizeJobDependencies(news as JobProps & { dependsOn?: ReadonlyArray<unknown> }),
++          )) return { action: "noop" } as const;
+           return undefined;
+         }),
+         reconcile: Effect.fn(function* ({ id, news, session, bindings }) {

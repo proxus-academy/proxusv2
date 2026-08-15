@@ -9,14 +9,14 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@effect/atom-react": "4.0.0-beta.98",
+    "@effect/atom-react": "4.0.0-beta.100",
     "@lucas-barake/effect-form-react": "0.26.0-beta.5",
     "@proxus/frontend-core": "workspace:*",
     "@proxus/product-messages": "workspace:*",
     "@proxus/shared": "workspace:*",
     "@proxus/ui": "workspace:*",
     "@tanstack/react-router": "^1.170.18",
-    "effect": "4.0.0-beta.98",
+    "effect": "4.0.0-beta.100",
     "i18next": "^26.3.6",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",

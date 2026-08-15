@@ -158,9 +158,9 @@ La lógica neutral vive en `frontend-core`; `apps/web` posee sus adapters de nav
 
 ## Límite de infraestructura cloud
 
-`infra` es un workspace técnico, no un bounded context ni una capa del flujo de dominio. Declara foundation, production y previews GCP, pero no importa ni ejecuta reglas de producto. Los builds backend seleccionan los entrypoints productivos de `apps/server` y `apps/admin-server`, que usan PostgreSQL; `apps/dev-server` y PGlite quedan fuera de las imágenes. Cloud Build construye/publica cuatro imágenes y Pulumi las consume por digest. El hosting administrativo multi-container no autoriza a saltarse servicios: cada API conserva `handler → service → port → adapter`.
+`infra` es un workspace técnico, no un bounded context ni una capa del flujo de dominio. Declara foundation, production y previews GCP, pero no importa ni ejecuta reglas de producto. Los builds backend seleccionan los entrypoints productivos de `apps/server` y `apps/admin-server`, que usan PostgreSQL; `apps/dev-server` y PGlite quedan fuera de las imágenes. Cloud Build construye/publica cuatro imágenes y Alchemy las consume por digest. El hosting administrativo multi-container no autoriza a saltarse servicios: cada API conserva `handler → service → port → adapter`.
 
-La IaC solo referencia IDs de Secret Manager para PostgreSQL externo y otros secretos; no posee Neon ni sus valores. Consulta [`../infrastructure/gcp-pulumi.md`](../infrastructure/gcp-pulumi.md) para el estado real: solo foundation está provisionado y los runtimes siguen pendientes.
+La IaC de production referencia un ID de Secret Manager para la URL de PostgreSQL y otros secretos; previews usa Cloud SQL IAM sin contraseñas. No posee los valores de los secretos. Consulta [`../infrastructure/gcp-alchemy.md`](../infrastructure/gcp-alchemy.md) para el estado real: el cutover de foundation y preview-platform está completado; production y los runtimes preview siguen pendientes.
 
 ## Testing
 

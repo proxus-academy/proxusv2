@@ -1,0 +1,153 @@
+name: Deploy Alchemy bootstrap
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Plan or deploy the protected Alchemy bootstrap
+        required: true
+        type: choice
+        options:
+          - plan
+          - deploy
+      adoptExisting:
+        description: On deploy, explicitly adopt the configured physical bucket, KeyRing, and CryptoKey IDs
+        required: true
+        type: boolean
+      deployConfirmation:
+        description: For deploy, enter DEPLOY ALCHEMY BOOTSTRAP
+        required: false
+        type: string
+      adoptionConfirmation:
+        description: For deploy with adoption, enter ADOPT EXISTING BOOTSTRAP
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+# Bootstrap and foundation must never mutate their shared backend concurrently.
+concurrency:
+  group: alchemy-foundation
+  cancel-in-progress: false
+
+env:
+  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  GCP_REGION: europe-southwest1
+  ALCHEMY_STATE_BUCKET: ${{ vars.ALCHEMY_STATE_BUCKET }}
+  ALCHEMY_STATE_KEY_RING_ID: ${{ vars.ALCHEMY_STATE_KEY_RING_ID }}
+  ALCHEMY_STATE_CRYPTO_KEY_ID: ${{ vars.ALCHEMY_STATE_CRYPTO_KEY_ID }}
+  GCP_OPERATOR_PRINCIPAL: ${{ vars.GCP_OPERATOR_PRINCIPAL }}
+
+jobs:
+  authorize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      sha: ${{ steps.policy.outputs.sha }}
+    steps:
+      - name: Authorize the exact trusted main commit and explicit bootstrap policy
+        id: policy
+        env:
+          SOURCE_REF: ${{ github.ref }}
+          SOURCE_SHA: ${{ github.sha }}
+          WORKFLOW_SHA: ${{ github.workflow_sha }}
+          REQUESTED_ACTION: ${{ inputs.action }}
+          ADOPT_EXISTING: ${{ inputs.adoptExisting }}
+          DEPLOY_CONFIRMATION: ${{ inputs.deployConfirmation }}
+          ADOPTION_CONFIRMATION: ${{ inputs.adoptionConfirmation }}
+        run: |
+          set -euo pipefail
+          test "$SOURCE_REF" = refs/heads/main
+          [[ "$SOURCE_SHA" =~ ^[a-f0-9]{40}$ ]]
+          test "$WORKFLOW_SHA" = "$SOURCE_SHA"
+          [[ "$REQUESTED_ACTION" = plan || "$REQUESTED_ACTION" = deploy ]]
+          [[ "$ADOPT_EXISTING" = true || "$ADOPT_EXISTING" = false ]]
+          if [[ "$REQUESTED_ACTION" = deploy ]]; then
+            test "$DEPLOY_CONFIRMATION" = "DEPLOY ALCHEMY BOOTSTRAP"
+            if [[ "$ADOPT_EXISTING" = true ]]; then
+              test "$ADOPTION_CONFIRMATION" = "ADOPT EXISTING BOOTSTRAP"
+            fi
+          fi
+          printf 'sha=%s\n' "$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+  operate:
+    needs: authorize
+    environment: foundation
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Check out the authorized main commit before authentication
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ needs.authorize.outputs.sha }}
+          path: trusted
+          persist-credentials: false
+      - name: Verify trusted checkout and physical adoption IDs before authentication
+        working-directory: trusted
+        env:
+          SOURCE_SHA: ${{ needs.authorize.outputs.sha }}
+          PROVIDER: ${{ vars.GCP_FOUNDATION_WORKLOAD_IDENTITY_PROVIDER }}
+          DEPLOYER: ${{ vars.GCP_FOUNDATION_DEPLOYER_SERVICE_ACCOUNT }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          for value in "$GCP_PROJECT_ID" "$GCP_REGION" "$ALCHEMY_STATE_BUCKET" "$ALCHEMY_STATE_KEY_RING_ID" "$ALCHEMY_STATE_CRYPTO_KEY_ID" "$GCP_OPERATOR_PRINCIPAL" "$PROVIDER" "$DEPLOYER"; do
+            test -n "$value"
+          done
+          [[ "$GCP_PROJECT_ID" =~ ^[a-z][a-z0-9-]{4,28}[a-z0-9]$ ]]
+          test "$GCP_REGION" = europe-southwest1
+          [[ "$ALCHEMY_STATE_BUCKET" =~ ^[a-z0-9][a-z0-9._-]{1,220}[a-z0-9]$ ]]
+          [[ "$ALCHEMY_STATE_KEY_RING_ID" =~ ^[A-Za-z0-9_-]{1,63}$ ]]
+          [[ "$ALCHEMY_STATE_CRYPTO_KEY_ID" =~ ^[A-Za-z0-9_-]{1,63}$ ]]
+          [[ "$GCP_OPERATOR_PRINCIPAL" =~ ^(user|serviceAccount|group):[^[:space:]@]+@[^[:space:]@]+$ ]]
+      - name: Authenticate as the foundation deployer without a key
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_FOUNDATION_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_FOUNDATION_DEPLOYER_SERVICE_ACCOUNT }}
+          create_credentials_file: true
+      - name: Use pinned Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22.22.2
+      - name: Install frozen dependencies
+        working-directory: trusted
+        run: |
+          npm install --global corepack@0.35.0
+          corepack enable pnpm
+          pnpm install --frozen-lockfile
+      - name: Plan bootstrap with exceptional ephemeral local state
+        working-directory: trusted
+        run: pnpm --filter @proxus/infra alchemy:infra -- plan --stage bootstrap
+      - name: Deploy the reviewed bootstrap plan
+        if: inputs.action == 'deploy' && !inputs.adoptExisting
+        working-directory: trusted
+        run: pnpm --filter @proxus/infra alchemy:infra -- deploy --stage bootstrap
+      - name: Adopt the reviewed physical bootstrap resources
+        if: inputs.action == 'deploy' && inputs.adoptExisting
+        working-directory: trusted
+        run: pnpm --filter @proxus/infra alchemy:infra -- deploy --stage bootstrap --adopt
+      - name: Read and summarize allowlisted non-secret bootstrap outputs
+        if: inputs.action == 'deploy'
+        working-directory: trusted
+        run: |
+          set -euo pipefail
+          output="$RUNNER_TEMP/bootstrap-outputs.json"
+          trap 'rm -f "$output"' EXIT
+          pnpm --filter @proxus/infra alchemy:infra -- outputs --stage bootstrap > "$output"
+          bucket="$(jq -er '.bucket | strings' "$output")"
+          key="$(jq -er '.key | strings' "$output")"
+          test "$bucket" = "$ALCHEMY_STATE_BUCKET"
+          expected="projects/$GCP_PROJECT_ID/locations/$GCP_REGION/keyRings/$ALCHEMY_STATE_KEY_RING_ID/cryptoKeys/$ALCHEMY_STATE_CRYPTO_KEY_ID"
+          test "$key" = "$expected"
+          {
+            echo '## Alchemy bootstrap outputs'
+            printf -- '- State bucket: `%s`\n' "$bucket"
+            printf -- '- State KMS key: `%s`\n' "$key"
+            echo '- Only the explicit non-secret output allowlist above was included.'
+            echo '- Bootstrap local state is ephemeral and is not persisted by this workflow; follow the runbook for readoption or recovery.'
+          } >> "$GITHUB_STEP_SUMMARY"

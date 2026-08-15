@@ -14,8 +14,8 @@ concurrency:
 env:
   GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
   GCP_REGION: europe-southwest1
-  PULUMI_BACKEND_URL: gs://proxus-v2-pulumi-state
-  PULUMI_SECRETS_PROVIDER: gcpkms://projects/proxus-v2/locations/europe-southwest1/keyRings/pulumi-state/cryptoKeys/pulumi-secrets
+  ALCHEMY_STATE_BUCKET: ${{ vars.ALCHEMY_STATE_BUCKET }}
+  ALCHEMY_STATE_KMS_KEY: ${{ vars.ALCHEMY_STATE_KMS_KEY }}
 
 jobs:
   authorize:
@@ -177,22 +177,26 @@ jobs:
           IAC_SHA: ${{ needs.authorize.outputs.iac_sha }}
           PROVIDER: ${{ vars.GCP_PREVIEW_WORKLOAD_IDENTITY_PROVIDER }}
           BUILDER: ${{ vars.GCP_BUILD_SUBMITTER_SERVICE_ACCOUNT }}
-          IAP_PRINCIPAL: ${{ vars.IAP_GROUP_PRINCIPAL }}
-          DATABASE_TEMPLATE: ${{ vars.NEON_PREVIEW_DATABASE_SECRET_ID_TEMPLATE }}
+          IAP_PRINCIPAL: ${{ vars.IAP_ACCESS_PRINCIPAL }}
           AUTH_SECRET: ${{ vars.AUTH_SIGNING_SECRET_ID }}
           OBJECT_SECRET: ${{ vars.OBJECT_STORAGE_SIGNING_SECRET_ID }}
           MAILGUN_SECRET: ${{ vars.MAILGUN_API_KEY_SECRET_ID }}
+          BOOTSTRAP_PASSWORD_SECRET: ${{ vars.DATABASE_BOOTSTRAP_PASSWORD_SECRET_ID }}
           MAILGUN_DOMAIN: ${{ vars.MAILGUN_DOMAIN }}
           MAILGUN_FROM: ${{ vars.MAILGUN_FROM }}
           ANALYTICS_DATASET: ${{ vars.PRODUCT_ANALYTICS_DATASET }}
           ANALYTICS_TABLE: ${{ vars.PRODUCT_ANALYTICS_TABLE }}
+          CLOUD_SQL_PROJECT_ID: ${{ vars.CLOUD_SQL_PROJECT_ID }}
+          CLOUD_SQL_INSTANCE_NAME: ${{ vars.CLOUD_SQL_INSTANCE_NAME }}
+          CLOUD_SQL_CONNECTION_NAME: ${{ vars.CLOUD_SQL_CONNECTION_NAME }}
           RUNTIME_READY: ${{ vars.APPLICATION_RUNTIME_READY }}
         run: |
           test "$(git rev-parse HEAD)" = "$IAC_SHA"
-          for value in "$GCP_PROJECT_ID" "$PROVIDER" "$BUILDER" "$IAP_PRINCIPAL" "$DATABASE_TEMPLATE" "$AUTH_SECRET" "$OBJECT_SECRET" "$MAILGUN_SECRET" "$MAILGUN_DOMAIN" "$MAILGUN_FROM" "$ANALYTICS_DATASET" "$ANALYTICS_TABLE"; do
+          for value in "$GCP_PROJECT_ID" "$PROVIDER" "$BUILDER" "$IAP_PRINCIPAL" "$AUTH_SECRET" "$OBJECT_SECRET" "$MAILGUN_SECRET" "$BOOTSTRAP_PASSWORD_SECRET" "$MAILGUN_DOMAIN" "$MAILGUN_FROM" "$ANALYTICS_DATASET" "$ANALYTICS_TABLE" "$CLOUD_SQL_PROJECT_ID" "$CLOUD_SQL_INSTANCE_NAME" "$CLOUD_SQL_CONNECTION_NAME"; do
             test -n "$value"
           done
-          [[ "$DATABASE_TEMPLATE" == *'{pr}'* ]]
+          [[ "$CLOUD_SQL_CONNECTION_NAME" == "$CLOUD_SQL_PROJECT_ID:$GCP_REGION:$CLOUD_SQL_INSTANCE_NAME" ]]
+          [[ "$IAP_PRINCIPAL" =~ ^(user|group):[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$ ]]
           test "$RUNTIME_READY" = true
       - name: Build the exact reviewed commit in least-privilege Cloud Build
         id: images
@@ -200,7 +204,7 @@ jobs:
         env:
           SOURCE_SHA: ${{ needs.authorize.outputs.sha }}
           SOURCE_REVISION: ${{ needs.authorize.outputs.sha }}
-          SOURCE_URL: https://github.com/${{ github.repository }}
+          SOURCE_URL: https://github.com/${{ github.repository }}.git
           IMAGE_TAG_SUFFIX: ${{ github.run_id }}-${{ github.run_attempt }}
         run: infra/scripts/build-images.sh
 
@@ -214,6 +218,26 @@ jobs:
       pull-requests: write
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    env:
+      GCP_PROJECT_NUMBER: ${{ vars.GCP_PROJECT_NUMBER }}
+      GCP_PREVIEW_DEPLOYER_PRINCIPAL: serviceAccount:${{ vars.GCP_PREVIEW_DEPLOYER_SERVICE_ACCOUNT }}
+      IMAGE_PUBLIC_API: ${{ needs.build.outputs.public_image }}
+      IMAGE_ADMIN_API: ${{ needs.build.outputs.admin_image }}
+      IMAGE_WEB: ${{ needs.build.outputs.web_image }}
+      IMAGE_ADMIN_WEB: ${{ needs.build.outputs.admin_web_image }}
+      AUTH_GOOGLE_SIGNING_SECRET_ID: ${{ vars.AUTH_SIGNING_SECRET_ID }}
+      OBJECT_STORAGE_SIGNING_SECRET_ID: ${{ vars.OBJECT_STORAGE_SIGNING_SECRET_ID }}
+      MAILGUN_API_KEY_SECRET_ID: ${{ vars.MAILGUN_API_KEY_SECRET_ID }}
+      DATABASE_BOOTSTRAP_PASSWORD_SECRET_ID: ${{ vars.DATABASE_BOOTSTRAP_PASSWORD_SECRET_ID }}
+      MAILGUN_DOMAIN: ${{ vars.MAILGUN_DOMAIN }}
+      MAILGUN_FROM: ${{ vars.MAILGUN_FROM }}
+      ANALYTICS_PROJECT_ID: ${{ vars.PRODUCT_ANALYTICS_PROJECT_ID }}
+      ANALYTICS_DATASET: ${{ vars.PRODUCT_ANALYTICS_DATASET }}
+      ANALYTICS_TABLE: ${{ vars.PRODUCT_ANALYTICS_TABLE }}
+      IAP_ACCESS_PRINCIPAL: ${{ vars.IAP_ACCESS_PRINCIPAL }}
+      CLOUD_SQL_PROJECT_ID: ${{ vars.CLOUD_SQL_PROJECT_ID }}
+      CLOUD_SQL_INSTANCE_NAME: ${{ vars.CLOUD_SQL_INSTANCE_NAME }}
+      CLOUD_SQL_CONNECTION_NAME: ${{ vars.CLOUD_SQL_CONNECTION_NAME }}
     steps:
       - name: Refuse stale images after environment approval
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
@@ -295,75 +319,50 @@ jobs:
           npm install --global corepack@0.35.0
           corepack enable pnpm
           pnpm install --frozen-lockfile
-      - name: Install pinned Pulumi CLI
-        uses: pulumi/setup-pulumi@b374ceb6168550de27c6eba92e01c1a774040e11 # v2
-        with:
-          pulumi-version: 3.257.0
-      - name: Select and configure the PR stack
+      - name: Plan migration and database bootstrap infrastructure
         working-directory: trusted
         env:
-          PR_NUMBER: ${{ needs.authorize.outputs.pr }}
-          PUBLIC_IMAGE: ${{ needs.build.outputs.public_image }}
-          ADMIN_IMAGE: ${{ needs.build.outputs.admin_image }}
-          WEB_IMAGE: ${{ needs.build.outputs.web_image }}
-          ADMIN_WEB_IMAGE: ${{ needs.build.outputs.admin_web_image }}
-          DATABASE_TEMPLATE: ${{ vars.NEON_PREVIEW_DATABASE_SECRET_ID_TEMPLATE }}
-          AUTH_SECRET: ${{ vars.AUTH_SIGNING_SECRET_ID }}
-          OBJECT_SECRET: ${{ vars.OBJECT_STORAGE_SIGNING_SECRET_ID }}
-          MAILGUN_SECRET: ${{ vars.MAILGUN_API_KEY_SECRET_ID }}
-          MAILGUN_DOMAIN: ${{ vars.MAILGUN_DOMAIN }}
-          MAILGUN_FROM: ${{ vars.MAILGUN_FROM }}
-          IAP_PRINCIPAL: ${{ vars.IAP_GROUP_PRINCIPAL }}
-          ANALYTICS_DATASET: ${{ vars.PRODUCT_ANALYTICS_DATASET }}
-          ANALYTICS_TABLE: ${{ vars.PRODUCT_ANALYTICS_TABLE }}
-        run: |
-          database_secret="${DATABASE_TEMPLATE//\{pr\}/$PR_NUMBER}"
-          pnpm infra outputs --pr "$PR_NUMBER" >/dev/null
-          p="pulumi --cwd infra/preview"
-          stack="pr-$PR_NUMBER"
-          $p config set --stack "$stack" gcp:project "$GCP_PROJECT_ID"
-          $p config set --stack "$stack" gcp:region "$GCP_REGION"
-          $p config set --stack "$stack" prNumber "$PR_NUMBER"
-          $p config set --stack "$stack" publicImage "$PUBLIC_IMAGE"
-          $p config set --stack "$stack" adminImage "$ADMIN_IMAGE"
-          $p config set --stack "$stack" webImage "$WEB_IMAGE"
-          $p config set --stack "$stack" adminWebImage "$ADMIN_WEB_IMAGE"
-          $p config set --stack "$stack" databaseSecretId "$database_secret"
-          $p config set --stack "$stack" authSigningSecretId "$AUTH_SECRET"
-          $p config set --stack "$stack" objectStorageSigningSecretId "$OBJECT_SECRET"
-          $p config set --stack "$stack" mailgunApiKeySecretId "$MAILGUN_SECRET"
-          $p config set --stack "$stack" mailgunDomain "$MAILGUN_DOMAIN"
-          $p config set --stack "$stack" mailgunFrom "$MAILGUN_FROM"
-          $p config set --stack "$stack" iapPrincipal "$IAP_PRINCIPAL"
-          $p config set --stack "$stack" productAnalyticsDataset "$ANALYTICS_DATASET"
-          $p config set --stack "$stack" productAnalyticsTable "$ANALYTICS_TABLE"
-          $p config set --stack "$stack" applicationRuntimeReady true
-          $p config set --stack "$stack" deployServices false
-      - name: Converge migration infrastructure only
+          DEPLOY_SERVICES: "false"
+        run: pnpm --filter @proxus/infra alchemy:infra -- plan --pr "${{ needs.authorize.outputs.pr }}"
+      - name: Deploy migration and database bootstrap infrastructure
         working-directory: trusted
-        run: pnpm infra deploy --pr "${{ needs.authorize.outputs.pr }}"
+        env:
+          DEPLOY_SERVICES: "false"
+        run: pnpm --filter @proxus/infra alchemy:infra -- deploy --pr "${{ needs.authorize.outputs.pr }}"
+      - name: Read ordered job outputs
+        id: jobs
+        working-directory: trusted
+        env:
+          DEPLOY_SERVICES: "false"
+        run: |
+          pnpm --filter @proxus/infra alchemy:infra -- outputs --pr "${{ needs.authorize.outputs.pr }}" > "$RUNNER_TEMP/preview-outputs.json"
+          printf 'bootstrap=%s\n' "$(jq -er '.databaseBootstrapJob.name' "$RUNNER_TEMP/preview-outputs.json")" >> "$GITHUB_OUTPUT"
+          printf 'migration=%s\n' "$(jq -er '.migrationJob.name' "$RUNNER_TEMP/preview-outputs.json")" >> "$GITHUB_OUTPUT"
+          rm -f "$RUNNER_TEMP/preview-outputs.json"
+      - name: Run the preview database bootstrap job
+        run: gcloud run jobs execute "${{ steps.jobs.outputs.bootstrap }}" --project "$GCP_PROJECT_ID" --region "$GCP_REGION" --wait
       - name: Run the ordered preview migration job
+        run: gcloud run jobs execute "${{ steps.jobs.outputs.migration }}" --project "$GCP_PROJECT_ID" --region "$GCP_REGION" --wait
+      - name: Plan the IAP-protected preview services
         working-directory: trusted
         env:
-          PR_NUMBER: ${{ needs.authorize.outputs.pr }}
-        run: |
-          job="$(pulumi --cwd infra/preview stack output migrationJobName --stack "pr-$PR_NUMBER")"
-          gcloud run jobs execute "$job" --project "$GCP_PROJECT_ID" --region "$GCP_REGION" --wait
-      - name: Deploy the production composition behind direct IAP
+          DEPLOY_SERVICES: "true"
+        run: pnpm --filter @proxus/infra alchemy:infra -- plan --pr "${{ needs.authorize.outputs.pr }}"
+      - name: Deploy the IAP-protected preview services
         working-directory: trusted
         env:
-          PR_NUMBER: ${{ needs.authorize.outputs.pr }}
-        run: |
-          pulumi --cwd infra/preview config set --stack "pr-$PR_NUMBER" deployServices true
-          pnpm infra deploy --pr "$PR_NUMBER"
+          DEPLOY_SERVICES: "true"
+        run: pnpm --filter @proxus/infra alchemy:infra -- deploy --pr "${{ needs.authorize.outputs.pr }}"
       - name: Read preview URLs
         id: urls
         working-directory: trusted
         env:
-          PR_NUMBER: ${{ needs.authorize.outputs.pr }}
+          DEPLOY_SERVICES: "true"
         run: |
-          printf 'public=%s\n' "$(pulumi --cwd infra/preview stack output publicUrl --stack "pr-$PR_NUMBER")" >> "$GITHUB_OUTPUT"
-          printf 'admin=%s\n' "$(pulumi --cwd infra/preview stack output adminUrl --stack "pr-$PR_NUMBER")" >> "$GITHUB_OUTPUT"
+          pnpm --filter @proxus/infra alchemy:infra -- outputs --pr "${{ needs.authorize.outputs.pr }}" > "$RUNNER_TEMP/preview-outputs.json"
+          printf 'public=%s\n' "$(jq -er '.publicUrl' "$RUNNER_TEMP/preview-outputs.json")" >> "$GITHUB_OUTPUT"
+          printf 'admin=%s\n' "$(jq -er '.adminUrl' "$RUNNER_TEMP/preview-outputs.json")" >> "$GITHUB_OUTPUT"
+          rm -f "$RUNNER_TEMP/preview-outputs.json"
       - name: Comment on the pull request
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
@@ -433,21 +432,33 @@ jobs:
           npm install --global corepack@0.35.0
           corepack enable pnpm
           pnpm install --frozen-lockfile
-      - name: Install pinned Pulumi CLI
-        uses: pulumi/setup-pulumi@b374ceb6168550de27c6eba92e01c1a774040e11 # v2
-        with:
-          pulumi-version: 3.257.0
-      - name: Destroy only an existing PR stack
+      - name: Destroy only the exact PR Alchemy stage
         working-directory: trusted
         env:
           IAC_SHA: ${{ needs.authorize.outputs.iac_sha }}
           PR_NUMBER: ${{ needs.authorize.outputs.pr }}
+          DEPLOY_SERVICES: "false"
+          GCP_PROJECT_NUMBER: ${{ vars.GCP_PROJECT_NUMBER }}
+          GCP_PREVIEW_DEPLOYER_PRINCIPAL: serviceAccount:${{ vars.GCP_PREVIEW_DEPLOYER_SERVICE_ACCOUNT }}
+          AUTH_GOOGLE_SIGNING_SECRET_ID: ${{ vars.AUTH_SIGNING_SECRET_ID }}
+          OBJECT_STORAGE_SIGNING_SECRET_ID: ${{ vars.OBJECT_STORAGE_SIGNING_SECRET_ID }}
+          MAILGUN_API_KEY_SECRET_ID: ${{ vars.MAILGUN_API_KEY_SECRET_ID }}
+          DATABASE_BOOTSTRAP_PASSWORD_SECRET_ID: ${{ vars.DATABASE_BOOTSTRAP_PASSWORD_SECRET_ID }}
+          MAILGUN_DOMAIN: ${{ vars.MAILGUN_DOMAIN }}
+          MAILGUN_FROM: ${{ vars.MAILGUN_FROM }}
+          ANALYTICS_PROJECT_ID: ${{ vars.PRODUCT_ANALYTICS_PROJECT_ID }}
+          ANALYTICS_DATASET: ${{ vars.PRODUCT_ANALYTICS_DATASET }}
+          ANALYTICS_TABLE: ${{ vars.PRODUCT_ANALYTICS_TABLE }}
+          IAP_ACCESS_PRINCIPAL: ${{ vars.IAP_ACCESS_PRINCIPAL }}
+          CLOUD_SQL_PROJECT_ID: ${{ vars.CLOUD_SQL_PROJECT_ID }}
+          CLOUD_SQL_INSTANCE_NAME: ${{ vars.CLOUD_SQL_INSTANCE_NAME }}
+          CLOUD_SQL_CONNECTION_NAME: ${{ vars.CLOUD_SQL_CONNECTION_NAME }}
         run: |
           test "$(git rev-parse HEAD)" = "$IAC_SHA"
           [[ "$PR_NUMBER" =~ ^[1-9][0-9]{0,5}$ ]]
-          pulumi login "$PULUMI_BACKEND_URL"
-          if pulumi --cwd infra/preview stack select "pr-$PR_NUMBER"; then
-            pnpm infra destroy --pr "$PR_NUMBER"
-          else
-            echo "Preview stack pr-$PR_NUMBER does not exist; nothing to destroy."
-          fi
+          digest="$(printf '0%.0s' {1..64})"
+          export IMAGE_PUBLIC_API="$GCP_REGION-docker.pkg.dev/$GCP_PROJECT_ID/proxus/proxus-server@sha256:$digest"
+          export IMAGE_ADMIN_API="$GCP_REGION-docker.pkg.dev/$GCP_PROJECT_ID/proxus/proxus-admin-server@sha256:$digest"
+          export IMAGE_WEB="$GCP_REGION-docker.pkg.dev/$GCP_PROJECT_ID/proxus/proxus-web@sha256:$digest"
+          export IMAGE_ADMIN_WEB="$GCP_REGION-docker.pkg.dev/$GCP_PROJECT_ID/proxus/proxus-admin-web@sha256:$digest"
+          pnpm --filter @proxus/infra alchemy:infra -- destroy --pr "$PR_NUMBER"

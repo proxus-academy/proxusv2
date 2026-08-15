@@ -21,8 +21,11 @@ const NodeServerLive = NodeHttpServer.layerConfig(createServer, {
   host: Config.string("HOST").pipe(Config.withDefault("0.0.0.0")),
   port: Config.int("PORT").pipe(Config.withDefault(3000)),
 })
-const ObjectStorageLive = Layer.unwrap(Config.redacted("OBJECT_STORAGE_SIGNING_SECRET").pipe(Effect.map((secret) => localObjectStorageLayer({
-  root: ".data/object-storage",
+const ObjectStorageLive = Layer.unwrap(Effect.all({
+  root: Config.string("OBJECT_STORAGE_LOCAL_ROOT").pipe(Config.withDefault(".data/object-storage")),
+  secret: Config.redacted("OBJECT_STORAGE_SIGNING_SECRET"),
+}).pipe(Effect.map(({ root, secret }) => localObjectStorageLayer({
+  root,
   publicBaseUrl: "/api",
   signingSecret: Redacted.value(secret),
 })))).pipe(Layer.provide([NodeFileSystem.layer, NodePath.layer]))

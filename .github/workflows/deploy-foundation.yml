@@ -1,0 +1,157 @@
+name: Deploy Alchemy foundation
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Plan or deploy the protected Alchemy foundation
+        required: true
+        type: choice
+        options:
+          - plan
+          - deploy
+      adoptExisting:
+        description: Explicitly allow adoption of the configured existing physical resources
+        required: true
+        type: boolean
+      adoptionConfirmation:
+        description: For deploy with adoption, enter ADOPT EXISTING FOUNDATION
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: alchemy-foundation
+  cancel-in-progress: false
+
+env:
+  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  GCP_PROJECT_NUMBER: ${{ vars.GCP_PROJECT_NUMBER }}
+  GCP_PROJECT_DISPLAY_NAME: ${{ vars.GCP_PROJECT_DISPLAY_NAME }}
+  GCP_PROJECT_PARENT_TYPE: ${{ vars.GCP_PROJECT_PARENT_TYPE }}
+  GCP_PROJECT_PARENT_ID: ${{ vars.GCP_PROJECT_PARENT_ID }}
+  GCP_REGION: europe-southwest1
+  GCP_CLOUD_BUILD_SOURCE_BUCKET: ${{ vars.GCP_CLOUD_BUILD_SOURCE_BUCKET || format('{0}_cloudbuild', vars.GCP_PROJECT_ID) }}
+  GCP_CLOUD_BUILD_SOURCE_BUCKET_LOCATION: ${{ vars.GCP_CLOUD_BUILD_SOURCE_BUCKET_LOCATION || 'US' }}
+  GITHUB_REPOSITORY: ${{ github.repository }}
+  ALCHEMY_STATE_BUCKET: ${{ vars.ALCHEMY_STATE_BUCKET }}
+  ALCHEMY_STATE_KMS_KEY: ${{ vars.ALCHEMY_STATE_KMS_KEY }}
+  GCP_FOUNDATION_DEPLOYER_PRINCIPAL: serviceAccount:${{ vars.GCP_FOUNDATION_DEPLOYER_SERVICE_ACCOUNT }}
+
+jobs:
+  authorize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      sha: ${{ steps.policy.outputs.sha }}
+    steps:
+      - name: Authorize the exact trusted main commit and explicit policy
+        id: policy
+        env:
+          SOURCE_REF: ${{ github.ref }}
+          SOURCE_SHA: ${{ github.sha }}
+          WORKFLOW_SHA: ${{ github.workflow_sha }}
+          REQUESTED_ACTION: ${{ inputs.action }}
+          ADOPT_EXISTING: ${{ inputs.adoptExisting }}
+          ADOPTION_CONFIRMATION: ${{ inputs.adoptionConfirmation }}
+        run: |
+          set -euo pipefail
+          test "$SOURCE_REF" = refs/heads/main
+          [[ "$SOURCE_SHA" =~ ^[a-f0-9]{40}$ ]]
+          test "$WORKFLOW_SHA" = "$SOURCE_SHA"
+          [[ "$REQUESTED_ACTION" = plan || "$REQUESTED_ACTION" = deploy ]]
+          [[ "$ADOPT_EXISTING" = true || "$ADOPT_EXISTING" = false ]]
+          if [[ "$REQUESTED_ACTION" = deploy && "$ADOPT_EXISTING" = true ]]; then
+            test "$ADOPTION_CONFIRMATION" = "ADOPT EXISTING FOUNDATION"
+          fi
+          printf 'sha=%s\n' "$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+  operate:
+    needs: authorize
+    environment: foundation
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Check out the authorized main commit before authentication
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ needs.authorize.outputs.sha }}
+          path: trusted
+          persist-credentials: false
+      - name: Verify trusted checkout and physical resource configuration before authentication
+        working-directory: trusted
+        env:
+          SOURCE_SHA: ${{ needs.authorize.outputs.sha }}
+          PROVIDER: ${{ vars.GCP_FOUNDATION_WORKLOAD_IDENTITY_PROVIDER }}
+          DEPLOYER: ${{ vars.GCP_FOUNDATION_DEPLOYER_SERVICE_ACCOUNT }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          for value in "$GCP_PROJECT_ID" "$GCP_PROJECT_NUMBER" "$GCP_PROJECT_DISPLAY_NAME" "$GCP_PROJECT_PARENT_TYPE" "$GCP_PROJECT_PARENT_ID" "$GCP_REGION" "$GCP_CLOUD_BUILD_SOURCE_BUCKET" "$GCP_CLOUD_BUILD_SOURCE_BUCKET_LOCATION" "$GITHUB_REPOSITORY" "$ALCHEMY_STATE_BUCKET" "$ALCHEMY_STATE_KMS_KEY" "$GCP_FOUNDATION_DEPLOYER_PRINCIPAL" "$PROVIDER" "$DEPLOYER"; do
+            test -n "$value"
+          done
+          [[ "$GCP_PROJECT_ID" =~ ^[a-z][a-z0-9-]{4,28}[a-z0-9]$ ]]
+          [[ "$GCP_PROJECT_NUMBER" =~ ^[0-9]+$ ]]
+          [[ "$GCP_PROJECT_PARENT_TYPE" = organization || "$GCP_PROJECT_PARENT_TYPE" = folder ]]
+          [[ "$GCP_PROJECT_PARENT_ID" =~ ^[0-9]+$ ]]
+          test "$GCP_REGION" = europe-southwest1
+          test "$GITHUB_REPOSITORY" = "${{ github.repository }}"
+          [[ "$GCP_CLOUD_BUILD_SOURCE_BUCKET" =~ ^[a-z0-9][a-z0-9._-]{1,220}[a-z0-9]$ ]]
+          [[ "$GCP_CLOUD_BUILD_SOURCE_BUCKET_LOCATION" =~ ^[A-Za-z0-9-]+$ ]]
+          [[ "$ALCHEMY_STATE_BUCKET" =~ ^[a-z0-9][a-z0-9._-]{1,220}[a-z0-9]$ ]]
+          [[ "$ALCHEMY_STATE_KMS_KEY" =~ ^projects/${GCP_PROJECT_ID}/locations/${GCP_REGION}/keyRings/[A-Za-z0-9_-]+/cryptoKeys/[A-Za-z0-9_-]+$ ]]
+          test "$GCP_FOUNDATION_DEPLOYER_PRINCIPAL" = "serviceAccount:$DEPLOYER"
+      - name: Authenticate as the foundation deployer without a key
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_FOUNDATION_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_FOUNDATION_DEPLOYER_SERVICE_ACCOUNT }}
+          create_credentials_file: true
+      - name: Use pinned Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22.22.2
+      - name: Install frozen dependencies
+        working-directory: trusted
+        run: |
+          npm install --global corepack@0.35.0
+          corepack enable pnpm
+          pnpm install --frozen-lockfile
+      - name: Plan the foundation under the GCS KMS lease
+        working-directory: trusted
+        run: pnpm --filter @proxus/infra alchemy:infra -- plan --stage foundation --adopt-existing ${{ inputs.adoptExisting }}
+      - name: Deploy the reviewed foundation plan
+        if: inputs.action == 'deploy'
+        working-directory: trusted
+        run: pnpm --filter @proxus/infra alchemy:infra -- deploy --stage foundation --adopt-existing ${{ inputs.adoptExisting }}
+      - name: Read and summarize allowlisted non-secret foundation outputs
+        if: inputs.action == 'deploy'
+        working-directory: trusted
+        run: |
+          set -euo pipefail
+          output="$RUNNER_TEMP/foundation-outputs.json"
+          trap 'rm -f "$output"' EXIT
+          pnpm --filter @proxus/infra alchemy:infra -- outputs --stage foundation --adopt-existing ${{ inputs.adoptExisting }} > "$output"
+          project="$(jq -er '.projectId | strings' "$output")"
+          number="$(jq -er '.projectNumber | strings' "$output")"
+          region="$(jq -er '.region | strings' "$output")"
+          source_bucket="$(jq -er '.cloudBuildSourceBucket | strings' "$output")"
+          repository="$(jq -er '.artifactRegistryRepository | strings' "$output")"
+          test "$project" = "$GCP_PROJECT_ID"
+          test "$number" = "$GCP_PROJECT_NUMBER"
+          test "$region" = "$GCP_REGION"
+          test "$source_bucket" = "$GCP_CLOUD_BUILD_SOURCE_BUCKET"
+          [[ "$repository" == "projects/$project/locations/$region/repositories/"* ]]
+          {
+            echo '## Alchemy foundation outputs'
+            printf -- '- Project: `%s` (`%s`)\n' "$project" "$number"
+            printf -- '- Region: `%s`\n' "$region"
+            printf -- '- Cloud Build source bucket: `%s`\n' "$source_bucket"
+            printf -- '- Artifact Registry repository: `%s`\n' "$repository"
+            echo '- Only the explicit non-secret output allowlist above was included.'
+          } >> "$GITHUB_STEP_SUMMARY"

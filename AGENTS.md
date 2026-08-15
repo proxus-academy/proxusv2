@@ -14,7 +14,7 @@ Proxus v2 es un workspace `pnpm` full-stack basado en TypeScript, Effect v4 y Re
 - `packages/shared`: contratos, schemas y modelos compartidos entre clientes y servidor.
 - `packages/frontend-core`: estado y lógica frontend independientes de una plataforma concreta.
 - `packages/ui`: componentes reutilizables y sistema de diseño.
-- `infra`: IaC Pulumi TypeScript para foundation, producción y previews GCP; no contiene lógica de producto.
+- `infra`: IaC Alchemy TypeScript para foundation, preview-platform, producción y previews GCP; no contiene lógica de producto.
 
 Los frontends se encuentran en distintos grados de desarrollo; no deben tratarse automáticamente como shells vacíos. `study-catalog` es la principal implementación de referencia para el flujo backend completo.
 
@@ -31,7 +31,7 @@ Antes de realizar cambios relevantes, consulta la documentación correspondiente
 - Arquitectura React, estado derivado y sincronización: `docs/webapp-architecture.md`.
 - Effect Atom con React: `docs/effect/90_react_and_effect_atom.md`.
 - Effect Form y convenciones de formularios: `docs/forms/README.md` y el capítulo específico aplicable de `docs/forms/*`.
-- GCP, Pulumi, seguridad CI y lifecycle de entornos: `docs/infrastructure/gcp-pulumi.md` y `docs/runbooks/gcp-pulumi.md`.
+- GCP, Alchemy, seguridad CI y lifecycle de entornos: `docs/infrastructure/gcp-alchemy.md` y `docs/runbooks/gcp-alchemy.md`.
 
 La referencia upstream de Effect está en `.repos/effect-smol`. Las referencias ayudan a entender APIs y patrones, pero las decisiones documentadas en este repositorio prevalecen para Proxus.
 
@@ -43,8 +43,8 @@ La referencia upstream de Effect está en `.repos/effect-smol`. Las referencias 
 - No copies mecánicamente el módulo más cercano: úsalo para localizar puntos de integración y valida el diseño contra `docs/*`.
 - Cuando cambien arquitectura, API, persistencia, estrategia de pruebas o límites de módulo, actualiza la documentación relevante en el mismo cambio.
 - Evita mezclar refactors amplios, formateo masivo y cambios funcionales no relacionados.
-- En cloud no uses claves JSON, principals públicos, secretos en state/config o código PR no confiable con credenciales. Cloud Build solo construye/publica las cuatro imágenes y Pulumi despliega por digest desde IaC confiable de `main`.
-- No confundas IaC declarada o tests con recursos provisionados: solo foundation se ha aplicado (48 recursos sin cambios en su preview posterior); production/previews y sus gates manuales siguen pendientes según el runbook.
+- En cloud no uses claves JSON, principals públicos, secretos en state/config o código PR no confiable con credenciales. Cloud Build solo construye/publica las cuatro imágenes y Alchemy despliega por digest desde IaC confiable de `main`.
+- No confundas IaC declarada o tests con recursos provisionados: tras el cutover, Alchemy es el único writer; foundation converge 36 recursos sin cambios y preview-platform 8. Production/previews y sus gates siguen pendientes según el runbook.
 
 ## Arquitectura backend
 

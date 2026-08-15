@@ -6,6 +6,7 @@ steps:
       - --file=infra/docker/Dockerfile.backend
       - --target=server
       - --build-arg=SOURCE_SHA=${_SOURCE_SHA}
+      - --label=dev.proxus.source-context-sha256=${_SOURCE_CONTEXT_SHA256}
       - --tag=${_IMAGE_PREFIX}/proxus-server:${_IMAGE_TAG}
       - .
   - id: admin-backend
@@ -15,6 +16,7 @@ steps:
       - --file=infra/docker/Dockerfile.backend
       - --target=admin-server
       - --build-arg=SOURCE_SHA=${_SOURCE_SHA}
+      - --label=dev.proxus.source-context-sha256=${_SOURCE_CONTEXT_SHA256}
       - --tag=${_IMAGE_PREFIX}/proxus-admin-server:${_IMAGE_TAG}
       - .
   - id: public-web
@@ -24,6 +26,7 @@ steps:
       - --file=infra/docker/Dockerfile.frontend
       - --build-arg=APP=web
       - --build-arg=SOURCE_SHA=${_SOURCE_SHA}
+      - --label=dev.proxus.source-context-sha256=${_SOURCE_CONTEXT_SHA256}
       - --tag=${_IMAGE_PREFIX}/proxus-web:${_IMAGE_TAG}
       - .
   - id: admin-web
@@ -33,6 +36,7 @@ steps:
       - --file=infra/docker/Dockerfile.frontend
       - --build-arg=APP=admin
       - --build-arg=SOURCE_SHA=${_SOURCE_SHA}
+      - --label=dev.proxus.source-context-sha256=${_SOURCE_CONTEXT_SHA256}
       - --tag=${_IMAGE_PREFIX}/proxus-admin-web:${_IMAGE_TAG}
       - .
 images:
