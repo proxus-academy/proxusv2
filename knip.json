@@ -6,6 +6,9 @@
       "project": ["scripts/*.mjs", "*.config.mjs"]
     },
     "apps/admin": {},
+    "apps/preview-server": {
+      "entry": ["src/*.mjs"]
+    },
     "apps/storybook": {
       // Effect/shared are used by app-owned stories outside this workspace's source tree.
       // Tailwind is resolved indirectly by Storybook's Vite plugin and shared theme CSS.

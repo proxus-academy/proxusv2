@@ -1,17 +1,15 @@
 import { AuthChallengeRepository, AuthTransactions, UserRepository } from "@proxus/backend-domain/auth"
-import * as PgliteDrizzle from "drizzle-orm/effect-pglite"
+import * as PostgresDrizzle from "drizzle-orm/effect-postgres"
 import { Effect, Layer } from "effect"
 import { makeAuthChallengeRepositoryDrizzle, makeUserRepositoryDrizzle } from "./repositories.drizzle.js"
-import { SessionRepositoryPgliteLive } from "./session.repository.pglite.layer.js"
+import { SessionRepositoryPostgresLive } from "./session.repository.postgres.layer.js"
 import { makeAuthTransactionsDrizzle } from "./transactions.drizzle.js"
 
-export { makeAuthPersistencePostgresLive } from "./runtime.postgres.js"
-
-export const makeAuthPersistencePgliteLive = (sessionTtlMillis: number) => Layer.merge(
-  Layer.unwrap(PgliteDrizzle.makeWithDefaults().pipe(Effect.map((db) => Layer.mergeAll(
+export const makeAuthPersistencePostgresLive = (sessionTtlMillis: number) => Layer.merge(
+  Layer.unwrap(PostgresDrizzle.makeWithDefaults().pipe(Effect.map((db) => Layer.mergeAll(
     Layer.succeed(UserRepository, makeUserRepositoryDrizzle(db)),
     Layer.succeed(AuthChallengeRepository, makeAuthChallengeRepositoryDrizzle(db)),
     Layer.succeed(AuthTransactions, makeAuthTransactionsDrizzle(db, sessionTtlMillis)),
   )))),
-  SessionRepositoryPgliteLive,
+  SessionRepositoryPostgresLive,
 )

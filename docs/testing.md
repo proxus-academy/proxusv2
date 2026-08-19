@@ -228,7 +228,7 @@ repeated race tests and additional PostgreSQL versions.
 The checks have no generated allowlist or accepted-violation baseline:
 
 - `effect:diagnostics` obtains the workspace inventory from `pnpm list -r`, sorts
-  every discovered `tsconfig.json`, and checks all 14 projects. The wrapper also
+  every discovered `tsconfig.json`, and checks all 15 projects. The wrapper also
   accepts `--root` and a JSON `--inventory` for isolated probes. It passes the
   root Effect Language Service configuration explicitly, so a leaf `plugins`
   override cannot silently reduce coverage. Workspace tsconfigs include their
