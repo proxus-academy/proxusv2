@@ -1,3 +1,4 @@
+import { registration_account_emailAvailable, registration_account_emailUnavailable } from "../../paraglide/messages.js"
 import { FormReact, type FormReact as EffectFormReact } from "@lucas-barake/effect-form-react"
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { emailAvailabilityAction, usernameAvailabilityAction } from "@proxus/frontend-core/auth"
@@ -10,7 +11,6 @@ import { Text } from "@proxus/ui"
 import { Effect } from "effect"
 import * as Atom from "effect/unstable/reactivity/Atom"
 import { useEffect } from "react"
-import { useTranslation } from "../../platform/product-locale/paraglide-react.js"
 
 export interface UsernameAvailabilityState {
   readonly username: string
@@ -38,7 +38,6 @@ export const checkRegistrationUsernameAction = Atom.fn<string>()((username, get)
 const EmailAvailabilityField: EffectFormReact.FieldComponent<string, TextFieldProps> = ({ field, props }) => {
   const check = useAtomSet(emailAvailabilityAction)
   const result = useAtomValue(emailAvailabilityAction)
-  const { t } = useTranslation("registration", { keyPrefix: "account" })
   useEffect(() => {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(field.value)) return
     // React debounce is a browser synchronization concern at this adapter boundary.
@@ -49,7 +48,7 @@ const EmailAvailabilityField: EffectFormReact.FieldComponent<string, TextFieldPr
   return <>
     <TextField field={field} props={{ ...props, "aria-busy": result.waiting || undefined }} />
     {result._tag === "Success" ? <Text className="text-sm" tone={result.value.available ? "muted" : "destructive"}>
-      {result.value.available ? t("emailAvailable") : t("emailUnavailable")}
+      {result.value.available ? registration_account_emailAvailable() : registration_account_emailUnavailable()}
     </Text> : null}
   </>
 }

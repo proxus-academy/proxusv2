@@ -11,20 +11,20 @@
   },
   "dependencies": {
     "@effect/atom-react": "4.0.0-beta.98",
-    "@inlang/paraglide-js": "^2.23.2",
+    "@inlang/paraglide-js": "2.24.1",
     "@lucas-barake/effect-form-react": "0.26.0-beta.5",
     "@proxus/frontend-core": "workspace:*",
     "@proxus/product-messages": "workspace:*",
     "@proxus/shared": "workspace:*",
     "@proxus/ui": "workspace:*",
-    "@tanstack/react-router": "^1.170.27",
+    "@tanstack/react-router": "1.170.30",
     "effect": "4.0.0-beta.98",
     "react": "^19.2.3",
     "react-dom": "^19.2.3"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.2",
-    "@tanstack/router-plugin": "1.168.30",
+    "@tanstack/router-plugin": "1.168.33",
     "@testing-library/react": "^16.3.2",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",

@@ -1,13 +1,13 @@
+import { auth_forgotPassword_description, auth_forgotPassword_submit, auth_forgotPassword_title, auth_login_email } from "../../../paraglide/messages.js"
 import { createFileRoute } from "@tanstack/react-router"
 import { Exit } from "effect"
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { recoveryStateAtom } from "@proxus/frontend-core/auth"
 import { Button, Text } from "@proxus/ui"
-import { AuthError, BackToLoginButton } from "../../../../modules/auth/auth-controls.js"
-import { backToLoginAction, submitPasswordRecoveryAction } from "../../../../modules/auth/actions.js"
-import { ForgotPasswordForm } from "../../../../modules/auth/forms.js"
-import { AuthPage } from "../../../../modules/auth/auth-shell.js"
-import { useTranslation } from "../../../../platform/product-locale/paraglide-react.js"
+import { AuthError, BackToLoginButton } from "../../../modules/auth/auth-controls.js"
+import { backToLoginAction, submitPasswordRecoveryAction } from "../../../modules/auth/actions.js"
+import { ForgotPasswordForm } from "../../../modules/auth/forms.js"
+import { AuthPage } from "../../../modules/auth/auth-shell.js"
 
 export function PasswordRecoveryPage() {
   const recovery = useAtomValue(recoveryStateAtom)
@@ -16,12 +16,10 @@ export function PasswordRecoveryPage() {
   const result = useAtomValue(submitPasswordRecoveryAction)
   const back = useAtomSet(backToLoginAction, { mode: "promiseExit" })
   const navigate = Route.useNavigate()
-  const { locale } = Route.useParams()
-  const { t } = useTranslation("auth")
 
   return (
-    <AuthPage title={t("forgotPassword.title")}>
-      <Text tone="muted">{t("forgotPassword.description")}</Text>
+    <AuthPage title={auth_forgotPassword_title()}>
+      <Text tone="muted">{auth_forgotPassword_description()}</Text>
       <ForgotPasswordForm.Initialize defaultValues={{ email: recovery.email }}>
         <form
           className="space-y-4"
@@ -30,31 +28,31 @@ export function PasswordRecoveryPage() {
             submitForm((value: { readonly email: string }) => {
               void submit({ email: value.email }).then((exit) => {
                 if (Exit.isSuccess(exit)) {
-                  void navigate({ to: "/$locale/password-recovery/code", params: { locale } })
+                  void navigate({ to: "/password-recovery/code" })
                 }
               })
             })
           }}
         >
           <ForgotPasswordForm.email
-            label={t("login.email")}
+            label={auth_login_email()}
             name="email"
             type="email"
             autoComplete="email"
           />
           <AuthError visible={result._tag === "Failure"} />
-          <Button type="submit" disabled={result.waiting}>{t("forgotPassword.submit")}</Button>
+          <Button type="submit" disabled={result.waiting}>{auth_forgotPassword_submit()}</Button>
         </form>
       </ForgotPasswordForm.Initialize>
       <BackToLoginButton onClick={() => {
         void back().then((exit) => {
-          if (Exit.isSuccess(exit)) void navigate({ to: "/$locale/login", params: { locale } })
+          if (Exit.isSuccess(exit)) void navigate({ to: "/login" })
         })
       }} />
     </AuthPage>
   )
 }
 
-export const Route = createFileRoute("/$locale/_public/password-recovery/")({
+export const Route = createFileRoute("/_public/password-recovery/")({
   component: PasswordRecoveryPage,
 })

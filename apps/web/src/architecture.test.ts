@@ -81,6 +81,13 @@ describe("frontend architecture boundaries", () => {
     for (const [path] of users) expect(path, path).toMatch(/(?:modules\/(?:auth|registration)|platform\/routing)/)
   })
 
+  it("uses Paraglide generated messages without a translation compatibility layer", () => {
+    for (const [path, source] of appFiles) {
+      expect(source, path).not.toMatch(/useTranslation|ProductLocaleProvider|LocaleContext|Reflect\.(?:get|apply)/)
+      expect(source, path).not.toMatch(/platform\/product-locale/)
+    }
+  })
+
   it("keeps TanStack Router behind the web routing boundary", () => {
     const importers = appFiles
       .filter(([, source]) => /from ["']@tanstack\/react-router["']/.test(source))

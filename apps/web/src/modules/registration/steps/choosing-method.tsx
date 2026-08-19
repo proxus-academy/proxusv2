@@ -1,3 +1,4 @@
+import { registration_chooseMethod_badge, registration_chooseMethod_description, registration_chooseMethod_email, registration_chooseMethod_google, registration_chooseMethod_login, registration_chooseMethod_longDescription, registration_chooseMethod_title } from "../../../paraglide/messages.js"
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { Button, Heading, Text } from "@proxus/ui"
 import {
@@ -10,7 +11,6 @@ import {
   beginGoogleRegistrationAction,
   registrationBusyAtom,
 } from "../state.js"
-import { useTranslation } from "../../../platform/product-locale/paraglide-react.js"
 
 export function ChoosingMethod({ onOpenLogin }: { readonly onOpenLogin: () => void }) {
   const beginGoogle = useAtomSet(beginGoogleRegistrationAction)
@@ -18,20 +18,19 @@ export function ChoosingMethod({ onOpenLogin }: { readonly onOpenLogin: () => vo
   const busy = useAtomValue(registrationBusyAtom)
   const assignment = useAtomValue(registrationLandingAssignmentAtom)
   useAtomValue(registrationLandingExposureLifecycleAtom)
-  const { t } = useTranslation("registration", { keyPrefix: "chooseMethod" })
   return (
     <main className="registration-hero">
       <Text className="mb-4 inline-flex rounded-full border border-primary/15 bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
-        {t("badge")}
+        {registration_chooseMethod_badge()}
       </Text>
       <Heading level={1} className="max-w-2xl text-4xl leading-[1.08] md:text-6xl">
-        {t("title")}
+        {registration_chooseMethod_title()}
       </Heading>
       <Text className="mt-5 max-w-xl text-lg leading-relaxed" tone="muted">
-        {t("description")}
+        {registration_chooseMethod_description()}
       </Text>
       {assignment._tag === "Success" && assignment.value.variant === "long"
-        ? <Text className="mt-2" tone="muted">{t("longDescription")}</Text>
+        ? <Text className="mt-2" tone="muted">{registration_chooseMethod_longDescription()}</Text>
         : null}
       <RegistrationFailure />
       <div className="mt-8 flex max-w-xl flex-col gap-3 sm:flex-row">
@@ -43,11 +42,11 @@ export function ChoosingMethod({ onOpenLogin }: { readonly onOpenLogin: () => vo
             requestId: `${globalThis.performance.timeOrigin}:${globalThis.performance.now()}`,
           })}
         >
-          {t("google")}
+          {registration_chooseMethod_google()}
         </Button>
-        <Button className="flex-1" size="lg" variant="secondary" loading={busy} onClick={() => beginEmail()}>{t("email")}</Button>
+        <Button className="flex-1" size="lg" variant="secondary" loading={busy} onClick={() => beginEmail()}>{registration_chooseMethod_email()}</Button>
       </div>
-      <Button className="mt-3" variant="ghost" onClick={onOpenLogin}>{t("login")}</Button>
+      <Button className="mt-3" variant="ghost" onClick={onOpenLogin}>{registration_chooseMethod_login()}</Button>
     </main>
   )
 }

@@ -1,9 +1,14 @@
 import { createRouter, RouterProvider as TanStackRouterProvider, type RouterHistory } from "@tanstack/react-router"
+import { deLocalizeUrl, localizeUrl } from "../paraglide/runtime.js"
 import { routeTree } from "../routeTree.gen.js"
 
 export const makeWebRouter = (history?: RouterHistory) => createRouter({
   routeTree,
   defaultPreload: "intent",
+  rewrite: {
+    input: ({ url }) => deLocalizeUrl(url),
+    output: ({ url }) => localizeUrl(url),
+  },
   ...(history === undefined ? {} : { history }),
 })
 

@@ -2,15 +2,15 @@ import { createFileRoute, useRouterState } from "@tanstack/react-router"
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { Exit } from "effect"
 import { useEffect, useRef } from "react"
-import { RegistrationOnboarding } from "../../../modules/registration/onboarding-flow.js"
-import { featureFlagSnapshotLifecycleAtom } from "../../../modules/registration/feature-flags.js"
+import { RegistrationOnboarding } from "../../modules/registration/onboarding-flow.js"
+import { featureFlagSnapshotLifecycleAtom } from "../../modules/registration/feature-flags.js"
 import {
   resolveGoogleCallbackAction,
   registrationDraftRestoreLifecycleAtom,
-} from "../../../modules/registration/state.js"
-import { decodeRegistrationQuery } from "../../../platform/registration/wizard-url.js"
+} from "../../modules/registration/state.js"
+import { decodeRegistrationQuery } from "../../platform/registration/wizard-url.js"
 
-export const Route = createFileRoute("/$locale/_public/")({
+export const Route = createFileRoute("/_public/")({
   component: RegistrationPage,
 })
 
@@ -20,7 +20,6 @@ export function RegistrationPage() {
   useAtomValue(registrationDraftRestoreLifecycleAtom)
   const resolveCallback = useAtomSet(resolveGoogleCallbackAction, { mode: "promiseExit" })
   const navigate = Route.useNavigate()
-  const { locale } = Route.useParams()
   const callbackKey = useRef<string | undefined>(undefined)
   useEffect(() => {
     const search = new URLSearchParams(searchValue)
@@ -33,18 +32,17 @@ export function RegistrationPage() {
       search.delete("code")
       search.delete("state")
       void navigate({
-        to: exit.value === "existing" ? "/$locale/app" : "/$locale",
-        params: { locale },
+        to: exit.value === "existing" ? "/app" : "/",
         search: Object.fromEntries(search),
         replace: true,
       })
     })
-  }, [locale, navigate, resolveCallback, searchValue])
+  }, [navigate, resolveCallback, searchValue])
   return <RegistrationOnboarding
     url={decodeRegistrationQuery(searchValue)}
     onOpenLogin={() => {
-      void navigate({ to: "/$locale/login", params: { locale } })
+      void navigate({ to: "/login" })
     }}
-    onComplete={() => navigate({ to: "/$locale/app", params: { locale }, replace: true })}
+    onComplete={() => navigate({ to: "/app", replace: true })}
   />
 }

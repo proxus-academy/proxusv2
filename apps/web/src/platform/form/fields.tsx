@@ -1,17 +1,28 @@
 import type { FormReact } from "@lucas-barake/effect-form-react"
 import { isValidationMessageCode } from "@proxus/product-messages"
+import { common_unexpectedError, "validation_validation.birthYear.invalid" as validation_validation_birthYear_invalid, "validation_validation.email.invalid" as validation_validation_email_invalid, "validation_validation.email.required" as validation_validation_email_required, "validation_validation.password.confirmationRequired" as validation_validation_password_confirmationRequired, "validation_validation.password.minLength" as validation_validation_password_minLength, "validation_validation.password.mismatch" as validation_validation_password_mismatch, "validation_validation.password.required" as validation_validation_password_required, "validation_validation.recoveryCode.invalid" as validation_validation_recoveryCode_invalid, "validation_validation.terms.required" as validation_validation_terms_required, "validation_validation.username.invalid" as validation_validation_username_invalid } from "../../paraglide/messages.js"
 import { Checkbox, Field, FieldControl, FieldError, FieldLabel, Input } from "@proxus/ui"
 import * as Option from "effect/Option"
 import * as React from "react"
-import { useTranslation } from "../product-locale/paraglide-react.js"
+
+const validationMessages = {
+  "validation.email.required": validation_validation_email_required,
+  "validation.email.invalid": validation_validation_email_invalid,
+  "validation.password.required": validation_validation_password_required,
+  "validation.recoveryCode.invalid": validation_validation_recoveryCode_invalid,
+  "validation.password.minLength": validation_validation_password_minLength,
+  "validation.password.confirmationRequired": validation_validation_password_confirmationRequired,
+  "validation.password.mismatch": validation_validation_password_mismatch,
+  "validation.username.invalid": validation_validation_username_invalid,
+  "validation.birthYear.invalid": validation_validation_birthYear_invalid,
+  "validation.terms.required": validation_validation_terms_required,
+}
 
 const useLocalizedError = (error: string | undefined) => {
-  const { t: common } = useTranslation("common")
-  const { t: validation } = useTranslation("validation")
   if (error === undefined) return undefined
   return isValidationMessageCode(error)
-    ? validation(error)
-    : common("unexpectedError")
+    ? validationMessages[error]()
+    : common_unexpectedError()
 }
 
 export type TextFieldProps = Omit<React.ComponentProps<typeof Input>,
