@@ -1,5 +1,6 @@
 // Platform boundary required by NodeHttpServer.layerConfig.
 // @effect-diagnostics-next-line nodeBuiltinImport:off
+// eslint-disable-next-line no-restricted-imports -- NodeHttpServer.layerConfig requires the Node server constructor at this composition root.
 import { createServer } from "node:http"
 import * as NodeHttpServer from "@effect/platform-node/NodeHttpServer"
 import { AdminSessionAuthorizationLive } from "@proxus/backend-admin-transport/session"

@@ -235,9 +235,12 @@ The checks have no generated allowlist or accepted-violation baseline:
   Vite, Drizzle and Storybook TypeScript configuration files.
 - `lint` is type-aware and deliberately has no formatting rules. Its workspace
   globs include source, Storybook and root `*.config.ts` files while excluding
-  generated trees. It enforces only unsafe Promise use (`await-thenable`,
-  `no-floating-promises`, `no-misused-promises`) and dangerous assertions
-  (`no-non-null-assertion`, `no-unsafe-type-assertion`).
+  generated trees. It enforces unsafe Promise use (`await-thenable`,
+  `no-floating-promises`, `no-misused-promises`), dangerous assertions
+  (`no-non-null-assertion`, `no-unsafe-type-assertion`), and rejects direct
+  imports of Node filesystem, path, child-process and HTTP APIs that have
+  Effect-native counterparts. Narrow platform composition roots and test-owned
+  temporary-directory harnesses must document any inline exception.
 - `boundaries` ignores generated `dist`, `coverage` and `storybook-static`
   trees and enforces the documented DDD direction: shared is runtime-neutral;
   Domain cannot reach adapters/transports/apps; Infra cannot reach
@@ -278,7 +281,10 @@ and the repository's `pnpm@10.32.1`, and installs with `--frozen-lockfile`.
 
 `pnpm static` has no accepted-finding baseline: every finding must be fixed.
 The 15 Effect projects include current TypeScript configs; the same configs are
-covered by typecheck and type-aware ESLint. A green static run says nothing about
+covered by typecheck and type-aware ESLint. All 77 diagnostics exposed by the
+installed Effect Language Service are configured as errors in `tsconfig.base.json`;
+workspace tsconfigs inherit that plugin configuration without disabling it. A green
+static run says nothing about
 the separate PostgreSQL gate or pending browser suites. Knip's dependency ignores are limited
 to dependencies loaded indirectly by Vite/Storybook builds, shared CSS or inline
 `index.html` development bootstraps; each exception is documented in

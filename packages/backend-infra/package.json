@@ -41,6 +41,7 @@
     "auth:qa:list": "tsx src/auth-qa/command.ts list"
   },
   "dependencies": {
+    "@effect/platform-node": "4.0.0-beta.98",
     "@effect/sql-pg": "4.0.0-beta.98",
     "@effect/sql-pglite": "4.0.0-beta.98",
     "@electric-sql/pglite": "0.5.4",
