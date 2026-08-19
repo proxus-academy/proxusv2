@@ -9,10 +9,10 @@ import {
 } from "./draft-storage.js"
 import { restoredRegistrationState, transitionRegistration, type RegistrationEvent, type RegistrationState } from "./wizard.js"
 
-export interface RegistrationFlowCapabilities {
-  readonly storageLayer: Layer.Layer<KeyValueStore.KeyValueStore>
-  readonly now: () => number
-}
+export type RegistrationFlowCapabilities = Readonly<{
+  storageLayer: Layer.Layer<KeyValueStore.KeyValueStore>
+  now: () => number
+}>
 
 /** Single observable owner of registration state and persisted draft. */
 export const makeRegistrationFlowAtoms = (capabilities: RegistrationFlowCapabilities) => {

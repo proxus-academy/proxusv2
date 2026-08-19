@@ -7,8 +7,9 @@ import { featureFlagSnapshotLifecycleAtom } from "../../modules/registration/fea
 import {
   resolveGoogleCallbackAction,
   registrationDraftRestoreLifecycleAtom,
+  registrationStateAtom,
 } from "../../modules/registration/state.js"
-import { decodeRegistrationQuery } from "../../platform/registration/wizard-url.js"
+import { decodeRegistrationQuery, encodeRegistrationQuery } from "../../platform/registration/wizard-url.js"
 
 export const Route = createFileRoute("/_public/")({
   component: RegistrationPage,
@@ -18,9 +19,30 @@ export function RegistrationPage() {
   const searchValue = useRouterState({ select: ({ location }) => location.searchStr })
   useAtomValue(featureFlagSnapshotLifecycleAtom)
   useAtomValue(registrationDraftRestoreLifecycleAtom)
+  const registration = useAtomValue(registrationStateAtom)
   const resolveCallback = useAtomSet(resolveGoogleCallbackAction, { mode: "promiseExit" })
   const navigate = Route.useNavigate()
   const callbackKey = useRef<string | undefined>(undefined)
+  const previousRegistration = useRef(registration)
+
+  useEffect(() => {
+    if (previousRegistration.current === registration) return
+    previousRegistration.current = registration
+    const destination = registration._tag === "CollectingOnboarding"
+      ? { step: registration.step, path: registration.draft.path }
+      : registration._tag === "ConfirmingGoogle"
+      ? { step: "confirm-google" as const, path: registration.draft.path }
+      : registration._tag === "EmailVerificationPending"
+      ? { step: "verify" as const, path: [] }
+      : registration._tag === "ChoosingMethod"
+      ? { step: "start" as const, path: [] }
+      : undefined
+    if (destination === undefined) return
+    const nextSearch = encodeRegistrationQuery(searchValue, destination.step, destination.path)
+    if (nextSearch === searchValue.replace(/^\?/, "")) return
+    void navigate({ to: "/", search: Object.fromEntries(new URLSearchParams(nextSearch)) })
+  }, [navigate, registration, searchValue])
+
   useEffect(() => {
     const search = new URLSearchParams(searchValue)
     const code = search.get("code")

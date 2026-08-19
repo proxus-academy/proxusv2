@@ -7,11 +7,11 @@ import {
 } from "@proxus/frontend-core/registration"
 import { Option, Schema } from "effect"
 
-export interface RegistrationUrlState {
-  readonly step: RegistrationStep
-  readonly nodeIds: RegistrationNodeIds
-  readonly valid: boolean
-}
+export type RegistrationUrlState = Readonly<{
+  step: RegistrationStep
+  nodeIds: RegistrationNodeIds
+  valid: boolean
+}>
 
 export const decodeRegistrationQuery = (searchValue: string): RegistrationUrlState => {
   const search = new URLSearchParams(searchValue)
