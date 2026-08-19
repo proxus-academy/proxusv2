@@ -7,7 +7,7 @@ RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
 COPY . .
 RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @proxus/web build \
- && pnpm --filter @proxus/admin exec vite build --base=/admin/ \
+ && VITE_PREVIEW_ADMIN_AUTO_LOGIN=true VITE_PREVIEW_ADMIN_EMAIL=admin.qa@proxus.dev VITE_PREVIEW_ADMIN_PASSWORD='Proxus-QA-dev-2026!' pnpm --filter @proxus/admin exec vite build --base=/admin/ \
  && node scripts/build-preview-artifact.mjs
 
 FROM node:22.22.2-bookworm-slim AS runtime

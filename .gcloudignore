@@ -1,0 +1,15 @@
+# Source upload exclusions for manual Cloud Build submissions.
+.git
+.repos
+.pi
+.agents
+**/node_modules
+**/.turbo
+**/dist
+**/coverage
+**/storybook-static
+**/.data
+**/.data-*
+.env
+.env.*
+!.env.example
