@@ -1,6 +1,6 @@
 # PR preview vertical slice
 
-> Status: minimal local runtime artifact implemented and verified; disposable GCP deployment pending.
+> Status: local artifact and Cloud Run spike verified; label-driven PR lifecycle implemented.
 
 ## Goal
 
@@ -37,7 +37,7 @@ Cloud Run :8080
 
 The gateway and API runtime are separate processes inside the same preview-only container. The entrypoint propagates termination and terminates the container if either child exits. Cloud Run receives traffic only on port 8080. The API listens on loopback and is not exposed independently.
 
-The preview runtime uses real PostgreSQL repositories, applies migrations before becoming healthy, and installs deterministic synthetic catalog/auth fixtures. It deliberately uses fake Google identity, console email and in-memory analytics; no production data or provider credentials are used.
+The preview runtime uses real PostgreSQL repositories. Startup only checks the Drizzle ledger and fails when migrations are pending; it never changes the schema. A one-shot Cloud Run Job applies migrations and installs deterministic synthetic catalog/auth fixtures when the preview database is first created. It deliberately uses fake Google identity, console email and in-memory analytics; no production data or provider credentials are used.
 
 The multi-stage image bundles the API into a standalone Node ESM artifact. Its final stage contains only that bundle, the gateway/entrypoint, Drizzle migrations and compiled frontend assets. Build-time checks reject PGlite, `tsx` and TypeScript runtime content. The final image runs as the unprivileged Node user.
 
@@ -53,39 +53,36 @@ Local Compose uses PostgreSQL 17.7. The smoke command waits for migration/seed c
 
 ## GCP spike
 
-The first cloud deployment is named `preview-spike`; it is not attached to a PR lifecycle.
+The cloud spike is `proxus-preview-spike`. Cloud Build is connected to `proxus-academy/proxusv2` and watches `feat/pr-preview-environments`. It builds in Google Cloud, pushes to Artifact Registry, deploys Cloud Run and performs a remote smoke on every commit.
 
-Existing protected foundation:
+Protected shared foundation:
 
-- project `proxus-v2`;
-- region `europe-southwest1`;
-- Artifact Registry repository `proxus`;
-- shared `db-f1-micro` Cloud SQL PostgreSQL 17 instance.
+- project `proxus-v2` and region `europe-southwest1`;
+- Artifact Registry repository `proxus` with immutable tags;
+- shared `db-f1-micro` Cloud SQL PostgreSQL 17 instance `proxus-previews`;
+- runtime, Cloud Build and lifecycle service accounts;
+- GitHub Workload Identity Federation, with no JSON keys.
 
-Disposable resources:
+Each PR owns resources named from its number:
 
-- database `proxus_preview_spike`;
-- least-privilege runtime identity/user;
-- one Artifact Registry image tagged with an immutable Git SHA;
-- one Cloud Run service with min instances 0 and max instances 1.
+- Cloud Build trigger and Cloud Run service `proxus-pr-<number>`;
+- database/user `proxus_preview_<number>`;
+- database URL secret `proxus-pr-<number>-database-url`;
+- initialization Job `proxus-pr-<number>-initialize`.
 
-Sequence:
+The trusted `pull_request_target` workflow checks out lifecycle code from `main`. Adding `deploy-preview` to an internal PR creates the database and secret, creates a trigger with an inline trusted build configuration, forces the first build, initializes the database from that exact image, deploys and comments the URL. The stored trigger is then replaced with an update-only variant. New commits build and deploy automatically without migrations or seeds. Removing the label or closing the PR deletes all PR-owned resources.
 
-1. Build and smoke the exact image locally.
-2. Create the dedicated database and grants without changing the shared instance lifecycle.
-3. Push the image.
-4. Deploy Cloud Run with the Cloud SQL attachment and secrets supplied by Secret Manager.
-5. Run the same smoke command against the Cloud Run URL.
-6. Record timings, connection use and failures.
-7. Destroy the Cloud Run service, database and preview-owned identities.
+The inline Cloud Build configuration is captured when the trigger is created; it is not read from the observed PR branch. Image tags include both commit and build IDs because Artifact Registry enforces immutable tags. Previews are public for low-friction QA and contain synthetic data only.
 
-## Gates before PR automation
+## Operations and safety
 
-- The cloud smoke passes from a clean database.
-- Destruction is idempotent and cannot target the shared instance.
-- The image does not contain PGlite or production secrets.
-- The service is access-controlled before previews contain reviewable product data.
-- Build/deploy credentials come from Workload Identity Federation, never JSON keys.
-- A reconciliation command can identify resources by PR/owner labels.
+```bash
+node scripts/preview-lifecycle.mjs create 123 feature/my-branch
+node scripts/preview-lifecycle.mjs destroy 123
+```
 
-Only after these gates pass will a trusted workflow implement label-driven deploy/update/destroy and PR comments.
+Only numeric PR identifiers are accepted, and deletion derives every resource name from that identifier. Destroy is idempotent and cannot target the shared SQL instance. The image contains neither PGlite nor production secrets. Build/deploy credentials use Workload Identity Federation and dedicated service accounts.
+
+If a commit adds a migration, Cloud Run startup rejects the new revision and Cloud Build fails while the previous ready revision remains available. Applying migrations is deliberately an explicit operation; it is not part of commit-triggered updates.
+
+The public-access decision must be revisited before previews contain non-synthetic or sensitive review data. Retention cleanup for old Artifact Registry images and periodic orphan reconciliation remain operational follow-ups; PR close/unlabel cleanup is the primary lifecycle.

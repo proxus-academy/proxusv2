@@ -1,5 +1,6 @@
 # Source upload exclusions for manual Cloud Build submissions.
 .git
+.github
 .repos
 .pi
 .agents
@@ -13,3 +14,4 @@
 .env
 .env.*
 !.env.example
+compose.preview.yml

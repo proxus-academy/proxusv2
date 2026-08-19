@@ -13,6 +13,7 @@
     "preview:up": "docker compose -f compose.preview.yml up --build -d",
     "preview:smoke": "node scripts/preview-smoke.mjs",
     "preview:down": "docker compose -f compose.preview.yml down --volumes --remove-orphans",
+    "preview:lifecycle": "node scripts/preview-lifecycle.mjs",
     "dev:admin-front": "pnpm --filter @proxus/admin dev",
     "dev:web-front": "pnpm --filter @proxus/web dev",
     "dev:api": "pnpm dev:server",

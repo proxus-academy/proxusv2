@@ -1,0 +1,70 @@
+steps:
+  - id: build
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --file
+      - Dockerfile.preview
+      - --tag
+      - ${_IMAGE_REPOSITORY}:$COMMIT_SHA-$BUILD_ID
+      - .
+  - id: push
+    name: gcr.io/cloud-builders/docker
+    args: [push, "${_IMAGE_REPOSITORY}:$COMMIT_SHA-$BUILD_ID"]
+  - id: initialize
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        if [[ "${_INITIALIZE}" != "true" ]]; then exit 0; fi
+        gcloud run jobs deploy "${_SERVICE}-initialize" \
+          --project="$PROJECT_ID" --region="${_REGION}" \
+          --image="${_IMAGE_REPOSITORY}:$COMMIT_SHA-$BUILD_ID" \
+          --service-account="${_RUNTIME_SERVICE_ACCOUNT}" \
+          --set-cloudsql-instances="${_CLOUD_SQL_CONNECTION}" \
+          --set-secrets="DATABASE_URL=${_DATABASE_SECRET}:latest" \
+          --command=node --args=/app/initialize.mjs --tasks=1 --max-retries=0 \
+          --task-timeout=10m --quiet
+        gcloud run jobs execute "${_SERVICE}-initialize" \
+          --project="$PROJECT_ID" --region="${_REGION}" --wait
+  - id: deploy
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE}
+      - --project=$PROJECT_ID
+      - --region=${_REGION}
+      - --image=${_IMAGE_REPOSITORY}:$COMMIT_SHA-$BUILD_ID
+      - --service-account=${_RUNTIME_SERVICE_ACCOUNT}
+      - --add-cloudsql-instances=${_CLOUD_SQL_CONNECTION}
+      - --set-secrets=DATABASE_URL=${_DATABASE_SECRET}:latest,AUTH_GOOGLE_SIGNING_SECRET=preview-auth-google-signing:latest
+      - --min=0
+      - --max=1
+      - --cpu=1
+      - --memory=512Mi
+      - --port=8080
+      - --allow-unauthenticated
+      - --labels=managed-by=proxus,environment=preview,preview-id=${_PREVIEW_ID}
+      - --quiet
+  - id: smoke
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        origin="$(gcloud run services describe "${_SERVICE}" --project="$PROJECT_ID" --region="${_REGION}" --format='value(status.url)')"
+        # Cloud Run's frontend reserves /healthz; deploy readiness plus both OpenAPI routes prove API health.
+        for path in /es /admin/ /api/openapi.public.json /admin-api/openapi.admin.json; do
+          status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$${origin}$${path}")"
+          case "$${path}:$${status}" in
+            /es:200|/admin/:200|/api/openapi.public.json:200|/admin-api/openapi.admin.json:200) ;;
+            *) echo "Smoke failed: $${path} returned $${status}" >&2; exit 1 ;;
+          esac
+        done
+options:
+  logging: CLOUD_LOGGING_ONLY
+images:
+  - ${_IMAGE_REPOSITORY}:$COMMIT_SHA-$BUILD_ID
