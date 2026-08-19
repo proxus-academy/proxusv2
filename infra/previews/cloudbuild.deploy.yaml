@@ -56,13 +56,19 @@ steps:
       - -ceu
       - |
         origin="$(gcloud run services describe "${_SERVICE}" --project="$PROJECT_ID" --region="${_REGION}" --format='value(status.url)')"
-        # Cloud Run's frontend reserves /healthz; deploy readiness plus both OpenAPI routes prove API health.
+        # Cloud Run's frontend reserves /healthz. Retry because the gateway can pass its
+        # TCP startup probe a few seconds before the loopback Effect API is listening.
         for path in /es /admin/ /api/openapi.public.json /admin-api/openapi.admin.json; do
-          status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$${origin}$${path}")"
-          case "$${path}:$${status}" in
-            /es:200|/admin/:200|/api/openapi.public.json:200|/admin-api/openapi.admin.json:200) ;;
-            *) echo "Smoke failed: $${path} returned $${status}" >&2; exit 1 ;;
-          esac
+          expected=200
+          for attempt in $(seq 1 60); do
+            status="$(curl --max-time 20 --silent --show-error --output /dev/null --write-out '%{http_code}' "$${origin}$${path}" || true)"
+            if [[ "$${status}" == "$${expected}" ]]; then break; fi
+            if [[ "$${attempt}" == 60 ]]; then
+              echo "Smoke failed: $${path} returned $${status}; expected $${expected}" >&2
+              exit 1
+            fi
+            sleep 2
+          done
         done
 options:
   logging: CLOUD_LOGGING_ONLY
