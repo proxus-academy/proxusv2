@@ -18,7 +18,7 @@ import {
   GoogleSessionIssuerLive,
   PasswordsLive,
   SecureSessionRandomLive,
-  SecureVerificationCodeGeneratorLive,
+  DevelopmentVerificationCodeGeneratorLive,
   makeAuthPersistencePostgresLive,
   makeAuthenticationLive,
   makeEmailRegistrationServiceLive,
@@ -83,7 +83,7 @@ const google = makeFakeGoogleIdentityProvider([
 const authDependencies = Layer.mergeAll(
   persistence,
   PasswordsLive,
-  SecureVerificationCodeGeneratorLive,
+  DevelopmentVerificationCodeGeneratorLive,
   SecureSessionRandomLive,
   ConsoleEmailDelivery,
   google,

@@ -105,7 +105,7 @@ pending.
 
 Domain prueba normalización, path de onboarding, estados/proveedor derivado, auto-link solo de email verificado y policies RBAC con clocks/randomness deterministas. Infra ejecuta el mismo contrato de users/challenges/sessions contra memory y PGlite: unicidad, hashes, propósito/TTL/intentos/uso único, consumo/rotación atómicos y revocación global. Las pruebas de composición cubren email/Google fake, cookie opaca y la matriz admin anónimo/student/editor/admin.
 
-Los adapters consola/fake solo pertenecen a desarrollo/test. Producción tiene un gate que rechaza su selección; esto no prueba proveedores reales, que siguen pendientes. Los tests y listados QA nunca imprimen passwords, hashes, tokens ni códigos persistidos.
+Los adapters consola/fake solo pertenecen a desarrollo/test. Desarrollo local y las previews desechables generan deliberadamente el código `424242` para verificación de email y recuperación de contraseña; producción conserva el generador criptográfico y tiene un gate que rechaza adapters de entrega no reales. Esto no prueba proveedores reales, que siguen pendientes. Los tests y listados QA nunca imprimen passwords, hashes, tokens ni códigos persistidos.
 
 ### HTTP
 

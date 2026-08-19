@@ -1,6 +1,6 @@
 export { ConsoleEmailDelivery } from "./email.console.js"
 export { PasswordsLive } from "./passwords.live.js"
-export { SecureVerificationCodeGeneratorLive } from "./verification-code.live.js"
+export { DevelopmentVerificationCodeGeneratorLive } from "./verification-code.live.js"
 export { makeAuthenticationLive } from "./authentication.live.js"
 export { makeEmailRegistrationServiceLive } from "./registration.live.js"
 export { makeFakeGoogleIdentityProvider } from "./google.fake.js"
