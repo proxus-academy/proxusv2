@@ -47,7 +47,7 @@ function capture(...args) {
   return result.stdout.trim()
 }
 function waitForBuild(buildId) {
-  gcloud("beta", "builds", "log", buildId, `--region=${REGION}`, "--stream")
+  gcloud("builds", "log", buildId, `--region=${REGION}`, "--stream")
   const status = capture("builds", "describe", buildId, `--region=${REGION}`, "--format=value(status)")
   if (status !== "SUCCESS") throw new Error(`Cloud Build ${buildId} ended with ${status}`)
 }
