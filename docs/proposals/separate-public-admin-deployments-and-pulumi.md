@@ -192,7 +192,7 @@ PR cerrado             → destruir recursos y eliminar stack
 reconciliación nocturna → destruir stacks huérfanos o expirados
 ```
 
-Se empezará bajo una label explícita, por ejemplo `deploy-preview`, para controlar coste y cuotas.
+Las previews se crean automáticamente al abrir o reabrir cualquier PR interna y se destruyen al cerrarla. Las PR desde forks quedan excluidas porque el lifecycle privilegiado solo opera sobre ramas del propio repositorio.
 
 ### Infraestructura compartida de previews
 
