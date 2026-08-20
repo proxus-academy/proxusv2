@@ -294,12 +294,14 @@ not add PostgreSQL or browser coverage. The separate CI `postgres` job is the
 real-PostgreSQL gate. CI pins the action commits, Node 22.22.2, Corepack 0.35.0
 and the repository's `pnpm@10.32.1`, and installs with `--frozen-lockfile`.
 
-### Current validation baseline (2026-07-21)
+### Current validation baseline (2026-08-20)
 
-`pnpm static` has no accepted-finding baseline: every finding must be fixed.
-The 15 Effect projects include current TypeScript configs; the same configs are
-covered by typecheck and type-aware ESLint. All 77 diagnostics exposed by the
-installed Effect Language Service are configured as errors in `tsconfig.base.json`;
+`pnpm static` has no accepted-finding baseline: every finding and warning must be fixed.
+The 16 Effect projects include current TypeScript configs; the same configs are
+covered by typecheck and type-aware Oxlint. Oxlint uses TypeScript 7 through
+`oxlint-tsgolint`, while the normative package typecheck and Effect Language
+Service continue to use the pinned stable TypeScript compiler. All 77 diagnostics
+exposed by the installed Effect Language Service are configured as errors in `tsconfig.base.json`;
 workspace tsconfigs inherit that plugin configuration without disabling it. A green
 static run says nothing about
 the separate PostgreSQL gate or pending browser suites. Knip's dependency ignores are limited

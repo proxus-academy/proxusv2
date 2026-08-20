@@ -1,0 +1,49 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript"],
+  "categories": {
+    "correctness": "off"
+  },
+  "rules": {
+    "typescript/await-thenable": "error",
+    "typescript/no-floating-promises": "error",
+    "typescript/no-misused-promises": "error",
+    "typescript/no-non-null-assertion": "error",
+    "typescript/no-unsafe-type-assertion": "error",
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          { "name": "fs", "message": "Use the corresponding Effect platform API instead of importing this Node.js API directly." },
+          { "name": "node:fs", "message": "Use the corresponding Effect platform API instead of importing this Node.js API directly." },
+          { "name": "fs/promises", "message": "Use the corresponding Effect platform API instead of importing this Node.js API directly." },
+          { "name": "node:fs/promises", "message": "Use the corresponding Effect platform API instead of importing this Node.js API directly." },
+          { "name": "path", "message": "Use the corresponding Effect platform API instead of importing this Node.js API directly." },
+          { "name": "node:path", "message": "Use the corresponding Effect platform API instead of importing this Node.js API directly." },
+          { "name": "path/posix", "message": "Use the corresponding Effect platform API instead of importing this Node.js API directly." },
+          { "name": "node:path/posix", "message": "Use the corresponding Effect platform API instead of importing this Node.js API directly." },
+          { "name": "path/win32", "message": "Use the corresponding Effect platform API instead of importing this Node.js API directly." },
+          { "name": "node:path/win32", "message": "Use the corresponding Effect platform API instead of importing this Node.js API directly." },
+          { "name": "child_process", "message": "Use the corresponding Effect platform API instead of importing this Node.js API directly." },
+          { "name": "node:child_process", "message": "Use the corresponding Effect platform API instead of importing this Node.js API directly." },
+          { "name": "http", "message": "Use the corresponding Effect platform API instead of importing this Node.js API directly." },
+          { "name": "node:http", "message": "Use the corresponding Effect platform API instead of importing this Node.js API directly." },
+          { "name": "https", "message": "Use the corresponding Effect platform API instead of importing this Node.js API directly." },
+          { "name": "node:https", "message": "Use the corresponding Effect platform API instead of importing this Node.js API directly." }
+        ]
+      }
+    ]
+  },
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/storybook-static/**",
+    "**/coverage/**",
+    "apps/web/src/paraglide/**",
+    "**/routeTree.gen.ts",
+    ".repos/**"
+  ],
+  "env": {
+    "builtin": true
+  }
+}

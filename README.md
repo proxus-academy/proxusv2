@@ -225,7 +225,7 @@ pnpm check
 pnpm validate:pr
 ```
 
-`pnpm check` ejecuta únicamente `typecheck` y `build`. `pnpm static` ejecuta diagnostics de Effect, typecheck, ESLint type-aware, dependency-cruiser, Knip y contratos de packages. `pnpm validate:pr` añade primero el self-test de esos validadores y después los tests Vitest/PGlite implementados y todos los builds.
+`pnpm check` ejecuta únicamente `typecheck` y `build`. `pnpm static` ejecuta diagnostics completos de Effect, typecheck, Oxlint type-aware sobre TypeScript 7, dependency-cruiser, Knip y contratos de packages. `pnpm validate:pr` añade primero el self-test de esos validadores y después los tests Vitest/PGlite implementados y todos los builds.
 
 Validación normativa del proyecto:
 

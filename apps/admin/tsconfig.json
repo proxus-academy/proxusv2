@@ -4,7 +4,6 @@
     "noEmit": true,
     "rootDir": ".",
     "exactOptionalPropertyTypes": false,
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     }
