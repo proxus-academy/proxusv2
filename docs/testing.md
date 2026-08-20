@@ -189,11 +189,12 @@ After a frozen install, `validate` runs `pnpm validate:pr`, which performs:
 
 Pull requests additionally run an advisory `Experiment / ...` matrix that
 duplicates the same coverage as independent validator self-test, Effect
-diagnostics, typecheck, lint/architecture, Vitest/PGlite and build jobs. These
-jobs use `continue-on-error` and do not replace the authoritative `validate`
-result while the scheduling and caches are evaluated. The PostgreSQL job remains
-unchanged and is not duplicated. Whether a reported check is required for merge
-is repository policy configured outside this workflow.
+diagnostics, typecheck, lint, dependency-cruiser architecture, Knip, workspace
+contracts, Vitest/PGlite and build jobs. These jobs preserve their real failure
+conclusion but do not replace the authoritative `validate` result while the
+scheduling and caches are evaluated. They are advisory because repository merge
+requirements are configured outside this workflow, not because failures are
+suppressed. The PostgreSQL job remains unchanged and is not duplicated.
 
 Turborepo schedules `build`, `typecheck` and `test` from the dependencies declared
 in workspace manifests and caches deterministic task results locally. Builds run
@@ -207,7 +208,10 @@ configured. Experimental jobs persist the pnpm store and use distinct GitHub
 Actions cache namespaces for the `typecheck`, `tests` and `build` `.turbo`
 directories so concurrent jobs cannot save different partial caches under one
 key. The original `validate` job deliberately remains uncached during the
-comparison.
+comparison. The validator self-test also remains unconditional during parity
+measurement; after promotion it will be limited to validator, workspace,
+TypeScript and workflow configuration changes, with an explicit or scheduled
+full run retained.
 
 `postgres` provisions `postgres:17.7-bookworm` with a `pg_isready` healthcheck
 and a fresh `proxus_postgres_test` database. It explicitly runs the production

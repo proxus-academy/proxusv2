@@ -35,7 +35,6 @@ jobs:
   validation-experiment:
     name: Experiment / ${{ matrix.name }}
     if: github.event_name == 'pull_request'
-    continue-on-error: true
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
@@ -51,8 +50,17 @@ jobs:
           - name: Typecheck
             command: pnpm typecheck
             turbo_cache_key: typecheck
-          - name: Lint and architecture
-            command: pnpm lint && pnpm boundaries && pnpm knip && pnpm workspace:contracts
+          - name: Lint
+            command: pnpm lint
+            turbo_cache_key: ""
+          - name: Architecture
+            command: pnpm boundaries
+            turbo_cache_key: ""
+          - name: Knip
+            command: pnpm knip
+            turbo_cache_key: ""
+          - name: Workspace contracts
+            command: pnpm workspace:contracts
             turbo_cache_key: ""
           - name: Vitest and PGlite
             command: pnpm test:ci
