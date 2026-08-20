@@ -46,9 +46,27 @@ steps:
       - --cpu=1
       - --memory=512Mi
       - --port=8080
-      - --no-invoker-iam-check
+      - --no-allow-unauthenticated
+      - --iap
       - --labels=managed-by=proxus,environment=preview,preview-id=${_PREVIEW_ID}
       - --quiet
+  - id: authorize-iap
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        project_number="$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')"
+        gcloud run services add-iam-policy-binding "${_SERVICE}" \
+          --project="$PROJECT_ID" --region="${_REGION}" \
+          --member="serviceAccount:service-$${project_number}@gcp-sa-iap.iam.gserviceaccount.com" \
+          --role=roles/run.invoker --quiet
+        for member in "group:${_IAP_GROUP}" "serviceAccount:${_BUILD_SERVICE_ACCOUNT}"; do
+          gcloud iap web add-iam-policy-binding \
+            --project="$PROJECT_ID" --region="${_REGION}" \
+            --resource-type=cloud-run --service="${_SERVICE}" \
+            --member="$${member}" --role=roles/iap.httpsResourceAccessor --quiet
+        done
   - id: smoke
     name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
     entrypoint: bash
@@ -56,6 +74,7 @@ steps:
       - -ceu
       - |
         origin="$(gcloud run services describe "${_SERVICE}" --project="$PROJECT_ID" --region="${_REGION}" --format='value(status.url)')"
+        token="$(gcloud auth print-identity-token --audiences="$${origin}")"
         # Cloud Run's frontend reserves /healthz. Retry while the Effect HTTP runtime
         # starts, and advertise browser navigation for SPA fallback routes.
         for path in /es /admin/ /api/openapi.public.json /admin-api/openapi.admin.json; do
@@ -63,7 +82,7 @@ steps:
           accept="application/json"
           if [[ "$${path}" == "/es" || "$${path}" == "/admin/" ]]; then accept="text/html"; fi
           for attempt in $(seq 1 60); do
-            status="$(curl --max-time 20 --silent --show-error --header "Accept: $${accept}" --output /dev/null --write-out '%{http_code}' "$${origin}$${path}" || true)"
+            status="$(curl --max-time 20 --silent --show-error --header "Authorization: Bearer $${token}" --header "Accept: $${accept}" --output /dev/null --write-out '%{http_code}' "$${origin}$${path}" || true)"
             if [[ "$${status}" == "$${expected}" ]]; then break; fi
             if [[ "$${attempt}" == 60 ]]; then
               echo "Smoke failed: $${path} returned $${status}; expected $${expected}" >&2

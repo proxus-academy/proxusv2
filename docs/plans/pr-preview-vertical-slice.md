@@ -72,17 +72,20 @@ Each PR owns resources named from its number:
 
 The trusted `pull_request_target` workflow checks out lifecycle code from `main`. Adding `deploy-preview` to an internal PR creates the database and secret, creates a trigger with an inline trusted build configuration, forces the first build, initializes the database from that exact image, deploys and comments the URL. The stored trigger is then replaced with an update-only variant. New commits build and deploy automatically without migrations or seeds. Removing the label or closing the PR deletes all PR-owned resources.
 
-The inline Cloud Build configuration is captured when the trigger is created; it is not read from the observed PR branch. Image tags include both commit and build IDs because Artifact Registry enforces immutable tags. Previews are public for low-friction QA and contain synthetic data only.
+The inline Cloud Build configuration is captured when the trigger is created; it is not read from the observed PR branch. Image tags include both commit and build IDs because Artifact Registry enforces immutable tags. Every preview enables IAP directly on its Cloud Run service and grants `roles/iap.httpsResourceAccessor` only to the Google Group configured by the trusted `PREVIEW_IAP_GROUP` environment variable. The Cloud Build service account receives the same resource-level role solely for authenticated remote smoke checks. The IAP service agent is the only Cloud Run invoker; anonymous invocation is disabled.
 
 ## Operations and safety
 
 ```bash
-node scripts/preview-lifecycle.mjs create 123 feature/my-branch
+PREVIEW_IAP_GROUP=preview-reviewers@example.com \
+  node scripts/preview-lifecycle.mjs create 123 feature/my-branch
 node scripts/preview-lifecycle.mjs destroy 123
 ```
+
+The GitHub `preview` environment must define `PREVIEW_IAP_GROUP` as an environment variable containing a Google Group email address. IAP must be bootstrapped once for the project with an OAuth client appropriate for the organization's users; the lifecycle then manages each service's group binding.
 
 Only numeric PR identifiers are accepted, and deletion derives every resource name from that identifier. Destroy is idempotent and cannot target the shared SQL instance. The image contains neither PGlite nor production secrets. Build/deploy credentials use Workload Identity Federation and dedicated service accounts.
 
 If a commit adds a migration, Cloud Run startup rejects the new revision and Cloud Build fails while the previous ready revision remains available. Applying migrations is deliberately an explicit operation; it is not part of commit-triggered updates.
 
-The public-access decision must be revisited before previews contain non-synthetic or sensitive review data. Retention cleanup for old Artifact Registry images and periodic orphan reconciliation remain operational follow-ups; PR close/unlabel cleanup is the primary lifecycle.
+Retention cleanup for old Artifact Registry images and periodic orphan reconciliation remain operational follow-ups; PR close/unlabel cleanup is the primary lifecycle.

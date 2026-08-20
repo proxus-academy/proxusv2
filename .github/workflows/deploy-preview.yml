@@ -42,6 +42,7 @@ jobs:
           HAS_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'deploy-preview') }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PREVIEW_IAP_GROUP: ${{ vars.PREVIEW_IAP_GROUP }}
         run: |
           set -euo pipefail
           if [[ "$ACTION" == closed || "$ACTION" == unlabeled && "$LABEL" == deploy-preview ]]; then
