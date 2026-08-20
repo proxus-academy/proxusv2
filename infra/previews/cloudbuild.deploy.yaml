@@ -47,26 +47,21 @@ steps:
       - --memory=512Mi
       - --port=8080
       - --no-allow-unauthenticated
-      - --iap
       - --labels=managed-by=proxus,environment=preview,preview-id=${_PREVIEW_ID}
       - --quiet
-  - id: authorize-iap
+  - id: authorize-smoke
     name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
-    entrypoint: bash
+    entrypoint: gcloud
     args:
-      - -ceu
-      - |
-        project_number="$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')"
-        gcloud run services add-iam-policy-binding "${_SERVICE}" \
-          --project="$PROJECT_ID" --region="${_REGION}" \
-          --member="serviceAccount:service-$${project_number}@gcp-sa-iap.iam.gserviceaccount.com" \
-          --role=roles/run.invoker --quiet
-        for member in "group:${_IAP_GROUP}" "serviceAccount:${_BUILD_SERVICE_ACCOUNT}"; do
-          gcloud iap web add-iam-policy-binding \
-            --project="$PROJECT_ID" --region="${_REGION}" \
-            --resource-type=cloud-run --service="${_SERVICE}" \
-            --member="$${member}" --role=roles/iap.httpsResourceAccessor --quiet
-        done
+      - run
+      - services
+      - add-iam-policy-binding
+      - ${_SERVICE}
+      - --project=$PROJECT_ID
+      - --region=${_REGION}
+      - --member=serviceAccount:${_BUILD_SERVICE_ACCOUNT}
+      - --role=roles/run.invoker
+      - --quiet
   - id: smoke
     name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
     entrypoint: bash
@@ -91,6 +86,35 @@ steps:
             sleep 2
           done
         done
+  - id: authorize-iap
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        project_number="$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')"
+        gcloud run services update "${_SERVICE}" \
+          --project="$PROJECT_ID" --region="${_REGION}" --iap --quiet
+        gcloud run services add-iam-policy-binding "${_SERVICE}" \
+          --project="$PROJECT_ID" --region="${_REGION}" \
+          --member="serviceAccount:service-$${project_number}@gcp-sa-iap.iam.gserviceaccount.com" \
+          --role=roles/run.invoker --quiet
+        gcloud iap web add-iam-policy-binding \
+          --project="$PROJECT_ID" --region="${_REGION}" \
+          --resource-type=cloud-run --service="${_SERVICE}" \
+          --member="group:${_IAP_GROUP}" --role=roles/iap.httpsResourceAccessor --quiet
+        gcloud iap web remove-iam-policy-binding \
+          --project="$PROJECT_ID" --region="${_REGION}" \
+          --resource-type=cloud-run --service="${_SERVICE}" \
+          --member="serviceAccount:${_BUILD_SERVICE_ACCOUNT}" \
+          --role=roles/iap.httpsResourceAccessor --quiet || true
+        gcloud run services remove-iam-policy-binding "${_SERVICE}" \
+          --project="$PROJECT_ID" --region="${_REGION}" \
+          --member="serviceAccount:${_BUILD_SERVICE_ACCOUNT}" \
+          --role=roles/run.invoker --quiet
+        origin="$(gcloud run services describe "${_SERVICE}" --project="$PROJECT_ID" --region="${_REGION}" --format='value(status.url)')"
+        status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$${origin}/es")"
+        [[ "$${status}" == 302 ]] || { echo "IAP gate returned $${status}; expected 302" >&2; exit 1; }
 options:
   logging: CLOUD_LOGGING_ONLY
 images:
