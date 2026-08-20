@@ -4,7 +4,8 @@
   "type": "module",
   "packageManager": "pnpm@10.32.1",
   "scripts": {
-    "dev": "concurrently --kill-others-on-fail --names dev-server,web,admin \"pnpm --filter @proxus/dev-server dev\" \"pnpm --filter @proxus/web dev\" \"pnpm --filter @proxus/admin dev\"",
+    "dev": "concurrently --kill-others-on-fail --names dev-server,site,web,admin \"pnpm --filter @proxus/dev-server dev\" \"pnpm --filter @proxus/site dev\" \"pnpm --filter @proxus/web dev\" \"pnpm --filter @proxus/admin dev\"",
+    "dev:site": "pnpm --filter @proxus/site dev",
     "dev:admin": "concurrently --kill-others-on-fail --names dev-server,admin \"pnpm --filter @proxus/dev-server dev\" \"pnpm --filter @proxus/admin dev\"",
     "dev:web": "concurrently --kill-others-on-fail --names dev-server,web \"pnpm --filter @proxus/dev-server dev\" \"pnpm --filter @proxus/web dev\"",
     "dev:server": "pnpm --filter @proxus/dev-server dev",

@@ -1,0 +1,14 @@
+---
+import SiteLayout from "../layouts/SiteLayout.astro"
+import { resolveProductUrl } from "../site-config"
+const productUrl = resolveProductUrl(import.meta.env.PUBLIC_PRODUCT_URL)
+const plans = [
+  { name: "Gratis", price: "0 €", description: "Para descubrir una forma mejor de estudiar.", features: ["Crea tu cuenta gratis", "Prueba las herramientas esenciales", "Organiza tu material"] },
+  { name: "Magia", price: "Consulta en la app", description: "Para estudiar de forma constante durante el curso.", features: ["Más generaciones", "Tests y flashcards", "Podcasts y apuntes", "Carpetas de estudio"], featured: true },
+  { name: "Supermagia", price: "Consulta en la app", description: "Para quienes quieren aprovechar todas las herramientas.", features: ["Todo lo incluido en Magia", "Mayor capacidad", "Herramientas avanzadas", "Experiencia prioritaria"] },
+]
+---
+<SiteLayout title="Precios de Proxus" description="Conoce los planes de Proxus y empieza gratis a transformar tus apuntes en material de estudio.">
+<section class="page-hero"><div class="container"><span class="eyebrow">Planes</span><h1>Empieza gratis. Mejora cuando lo necesites.</h1><p>El precio y la disponibilidad final se confirman en la aplicación según tu país.</p></div></section>
+<section class="section"><div class="container grid-3 pricing-grid">{plans.map(plan => <article class:list={["card","price-card",{"featured":plan.featured}]}><span class="eyebrow">{plan.name}</span><p class="price">{plan.price}</p><p>{plan.description}</p><ul class="feature-list">{plan.features.map(feature => <li>{feature}</li>)}</ul><a class="button" href={productUrl}>Empezar</a></article>)}</div></section>
+</SiteLayout>

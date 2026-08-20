@@ -1,6 +1,6 @@
 # Proxus v2
 
-Monorepo pnpm con backend Effect, aplicaciones React/Vite, contratos compartidos y PGlite embebido para desarrollo.
+Monorepo pnpm con backend Effect, sitio estático Astro, aplicaciones React/Vite, contratos compartidos y PGlite embebido para desarrollo.
 
 ## Organización del workspace
 
@@ -8,6 +8,7 @@ Los workspaces se mantienen en un único nivel para que la ruta física coincida
 
 ```text
 apps/
+├── site                 sitio público estático Astro
 ├── web                  producto público y adapters de navegador
 ├── admin                frontend administrativo
 ├── server               servidor público de producción
@@ -107,6 +108,7 @@ git submodule update --init --recursive
 | --- | --- | --- |
 | API pública Effect | http://localhost:3000 | `pnpm dev:server` |
 | API administrativa Effect | http://localhost:3001 | `pnpm dev:admin-server` |
+| Site | http://localhost:4321 | `pnpm dev:site` |
 | Web | http://localhost:5173 | `pnpm dev:web-front` |
 | Admin | http://localhost:5175 | `pnpm dev:admin-front` |
 | Storybook | http://localhost:6006 | `pnpm dev:storybook` |

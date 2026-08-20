@@ -1,0 +1,40 @@
+---
+import SiteLayout from "../layouts/SiteLayout.astro"
+import { resolveProductUrl } from "../site-config"
+const productUrl = resolveProductUrl(import.meta.env.PUBLIC_PRODUCT_URL)
+const tools = [
+  ["🧠", "Tests inteligentes", "Practica con preguntas creadas a partir de tus propios apuntes."],
+  ["⚡", "Flashcards", "Repasa los conceptos esenciales con tarjetas listas en segundos."],
+  ["🎧", "Podcasts", "Escucha tus temas de estudio cuando y donde quieras."],
+  ["📝", "Apuntes", "Transforma material disperso en explicaciones claras y ordenadas."],
+  ["🧩", "Ejercicios", "Pasa de entender la teoría a resolver problemas paso a paso."],
+  ["💬", "Chat de estudio", "Pregunta sobre tu material sin perder el contexto de la asignatura."],
+]
+const faqs = [
+  ["¿Qué es Proxus?", "Proxus es un espacio de estudio que transforma tu material en tests, flashcards, podcasts, apuntes y ejercicios."],
+  ["¿Puedo probarlo gratis?", "Sí. Puedes crear una cuenta gratis y empezar a estudiar antes de elegir un plan."],
+  ["¿Qué tipo de archivos puedo usar?", "Puedes trabajar con documentos y apuntes habituales. La aplicación te indicará los formatos disponibles al crear tu carpeta."],
+  ["¿Funciona en móvil?", "La experiencia de producto está disponible mediante las aplicaciones de Proxus. Este sitio funciona en cualquier dispositivo."],
+]
+---
+<SiteLayout title="Proxus — Todo lo que necesitas para estudiar mejor" description="Convierte tus apuntes en tests, flashcards, podcasts, ejercicios y mucho más con Proxus.">
+  <script is:inline type="application/ld+json" slot="head" set:html={JSON.stringify({"@context":"https://schema.org","@type":"SoftwareApplication",name:"Proxus",applicationCategory:"EducationalApplication",operatingSystem:"Web, iOS, Android",offers:{"@type":"Offer",price:"0",priceCurrency:"EUR"}})} />
+  <section class="hero">
+    <div class="container">
+      <span class="eyebrow">Tu nuevo espacio de estudio</span>
+      <h1>Convierte tus apuntes en una forma <span class="gradient-text">mejor de estudiar</span></h1>
+      <p class="hero-copy">Tests, flashcards, podcasts, ejercicios y un chat que entiende tu material. Todo organizado en un único lugar.</p>
+      <div class="hero-actions"><a class="button" href={productUrl}>Empieza gratis</a><a class="button button-secondary" href="#como-funciona">Descubre cómo funciona</a></div>
+      <p class="trust">Sin tarjeta · Empieza en menos de dos minutos</p>
+      <div class="product-preview" aria-label="Vista previa de una carpeta de estudio">
+        <div class="preview-bar"><i></i><i></i><i></i></div>
+        <div class="preview-body"><aside class="preview-sidebar"><strong>Biología celular</strong><span>Resumen</span><span>Test de práctica</span><span>Flashcards</span><span>Podcast</span></aside><div class="preview-content"><div class="preview-card"><span class="eyebrow">Tu progreso</span><h3>Dominas 17 de 25 conceptos</h3><p>Sigue practicando la membrana celular y el transporte activo.</p><div class="progress"><span></span></div></div></div></div>
+      </div>
+    </div>
+  </section>
+  <section class="section section-alt" id="como-funciona"><div class="container"><div class="section-heading"><span class="eyebrow">Así de fácil</span><h2>De tus apuntes a una sesión de estudio completa</h2><p>Proxus organiza el trabajo para que tú puedas concentrarte en aprender.</p></div><div class="grid-3 steps"><article class="card step"><h3>Crea una carpeta</h3><p>Agrupa una asignatura, tema o examen en un espacio que mantiene todo el contexto.</p></article><article class="card step"><h3>Añade tu material</h3><p>Sube tus apuntes y elige las herramientas que necesitas para estudiar.</p></article><article class="card step"><h3>Practica y mejora</h3><p>Alterna formatos, detecta lo que falla y vuelve a intentarlo con foco.</p></article></div></div></section>
+  <section class="section" id="herramientas"><div class="container"><div class="section-heading"><span class="eyebrow">Herramientas</span><h2>Una herramienta para cada forma de aprender</h2><p>Todo parte del mismo material y permanece organizado en la misma carpeta.</p></div><div class="grid-3">{tools.map(([icon,title,text]) => <article class="card"><span class="card-icon" aria-hidden="true">{icon}</span><h3>{title}</h3><p>{text}</p></article>)}</div></div></section>
+  <section class="section section-alt"><div class="container"><div class="section-heading"><span class="eyebrow">Estudiantes</span><h2>Menos tiempo preparando. Más tiempo aprendiendo.</h2></div><div class="grid-3"><blockquote class="card quote">“Ahora preparo cada tema en una carpeta y sé exactamente qué me queda por repasar.”<footer>— Estudiante de Medicina</footer></blockquote><blockquote class="card quote">“Los tests me ayudan a encontrar los puntos que creía entender, pero todavía fallaba.”<footer>— Estudiante de Derecho</footer></blockquote><blockquote class="card quote">“Escuchar los podcasts antes del examen hace que aproveche trayectos que antes perdía.”<footer>— Estudiante de Psicología</footer></blockquote></div></div></section>
+  <section class="section"><div class="container"><div class="section-heading"><span class="eyebrow">Preguntas frecuentes</span><h2>Todo claro antes de empezar</h2></div><div class="faq-list">{faqs.map(([question,answer]) => <details><summary>{question}</summary><p>{answer}</p></details>)}</div></div></section>
+  <section class="section"><div class="container cta"><span class="eyebrow">Empieza hoy</span><h2>Tu próxima sesión de estudio puede ser diferente</h2><p>Crea tu primera carpeta gratis y convierte tus apuntes en práctica.</p><div class="hero-actions"><a class="button" href={productUrl}>Crear mi cuenta gratis</a></div></div></section>
+</SiteLayout>

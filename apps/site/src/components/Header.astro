@@ -1,0 +1,29 @@
+---
+import { resolveProductUrl } from "../site-config"
+const productUrl = resolveProductUrl(import.meta.env.PUBLIC_PRODUCT_URL)
+---
+<header class="site-header">
+  <nav class="nav container" aria-label="Navegación principal">
+    <a class="brand" href="/" aria-label="Proxus, inicio"><span aria-hidden="true">P</span> PROXUS</a>
+    <button class="menu-button" type="button" aria-expanded="false" aria-controls="main-menu">
+      <span class="sr-only">Abrir menú</span><span aria-hidden="true">☰</span>
+    </button>
+    <div class="nav-links" id="main-menu">
+      <a href="/#como-funciona">Cómo funciona</a>
+      <a href="/#herramientas">Herramientas</a>
+      <a href="/pricing">Precios</a>
+      <a href="/blog">Blog</a>
+      <a href={`${productUrl}/login`}>Iniciar sesión</a>
+      <a class="button button-small" href={productUrl}>Empieza gratis</a>
+    </div>
+  </nav>
+</header>
+<script>
+  const button = document.querySelector<HTMLButtonElement>(".menu-button")
+  const menu = document.querySelector<HTMLElement>("#main-menu")
+  button?.addEventListener("click", () => {
+    const open = button.getAttribute("aria-expanded") === "true"
+    button.setAttribute("aria-expanded", String(!open))
+    menu?.toggleAttribute("data-open", !open)
+  })
+</script>
