@@ -36,7 +36,8 @@ All Turborepo tasks in the measured run were cache misses because no remote or G
 
 - Preserve the gates documented in `docs/testing.md`.
 - Keep Effect diagnostics across the complete TypeScript project inventory.
-- Keep type-aware ESLint, dependency-cruiser, Knip, and workspace contracts without accepted-violation baselines.
+- Keep the current type-aware lint rules, dependency-cruiser, Knip, and workspace contracts without accepted-violation baselines during the scheduling experiment.
+- Keep complete Effect diagnostics in strict mode and treat every lint or diagnostic warning as a CI failure.
 - Keep normal PGlite suites and the independent PostgreSQL 17 migration/adapter gate.
 - Do not describe Storybook builds or DOM tests as browser journeys.
 - Optimize execution and scheduling before reducing validation coverage.
@@ -51,7 +52,10 @@ Evaluate independently visible jobs for each material part of the critical path:
 self-test ───────────┐
 effect-diagnostics ──┤
 typecheck ───────────┤
-lint-and-architecture┼── candidate required PR gates
+lint ────────────────┤
+architecture ────────┤── candidate required PR gates
+knip ────────────────┤
+workspace-contracts ─┤
 tests ───────────────┤
 build ───────────────┤
 postgres ────────────┘
@@ -62,7 +66,10 @@ Suggested responsibilities:
 - `self-test`: the validator self-test;
 - `effect-diagnostics`: the complete Effect TypeScript project inventory;
 - `typecheck`: every workspace typecheck through Turborepo;
-- `lint-and-architecture`: type-aware ESLint, dependency-cruiser, Knip, and workspace contracts;
+- `lint`: the current type-aware lint rules;
+- `architecture`: dependency-cruiser while its guarantees and possible replacement are evaluated;
+- `knip`: unreachable files, exports and dependency usage;
+- `workspace-contracts`: package manifests, exports and direct dependency declarations;
 - `tests`: implemented normal Vitest suites, including PGlite and excluding PostgreSQL-only tests;
 - `build`: all real workspace builds, including Storybook;
 - `postgres`: the existing PostgreSQL 17 migration and adapter suite.
@@ -86,17 +93,32 @@ Cache correctness requirements:
 
 ### Experimental rollout
 
-Before replacing the existing gate, retain the original `validate` and `postgres` jobs as the authoritative result and run the parallel jobs only on pull requests. Experimental jobs are advisory and use `continue-on-error` so cache or orchestration mistakes cannot block a pull request.
+Before replacing the existing gate, retain the original `validate` and `postgres` jobs as the authoritative result and run the parallel jobs only on pull requests. Experimental jobs are advisory because they are not configured as required checks in repository policy; they intentionally do not use `continue-on-error`, so a detected defect remains visibly red and can be compared with the authoritative result.
 
 Compare the original and experimental paths on the same commits:
 
 1. run the first commit with cold Turborepo namespaces;
 2. push a documentation-only follow-up and verify category-specific cache hits;
-3. inject temporary failures for Effect diagnostics, TypeScript, ESLint/architecture, Vitest/PGlite, builds, and PostgreSQL;
+3. inject temporary failures for Effect diagnostics, TypeScript, lint, dependency-cruiser, Knip, workspace contracts, Vitest/PGlite, builds, and PostgreSQL;
 4. verify that every defect rejected by the original path is rejected by the corresponding experimental job;
 5. only then replace the original job and configure the resulting checks as repository merge requirements.
 
 The experimental workflow must not change build semantics, test concurrency, affected-package selection, or validation coverage. Those remain separate phases so timing and correctness regressions have one plausible cause.
+
+The validator self-test runs on every pull request during parity measurement. After promotion, restrict it to changes in validation scripts, validator configuration, workspace manifests, TypeScript configuration and CI workflows, while retaining an explicit or scheduled full run.
+
+### Follow-up toolchain spike — TypeScript 7 and Oxlint
+
+Run this as an isolated change after the scheduling experiment. Evaluate `@typescript/native-preview`, `oxlint-tsgolint` and Oxlint type-aware rules against the current ESLint diagnostics. The spike succeeds only if it:
+
+- reproduces every current lint failure without introducing accepted warnings;
+- runs with `--report-unused-disable-directives` and treats warnings as errors;
+- preserves the complete strict Effect diagnostics inventory and all configured diagnostics;
+- passes `pnpm validate:pr` and the PostgreSQL gate;
+- establishes whether TypeScript 7 can be normative for typechecking or only the Oxlint backend;
+- demonstrates enough parity to remove ESLint and `typescript-eslint` rather than keeping two permanent linters.
+
+Do not weaken or disable an Effect diagnostic to make the migration pass. Record cold and warm timings against the existing ESLint and TypeScript commands.
 
 ### 3. Remove duplicate typecheck builds
 
@@ -114,7 +136,7 @@ The resulting build gate must still build Web, Admin, Storybook, and every other
 ### Phase 1 acceptance criteria
 
 - The same defects rejected by the current PR validation remain rejected.
-- Self-test, Effect diagnostics, typecheck, lint/architecture, tests, build, and PostgreSQL appear as separate GitHub checks.
+- Self-test, Effect diagnostics, typecheck, lint, architecture, Knip, workspace contracts, tests, build, and PostgreSQL appear as separate GitHub checks.
 - A cold run has a critical path no longer than 3 minutes under normal runner conditions.
 - A second small PR update demonstrates Turborepo cache hits.
 - `docs/testing.md` reflects the resulting job structure and cache behavior.
@@ -186,8 +208,9 @@ Capture a baseline before each phase and compare several runs rather than relyin
 2. Add pnpm store caching and category-specific `.turbo` persistence to those jobs.
 3. Compare cold, warm, and deliberately failing runs against the original job.
 4. Promote the parallel checks only after parity is demonstrated.
-5. Remove duplicate non-emitting build scripts in a separate change.
-6. Parallelize non-PGlite tests while retaining package-local limits.
-7. Evaluate affected package tasks, with complete validation retained on `main`.
+5. Run the isolated TypeScript 7 and Oxlint parity spike.
+6. Remove duplicate non-emitting build scripts in a separate change.
+7. Parallelize non-PGlite tests while retaining package-local limits.
+8. Evaluate affected package tasks, with complete validation retained on `main`.
 
 Phase 1 has the highest expected impact with the lowest correctness risk because it changes scheduling and reuse without reducing coverage. The temporary duplicate execution costs more runner time, but it supplies a direct equivalence check before the authoritative gate changes.
