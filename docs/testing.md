@@ -177,15 +177,9 @@ un proceso vacío.
 
 ## Current CI gates and pending suites
 
-The current `.github/workflows/validate.yml` has two independent required jobs.
-After a frozen install, `validate` runs `pnpm validate:pr`, which performs:
+The current `.github/workflows/validate.yml` exposes every authoritative gate independently and starts them in parallel: validator self-test, Effect diagnostics, typecheck, type-aware lint, dependency-cruiser architecture, Knip, workspace contracts, Vitest/PGlite, build and PostgreSQL 17. There is no duplicate monolithic CI job and no validator uses `continue-on-error`. A failure or warning in any strict validator remains a failed check.
 
-1. validator self-tests;
-2. static validation;
-3. the implemented normal Vitest suites through Turborepo with concurrency one,
-   including PGlite but excluding `packages/backend-infra/src/postgres`;
-4. every workspace build through the package dependency graph, including the
-   static Storybook build.
+The root `pnpm validate:pr` command retains the same complete sequential validation for local use: validator self-tests, static validation, normal Vitest/PGlite suites and every workspace build including Storybook. CI changes scheduling, not coverage. Knip generates Paraglide before analysis because its fresh runner must resolve those generated imports without relying on another job's filesystem.
 
 Turborepo schedules `build`, `typecheck` and `test` from the dependencies declared
 in workspace manifests and caches deterministic task results locally. Builds run
@@ -194,7 +188,7 @@ typechecks and tests cache successful logs because they do not produce committed
 artifacts. CI intentionally keeps normal tests at concurrency one for the PGlite
 resource constraints described above. Global validators (`lint`, `boundaries`,
 `knip`, workspace contracts and validator self-tests) remain explicit root tasks
-and are not treated as package-local affected checks. No remote cache is configured.
+and are not treated as package-local affected checks. No Turbo Remote Cache is configured. CI jobs persist the pnpm store and use distinct GitHub Actions cache namespaces for the `typecheck`, `tests` and `build` `.turbo` directories so concurrent jobs cannot save different partial caches under one key. The validator self-test remains unconditional to preserve strict verification of the validation harness.
 
 `postgres` provisions `postgres:17.7-bookworm` with a `pg_isready` healthcheck
 and a fresh `proxus_postgres_test` database. It explicitly runs the production
@@ -277,12 +271,14 @@ not add PostgreSQL or browser coverage. The separate CI `postgres` job is the
 real-PostgreSQL gate. CI pins the action commits, Node 22.22.2, Corepack 0.35.0
 and the repository's `pnpm@10.32.1`, and installs with `--frozen-lockfile`.
 
-### Current validation baseline (2026-07-21)
+### Current validation baseline (2026-08-20)
 
-`pnpm static` has no accepted-finding baseline: every finding must be fixed.
-The 15 Effect projects include current TypeScript configs; the same configs are
-covered by typecheck and type-aware ESLint. All 77 diagnostics exposed by the
-installed Effect Language Service are configured as errors in `tsconfig.base.json`;
+`pnpm static` has no accepted-finding baseline: every finding and warning must be fixed.
+The 16 Effect projects include current TypeScript configs; the same configs are
+covered by typecheck and type-aware Oxlint. Oxlint uses TypeScript 7 through
+`oxlint-tsgolint`, while the normative package typecheck and Effect Language
+Service continue to use the pinned stable TypeScript compiler. All 77 diagnostics
+exposed by the installed Effect Language Service are configured as errors in `tsconfig.base.json`;
 workspace tsconfigs inherit that plugin configuration without disabling it. A green
 static run says nothing about
 the separate PostgreSQL gate or pending browser suites. Knip's dependency ignores are limited

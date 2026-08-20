@@ -1,0 +1,43 @@
+name: Set up validation
+description: Set up the pinned Node.js and pnpm toolchain with optional validation caches.
+
+inputs:
+  turbo_cache_key:
+    description: Job-specific Turborepo cache namespace. Leave empty when the job does not run Turbo.
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Use pinned Node.js
+      uses: actions/setup-node@0a44ba7841725637a19e28fa30b79a866c81b0a6 # v4.0.4
+      with:
+        node-version: 22.22.2
+    - name: Enable pinned pnpm
+      shell: bash
+      run: |
+        npm install --global corepack@0.35.0
+        corepack enable pnpm
+    - name: Locate pnpm store
+      id: pnpm-store
+      shell: bash
+      run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+    - name: Restore pnpm store
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.pnpm-store.outputs.path }}
+        key: pnpm-v1-${{ runner.os }}-node-22.22.2-${{ hashFiles('pnpm-lock.yaml') }}
+        restore-keys: |
+          pnpm-v1-${{ runner.os }}-node-22.22.2-
+    - name: Restore job-specific Turborepo cache
+      if: ${{ inputs.turbo_cache_key != '' }}
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: .turbo
+        key: turbo-v1-${{ runner.os }}-node-22.22.2-${{ inputs.turbo_cache_key }}-${{ github.sha }}
+        restore-keys: |
+          turbo-v1-${{ runner.os }}-node-22.22.2-${{ inputs.turbo_cache_key }}-
+    - name: Install frozen dependencies
+      shell: bash
+      run: pnpm install --frozen-lockfile

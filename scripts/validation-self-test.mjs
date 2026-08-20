@@ -78,24 +78,24 @@ try {
     ["vite.config.ts", "TS2322"]
   )
 
-  const eslintProbe = resolve(temporaryRoot, "eslint")
-  mkdirSync(eslintProbe, { recursive: true })
-  linkNodeModules(eslintProbe)
-  writeToolManifest(eslintProbe, { lint: rootManifest.scripts.lint })
-  cpSync(resolve(root, "eslint.config.mjs"), resolve(eslintProbe, "eslint.config.mjs"))
-  writeJson(eslintProbe, "apps/probe/tsconfig.json", {
+  const oxlintProbe = resolve(temporaryRoot, "oxlint")
+  mkdirSync(oxlintProbe, { recursive: true })
+  linkNodeModules(oxlintProbe)
+  writeToolManifest(oxlintProbe, { lint: rootManifest.scripts.lint })
+  cpSync(resolve(root, ".oxlintrc.json"), resolve(oxlintProbe, ".oxlintrc.json"))
+  writeJson(oxlintProbe, "apps/probe/tsconfig.json", {
     compilerOptions: { module: "ESNext", noEmit: true, strict: true, target: "ES2022" },
     include: ["*.config.ts"]
   })
   write(
-    eslintProbe,
+    oxlintProbe,
     "apps/probe/vite.config.ts",
     "async function save(): Promise<void> {}\n\nsave()\nconst forced = ({ value: 'text' } as unknown) as { value: number }\nvoid forced\n"
   )
   expectFailure(
-    "ESLint package wrapper and config glob",
-    runPnpmScript("lint", eslintProbe),
-    ["@typescript-eslint/no-floating-promises", "@typescript-eslint/no-unsafe-type-assertion", "vite.config.ts"]
+    "Oxlint package wrapper and config traversal",
+    runPnpmScript("lint", oxlintProbe),
+    ["typescript(no-floating-promises)", "typescript(no-unsafe-type-assertion)", "vite.config.ts"]
   )
 
   const boundariesProbe = resolve(temporaryRoot, "boundaries")

@@ -13,24 +13,51 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  validate:
+  validation:
+    name: ${{ matrix.name }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Validator self-test
+            command: pnpm validate:self-test
+            turbo_cache_key: ""
+          - name: Effect diagnostics
+            command: pnpm effect:diagnostics
+            turbo_cache_key: ""
+          - name: Typecheck
+            command: pnpm typecheck
+            turbo_cache_key: typecheck
+          - name: Lint
+            command: pnpm lint
+            turbo_cache_key: ""
+          - name: Architecture
+            command: pnpm boundaries
+            turbo_cache_key: ""
+          # Knip resolves generated Paraglide imports, so this job owns that prerequisite.
+          - name: Knip
+            command: pnpm knip
+            turbo_cache_key: ""
+          - name: Workspace contracts
+            command: pnpm workspace:contracts
+            turbo_cache_key: ""
+          - name: Vitest and PGlite
+            command: pnpm test:ci
+            turbo_cache_key: tests
+          - name: Build
+            command: pnpm build
+            turbo_cache_key: build
     steps:
       - name: Check out repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - name: Use pinned Node.js
-        uses: actions/setup-node@0a44ba7841725637a19e28fa30b79a866c81b0a6 # v4.0.4
+      - name: Set up validation
+        uses: ./.github/actions/setup-validation
         with:
-          node-version: 22.22.2
-      - name: Enable pinned pnpm
-        run: |
-          npm install --global corepack@0.35.0
-          corepack enable pnpm
-      - name: Install frozen dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Validate static, Vitest/PGlite, and build checks
-        run: pnpm validate:pr
+          turbo_cache_key: ${{ matrix.turbo_cache_key }}
+      - name: Run ${{ matrix.name }}
+        run: ${{ matrix.command }}
 
   postgres:
     name: PostgreSQL 17
