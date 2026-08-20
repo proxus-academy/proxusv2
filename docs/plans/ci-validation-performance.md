@@ -8,6 +8,8 @@ Reduce pull-request feedback time without removing any existing static, Vitest/P
 
 GitHub Actions run `32383329052` took 6 minutes 53 seconds. The independent PostgreSQL job completed in about 55 seconds; the critical path was the monolithic `validate` job.
 
+A later run (`32384470240`) confirmed the same shape and exposed an important scheduling constraint: setup plus the complete static sequence took about 4 minutes 20 seconds. A single `static` job therefore cannot meet the cold 2–3 minute target even when tests and builds run beside it.
+
 Approximate timings:
 
 | Phase | Duration |
@@ -43,23 +45,29 @@ All Turborepo tasks in the measured run were cache misses because no remote or G
 
 ### 1. Split the monolithic validation job
 
-Replace the single `validate` job with independently visible jobs:
+Evaluate independently visible jobs for each material part of the critical path:
 
 ```text
-static ───────┐
-tests ────────┼── required PR gates
-build ────────┤
-postgres ─────┘
+self-test ───────────┐
+effect-diagnostics ──┤
+typecheck ───────────┤
+lint-and-architecture┼── candidate required PR gates
+tests ───────────────┤
+build ───────────────┤
+postgres ────────────┘
 ```
 
 Suggested responsibilities:
 
-- `static`: validator self-test, Effect diagnostics, typecheck, ESLint, dependency-cruiser, Knip, and workspace contracts;
+- `self-test`: the validator self-test;
+- `effect-diagnostics`: the complete Effect TypeScript project inventory;
+- `typecheck`: every workspace typecheck through Turborepo;
+- `lint-and-architecture`: type-aware ESLint, dependency-cruiser, Knip, and workspace contracts;
 - `tests`: implemented normal Vitest suites, including PGlite and excluding PostgreSQL-only tests;
 - `build`: all real workspace builds, including Storybook;
 - `postgres`: the existing PostgreSQL 17 migration and adapter suite.
 
-These jobs should start concurrently. Keep `cancel-in-progress: true` so a newer commit supersedes obsolete work.
+These jobs should start concurrently. Keep `cancel-in-progress: true` so a newer commit supersedes obsolete work. Keeping all static checks in one job would reduce total runner setup but leave a cold critical path above four minutes.
 
 ### 2. Persist pnpm and Turborepo caches
 
@@ -67,12 +75,28 @@ Configure pnpm store caching through `actions/setup-node` or an equivalently pin
 
 Persist `.turbo` between workflow runs. Start with GitHub Actions cache and restore keys that permit reuse from the base branch. Evaluate Turbo Remote Cache later if sharing results with local development or multiple workflows provides enough value.
 
+Use a separate Turborepo cache namespace for each concurrent task category. For example, `typecheck`, `tests`, and `build` must not race to save different partial `.turbo` directories under one cache key. The pnpm store may use a shared content-addressed cache.
+
 Cache correctness requirements:
 
 - environment variables that affect outputs remain declared in `turbo.json`;
 - generated frontend and Storybook outputs remain declared;
 - lockfile, package manifests, task configuration, source inputs, and global TypeScript configuration invalidate relevant entries;
 - cache restoration must never turn a failed task into a successful gate.
+
+### Experimental rollout
+
+Before replacing the existing gate, retain the original `validate` and `postgres` jobs as the authoritative result and run the parallel jobs only on pull requests. Experimental jobs are advisory and use `continue-on-error` so cache or orchestration mistakes cannot block a pull request.
+
+Compare the original and experimental paths on the same commits:
+
+1. run the first commit with cold Turborepo namespaces;
+2. push a documentation-only follow-up and verify category-specific cache hits;
+3. inject temporary failures for Effect diagnostics, TypeScript, ESLint/architecture, Vitest/PGlite, builds, and PostgreSQL;
+4. verify that every defect rejected by the original path is rejected by the corresponding experimental job;
+5. only then replace the original job and configure the resulting checks as repository merge requirements.
+
+The experimental workflow must not change build semantics, test concurrency, affected-package selection, or validation coverage. Those remain separate phases so timing and correctness regressions have one plausible cause.
 
 ### 3. Remove duplicate typecheck builds
 
@@ -90,7 +114,7 @@ The resulting build gate must still build Web, Admin, Storybook, and every other
 ### Phase 1 acceptance criteria
 
 - The same defects rejected by the current PR validation remain rejected.
-- Static, tests, build, and PostgreSQL appear as separate GitHub checks.
+- Self-test, Effect diagnostics, typecheck, lint/architecture, tests, build, and PostgreSQL appear as separate GitHub checks.
 - A cold run has a critical path no longer than 3 minutes under normal runner conditions.
 - A second small PR update demonstrates Turborepo cache hits.
 - `docs/testing.md` reflects the resulting job structure and cache behavior.
@@ -158,11 +182,12 @@ Capture a baseline before each phase and compare several runs rather than relyin
 
 ## Recommended implementation order
 
-1. Split static, tests, build, and PostgreSQL into parallel jobs.
-2. Add pnpm store and `.turbo` persistence.
-3. Remove duplicate non-emitting build scripts.
-4. Measure cold and warm runs and update `docs/testing.md`.
-5. Parallelize non-PGlite tests while retaining package-local limits.
-6. Evaluate affected package tasks, with complete validation retained on `main`.
+1. Add advisory parallel jobs while retaining the original authoritative validation.
+2. Add pnpm store caching and category-specific `.turbo` persistence to those jobs.
+3. Compare cold, warm, and deliberately failing runs against the original job.
+4. Promote the parallel checks only after parity is demonstrated.
+5. Remove duplicate non-emitting build scripts in a separate change.
+6. Parallelize non-PGlite tests while retaining package-local limits.
+7. Evaluate affected package tasks, with complete validation retained on `main`.
 
-Phase 1 has the highest expected impact with the lowest correctness risk because it changes scheduling and reuse without reducing coverage.
+Phase 1 has the highest expected impact with the lowest correctness risk because it changes scheduling and reuse without reducing coverage. The temporary duplicate execution costs more runner time, but it supplies a direct equivalence check before the authoritative gate changes.
