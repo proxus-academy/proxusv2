@@ -1,3 +1,4 @@
+import { registration_chooseMethod_connectingGoogle, registration_completed_active, registration_completed_title } from "../../paraglide/messages.js"
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { RegistrationState, RegistrationStep } from "@proxus/frontend-core/registration"
 import type { RegistrationUrlState } from "../../platform/registration/wizard-url.js"
@@ -19,7 +20,6 @@ import {
   registrationStepViewedAnalyticsAction,
 } from "./feature-flags.js"
 import { useEffect, useMemo, useRef } from "react"
-import { useTranslation } from "react-i18next"
 
 const onboardingSteps = new Set<RegistrationStep>([
   "problem",
@@ -111,7 +111,6 @@ export function RegistrationOnboarding({ url = { step: "start", nodeIds: [], val
     return undefined
   }, [requestedStep, state])
   const previousStep = useRef(currentStep)
-  const { t } = useTranslation("registration")
   useEffect(() => {
     const previous = previousStep.current
     if (currentStep === undefined) {
@@ -134,11 +133,11 @@ export function RegistrationOnboarding({ url = { step: "start", nodeIds: [], val
   switch (state._tag) {
     case "ChoosingMethod": return <RegistrationPageShell><ChoosingMethod onOpenLogin={onOpenLogin ?? (() => undefined)} /></RegistrationPageShell>
     case "ResolvingGoogle": return <RegistrationPageShell><main aria-busy="true">
-      <Heading level={1}>{t("chooseMethod.connectingGoogle")}</Heading>
+      <Heading level={1}>{registration_chooseMethod_connectingGoogle()}</Heading>
       <RegistrationFailure />
     </main></RegistrationPageShell>
     case "EmailVerificationPending": return <RegistrationPageShell step={6} totalSteps={6} provider="email"><EmailVerification state={state} onComplete={onComplete} /></RegistrationPageShell>
-    case "Completed": return <RegistrationPageShell><main><Heading level={1}>{t("completed.title")}</Heading><Text>{t("completed.active")}</Text></main></RegistrationPageShell>
+    case "Completed": return <RegistrationPageShell><main><Heading level={1}>{registration_completed_title()}</Heading><Text>{registration_completed_active()}</Text></main></RegistrationPageShell>
     case "CollectingOnboarding":
     case "ConfirmingGoogle":
       return <OnboardingSteps state={state} onComplete={onComplete} {...(requestedStep === undefined ? {} : { requestedStep })} />

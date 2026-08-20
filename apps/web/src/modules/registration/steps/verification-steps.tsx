@@ -1,3 +1,4 @@
+import { registration_verification_accept, registration_verification_confirm, registration_verification_confirmGoogle, registration_verification_googleTitle, registration_verification_resend, registration_verification_resendIn, registration_verification_resent, registration_verification_sentTo, registration_verification_spam, registration_verification_title, registration_verification_verifiedEmail, registration_verification_legal } from "../../../paraglide/messages.js"
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { RegistrationDraft, RegistrationState } from "@proxus/frontend-core/registration"
 import { Exit } from "effect"
@@ -10,7 +11,7 @@ import {
   resendRegistrationCodeAction,
   verifyRegistrationCodeAction,
 } from "../state.js"
-import { Trans, useTranslation } from "react-i18next"
+import { RichText } from "../../../platform/rich-text.js"
 
 export function EmailVerification({ state, onComplete = () => Promise.resolve() }: {
   readonly state: Extract<RegistrationState, { readonly _tag: "EmailVerificationPending" }>
@@ -23,7 +24,6 @@ export function EmailVerification({ state, onComplete = () => Promise.resolve() 
   const [code, setCode] = useState("")
   // Registration has just issued a code and the server enforces the same cooldown.
   const [cooldown, setCooldown] = useState(60)
-  const { t } = useTranslation("registration", { keyPrefix: "verification" })
   useEffect(() => {
     if (cooldown <= 0) return
     // UI-only countdown synchronized with wall time.
@@ -39,13 +39,13 @@ export function EmailVerification({ state, onComplete = () => Promise.resolve() 
   }
   return (
     <main className="mx-auto flex max-w-xl flex-col items-center gap-5 text-center">
-      <Heading level={1}>{t("title")}</Heading>
-      <Text>{t("sentTo", { email: state.maskedEmail })}</Text>
+      <Heading level={1}>{registration_verification_title()}</Heading>
+      <Text>{registration_verification_sentTo({ email: state.maskedEmail })}</Text>
       <RegistrationFailure />
       <form onSubmit={onSubmit} className="flex w-full flex-col items-center gap-5">
         <OtpInput value={code} onChange={setCode} loading={busy} />
         <div className="flex flex-wrap items-center justify-center gap-3">
-          <Button loading={busy} disabled={code.length !== 6} type="submit">{t("confirm")}</Button>
+          <Button loading={busy} disabled={code.length !== 6} type="submit">{registration_verification_confirm()}</Button>
           <Button
             type="button"
             variant="ghost"
@@ -55,14 +55,14 @@ export function EmailVerification({ state, onComplete = () => Promise.resolve() 
               setCooldown(60)
             }}
           >
-            {cooldown > 0 ? t("resendIn", { seconds: cooldown }) : t("resend")}
+            {cooldown > 0 ? registration_verification_resendIn({ seconds: cooldown }) : registration_verification_resend()}
           </Button>
         </div>
       </form>
       {resendResult._tag === "Success"
-        ? <Text role="status">{t("resent")}</Text>
+        ? <Text role="status">{registration_verification_resent()}</Text>
         : null}
-      <Text tone="muted">{t("spam")}</Text>
+      <Text tone="muted">{registration_verification_spam()}</Text>
     </main>
   )
 }
@@ -75,11 +75,10 @@ export function ConfirmGoogle({ state, onComplete = () => Promise.resolve() }: {
   const confirm = useAtomSet(confirmGoogleRegistrationAction, { mode: "promiseExit" })
   const busy = useAtomValue(registrationBusyAtom)
   const [accepted, setAccepted] = useState(false)
-  const { t } = useTranslation("registration", { keyPrefix: "verification" })
   return (
     <main>
-      <Heading level={1}>{t("googleTitle")}</Heading>
-      <Text>{t("verifiedEmail", { email: state.googleRegistration.email })}</Text>
+      <Heading level={1}>{registration_verification_googleTitle()}</Heading>
+      <Text>{registration_verification_verifiedEmail({ email: state.googleRegistration.email })}</Text>
       <DraftSummary draft={draft} />
       <RegistrationFailure />
       <form id="google-confirm" onSubmit={(event) => {
@@ -93,11 +92,11 @@ export function ConfirmGoogle({ state, onComplete = () => Promise.resolve() }: {
             checked={accepted}
             onCheckedChange={(checked) => setAccepted(checked === true)}
             aria-required="true"
-            aria-label={t("accept")}
+            aria-label={registration_verification_accept()}
           />
-          <span><Trans t={t} i18nKey="legal" components={{ terms: <a className="text-primary underline" href="https://proxus.es/terms" target="_blank" rel="noreferrer" />, privacy: <a className="text-primary underline" href="https://proxus.es/privacy" target="_blank" rel="noreferrer" /> }} /></span>
+          <span><RichText message={registration_verification_legal()} components={{ terms: <a className="text-primary underline" href="https://proxus.es/terms" target="_blank" rel="noreferrer" />, privacy: <a className="text-primary underline" href="https://proxus.es/privacy" target="_blank" rel="noreferrer" /> }} /></span>
         </label>
-        <Button loading={busy} disabled={!accepted} type="submit">{t("confirmGoogle")}</Button>
+        <Button loading={busy} disabled={!accepted} type="submit">{registration_verification_confirmGoogle()}</Button>
       </form>
     </main>
   )

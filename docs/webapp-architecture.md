@@ -162,11 +162,15 @@ URL-specific codecs, such as registration wizard search parameters, belong to
 remain in `packages/frontend-core`. Full-document navigation used by OAuth is a
 separate platform capability because it leaves the SPA.
 
-The locale segment is validated at the locale layout, which provides an isolated
-i18next instance and applies document language attributes. The URL and its
-observable router state remain authoritative; i18next formats messages but does
-not navigate or persist preferences. Invalid and unmatched URLs redirect to the
-preferred locale registration page.
+Paraglide's client runtime is the sole locale source. TanStack Router's rewrite
+hooks use Paraglide `deLocalizeUrl` and `localizeUrl`, so file routes stay
+locale-free while localized URLs, query parameters, and SPA navigation remain
+correct. Views import generated message functions directly; no React translation
+context or string-key lookup is allowed. The root synchronizes `lang` and `dir`
+after render. Message catalogs live in `apps/web/messages` and compile to ignored
+generated modules in `apps/web/src/paraglide`; package scripts compile them before
+typechecking and testing, while the Vite plugin compiles them during development
+and builds.
 
 ## Legitimate effects
 

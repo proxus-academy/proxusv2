@@ -14,7 +14,6 @@ import {
 } from "./feature-flags.js"
 import { RegistrationOnboarding } from "./onboarding-flow.js"
 import { registrationStateAtom } from "./state.js"
-import { ProductI18nTestProvider } from "../../testing/product-i18n.js"
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
 const emailDraft: RegistrationDraft = { provider: "email", path: [] }
@@ -37,7 +36,7 @@ const render = (state: RegistrationState) => {
   return Effect.promise(() => act(() => {
     root.render(
       <RegistryProvider key={renderKey} initialValues={initialValues}>
-        <ProductI18nTestProvider><RegistrationOnboarding /></ProductI18nTestProvider>
+        <RegistrationOnboarding />
       </RegistryProvider>,
     )
     return Effect.runPromise(Effect.sleep("10 millis"))

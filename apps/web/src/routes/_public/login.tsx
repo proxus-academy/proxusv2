@@ -1,13 +1,13 @@
+import { auth_login_createAccount, auth_login_email, auth_login_failed, auth_login_forgotPassword, auth_login_google, auth_login_password, auth_login_submit, auth_login_submitting, auth_login_title } from "../../paraglide/messages.js"
 import { createFileRoute } from "@tanstack/react-router"
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { Button } from "@proxus/ui"
 import { Exit } from "effect"
 import * as AsyncResult from "effect/unstable/reactivity/AsyncResult"
-import { AuthError } from "../../../modules/auth/auth-controls.js"
-import { openPasswordRecoveryAction, startGoogleLoginAction } from "../../../modules/auth/actions.js"
-import { LoginForm } from "../../../modules/auth/forms.js"
-import { AuthPage } from "../../../modules/auth/auth-shell.js"
-import { useTranslation } from "react-i18next"
+import { AuthError } from "../../modules/auth/auth-controls.js"
+import { openPasswordRecoveryAction, startGoogleLoginAction } from "../../modules/auth/actions.js"
+import { LoginForm } from "../../modules/auth/forms.js"
+import { AuthPage } from "../../modules/auth/auth-shell.js"
 
 export function LoginPage() {
   const loginResult = useAtomValue(LoginForm.submit)
@@ -16,23 +16,21 @@ export function LoginPage() {
   const startGoogleResult = useAtomValue(startGoogleLoginAction)
   const openRecovery = useAtomSet(openPasswordRecoveryAction, { mode: "promiseExit" })
   const navigate = Route.useNavigate()
-  const { locale } = Route.useParams()
-  const { t } = useTranslation("auth", { keyPrefix: "login" })
 
   return (
-    <AuthPage title={t("title")}>
+    <AuthPage title={auth_login_title()}>
       <AuthError
         visible={AsyncResult.isFailure(loginResult) || startGoogleResult._tag === "Failure"}
-        message={t("failed")}
+        message={auth_login_failed()}
       />
       <LoginForm.Initialize defaultValues={{ email: "", password: "" }}>
         <form className="space-y-4" onSubmit={(event) => {
           event.preventDefault()
           submitLogin()
         }}>
-          <LoginForm.email label={t("email")} name="email" type="email" autoComplete="email" />
-          <LoginForm.password label={t("password")} name="password" type="password" autoComplete="current-password" />
-          <Button className="w-full" type="submit">{loginResult.waiting ? t("submitting") : t("submit")}</Button>
+          <LoginForm.email label={auth_login_email()} name="email" type="email" autoComplete="email" />
+          <LoginForm.password label={auth_login_password()} name="password" type="password" autoComplete="current-password" />
+          <Button className="w-full" type="submit">{loginResult.waiting ? auth_login_submitting() : auth_login_submit()}</Button>
         </form>
       </LoginForm.Initialize>
       <Button
@@ -43,26 +41,26 @@ export function LoginPage() {
           requestId: `${globalThis.performance.timeOrigin}:${globalThis.performance.now()}`,
         })}
       >
-        {t("google")}
+        {auth_login_google()}
       </Button>
       <Button className="w-full" variant="ghost" onClick={() => {
-        void navigate({ to: "/$locale", params: { locale }, search: {} })
+        void navigate({ to: "/", search: {} })
       }}> 
-        {t("createAccount")}
+        {auth_login_createAccount()}
       </Button>
       <Button variant="ghost" onClick={() => {
         void openRecovery({ email: "" }).then((exit) => {
           if (Exit.isSuccess(exit)) {
-            void navigate({ to: "/$locale/password-recovery", params: { locale } })
+            void navigate({ to: "/password-recovery" })
           }
         })
       }}>
-        {t("forgotPassword")}
+        {auth_login_forgotPassword()}
       </Button>
     </AuthPage>
   )
 }
 
-export const Route = createFileRoute("/$locale/_public/login")({
+export const Route = createFileRoute("/_public/login")({
   component: LoginPage,
 })

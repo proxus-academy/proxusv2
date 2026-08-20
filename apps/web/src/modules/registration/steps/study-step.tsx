@@ -1,3 +1,4 @@
+import { registration_study_labels_country, registration_study_labels_degree, registration_study_labels_subject, registration_study_labels_type, registration_study_labels_university, registration_study_currentSelection, registration_study_loadFailed, registration_study_loadFailedDescription, registration_study_loading, registration_study_noResults, registration_study_noResultsDescription, registration_study_nonePublished, registration_study_search, registration_study_searchPlaceholder, registration_study_titles_continueFrom, registration_study_titles_country, registration_study_titles_degree, registration_study_titles_root, registration_study_titles_subject, registration_study_titles_type, registration_study_titles_university, registration_study_users } from "../../../paraglide/messages.js"
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import {
   publicStudyCatalogChildrenQuery,
@@ -9,15 +10,15 @@ import type { RegistrationDraft } from "@proxus/frontend-core/registration"
 import type { StudyNode } from "@proxus/shared/study-catalog"
 import { ChoiceCard, EmptyState, Heading, Input, Pagination, Skeleton } from "@proxus/ui"
 import { useEffect, useMemo, useState } from "react"
-import { nodeLabelKeys } from "../registration-copy.js"
+
 import { changeRegistrationStudyPathAction, dispatchRegistrationAction } from "../state.js"
-import { useTranslation } from "react-i18next"
+
+const nodeLabels = { country: registration_study_labels_country, type: registration_study_labels_type, university: registration_study_labels_university, degree: registration_study_labels_degree, subject: registration_study_labels_subject }
 
 function StudyOptions({ state }: {
   readonly state: StudyCatalogViewState<ReadonlyArray<StudyNode>>
 }) {
   const dispatch = useAtomSet(dispatchRegistrationAction)
-  const { t } = useTranslation("registration", { keyPrefix: "study" })
   const [query, setQuery] = useState("")
   const [page, setPage] = useState(1)
   const pageSize = 12
@@ -27,24 +28,24 @@ function StudyOptions({ state }: {
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize))
   useEffect(() => setPage(1), [query])
   if (state._tag === "Initial") {
-    return <div className="grid gap-3 sm:grid-cols-2" aria-label={t("loading")}>{Array.from({ length: 6 }, (_, index) => <Skeleton key={index} className="h-24 rounded-2xl" />)}</div>
+    return <div className="grid gap-3 sm:grid-cols-2" aria-label={registration_study_loading()}>{Array.from({ length: 6 }, (_, index) => <Skeleton key={index} className="h-24 rounded-2xl" />)}</div>
   }
-  if (state._tag === "Failure") return <EmptyState title={t("loadFailed")} description={t("loadFailedDescription")} />
-  if (state.value.length === 0) return <EmptyState title={t("nonePublished")} />
+  if (state._tag === "Failure") return <EmptyState title={registration_study_loadFailed()} description={registration_study_loadFailedDescription()} />
+  if (state.value.length === 0) return <EmptyState title={registration_study_nonePublished()} />
   return (
     <div className="space-y-5">
       <label className="relative block">
-        <span className="sr-only">{t("search")}</span>
-        <Input value={query} onChange={(event) => setQuery(event.currentTarget.value)} placeholder={t("searchPlaceholder")} />
+        <span className="sr-only">{registration_study_search()}</span>
+        <Input value={query} onChange={(event) => setQuery(event.currentTarget.value)} placeholder={registration_study_searchPlaceholder()} />
       </label>
-      {filtered.length === 0 ? <EmptyState title={t("noResults")} description={t("noResultsDescription")} /> : (
+      {filtered.length === 0 ? <EmptyState title={registration_study_noResults()} description={registration_study_noResultsDescription()} /> : (
       <div className="grid gap-3 sm:grid-cols-2">
       {filtered.slice((page - 1) * pageSize, page * pageSize).map((node) => (
         <ChoiceCard
           key={node.id}
           title={node.name}
-          description={t(nodeLabelKeys[node.kind])}
-          meta={node.userCount === undefined ? undefined : t("users", { count: node.userCount })}
+          description={nodeLabels[node.kind]()}
+          meta={node.userCount === undefined ? undefined : registration_study_users({ count: node.userCount })}
           leading={<span className="flex size-12 items-center justify-center rounded-xl bg-primary/10 font-bold text-primary">{node.name.slice(0, 2).toLocaleUpperCase()}</span>}
           leadingVariant="plain"
           onClick={() => dispatch({ _tag: "StudyNodeSelected", node })}
@@ -68,26 +69,25 @@ export function StudyStepPage({ draft }: {
   )
   const changePath = useAtomSet(changeRegistrationStudyPathAction)
   const viewState = toStudyCatalogViewState(options)
-  const { t } = useTranslation("registration", { keyPrefix: "study" })
   const targetKind = viewState._tag === "Success"
     ? viewState.value.at(0)?.kind
     : undefined
   const title = targetKind === "country"
-    ? t("titles.country")
+    ? registration_study_titles_country()
     : targetKind === "type"
-    ? t("titles.type")
+    ? registration_study_titles_type()
     : targetKind === "university"
-    ? t("titles.university")
+    ? registration_study_titles_university()
     : targetKind === "degree"
-    ? t("titles.degree")
+    ? registration_study_titles_degree()
     : targetKind === "subject"
-    ? t("titles.subject")
-    : parent === undefined ? t("titles.root") : t("titles.continueFrom", { name: parent.name })
+    ? registration_study_titles_subject()
+    : parent === undefined ? registration_study_titles_root() : registration_study_titles_continueFrom({ name: parent.name })
   return (
     <main className="space-y-6">
       <Heading level={1}>{title}</Heading>
       {draft.path.length === 0 ? null : (
-        <nav aria-label={t("currentSelection")} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+        <nav aria-label={registration_study_currentSelection()} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
           {draft.path.map((node, index) => (
             <span className="inline-flex items-center gap-2" key={node.id}>
               {index > 0 ? <span aria-hidden="true">/</span> : null}

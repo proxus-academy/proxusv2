@@ -1,38 +1,27 @@
-import { Locale } from "@proxus/product-messages"
+import { common_routeError } from "../paraglide/messages.js"
 import { Heading } from "@proxus/ui"
-import { createRootRoute, Navigate, notFound, Outlet } from "@tanstack/react-router"
-import { Option, Schema } from "effect"
-import { useTranslation } from "react-i18next"
-import { preferredBrowserLocale } from "../platform/product-locale/index.js"
+import { createRootRoute, Outlet } from "@tanstack/react-router"
+import { useEffect } from "react"
+import { getLocale, getTextDirection } from "../paraglide/runtime.js"
+import { DownloadAppPage } from "../modules/download-app-screen.js"
+import { useDesktopViewport } from "../platform/viewport/index.js"
 
 export const Route = createRootRoute({
-  component: Outlet,
-  notFoundComponent: RootRedirect,
+  component: RootLayout,
   errorComponent: RouteError,
   validateSearch: (search): Readonly<Record<string, unknown>> => search,
 })
 
-function RootRedirect() {
-  return (
-    <Navigate
-      to="/$locale"
-      params={{ locale: preferredBrowserLocale() }}
-      replace
-    />
-  )
+function RootLayout() {
+  const locale = getLocale()
+  const desktop = useDesktopViewport()
+  useEffect(() => {
+    document.documentElement.lang = locale
+    document.documentElement.dir = getTextDirection(locale)
+  }, [locale])
+  return desktop ? <Outlet /> : <DownloadAppPage />
 }
 
 function RouteError() {
-  const { t } = useTranslation("common")
-  return (
-    <main>
-      <Heading level={1}>{t("routeError")}</Heading>
-    </main>
-  )
-}
-
-export const parseLocaleParam = (locale: string) => {
-  const decoded = Schema.decodeUnknownOption(Locale)(locale)
-  if (Option.isNone(decoded)) throw notFound()
-  return decoded.value
+  return <main><Heading level={1}>{common_routeError()}</Heading></main>
 }

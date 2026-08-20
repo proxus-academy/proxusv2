@@ -106,10 +106,11 @@ export interface RegistrationPathNavigation<E> {
 conserva los valores de query ajenos al wizard y es el único escritor de
 History.
 
-El locale es siempre el primer segmento (`/:locale/...`). El layout lo valida
-con `Locale`, proporciona una instancia i18next aislada y actualiza los atributos
-del documento. i18next no escribe History, preferencias ni atoms; cada app crea
-su instancia en la composition root y selecciona sus adapters de plataforma.
+Paraglide runtime es la única fuente de locale del cliente. El router adapta sus
+URLs mediante `deLocalizeUrl` y `localizeUrl`; no hay layout de locale, contexto
+React ni adapter de compatibilidad. El root sincroniza los atributos del documento
+después del render y las vistas llaman directamente a las funciones de mensajes
+generadas. Paraglide no escribe History ni atoms.
 
 ## Composition roots
 

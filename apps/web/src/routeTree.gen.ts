@@ -9,300 +9,267 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as LocaleRouteImport } from './routes/$locale'
-import { Route as LocaleAuthenticatedRouteImport } from './routes/$locale/_authenticated'
-import { Route as LocalePublicRouteImport } from './routes/$locale/_public'
-import { Route as LocaleAuthenticatedAppRouteImport } from './routes/$locale/_authenticated/app'
-import { Route as LocalePublicIndexRouteImport } from './routes/$locale/_public/index'
-import { Route as LocalePublicLoginRouteImport } from './routes/$locale/_public/login'
-import { Route as LocalePublicPasswordRecoveryRouteImport } from './routes/$locale/_public/password-recovery'
-import { Route as LocalePublicPasswordRecoveryIndexRouteImport } from './routes/$locale/_public/password-recovery/index'
-import { Route as LocalePublicPasswordRecoveryCodeRouteImport } from './routes/$locale/_public/password-recovery/code'
-import { Route as LocalePublicPasswordRecoveryDoneRouteImport } from './routes/$locale/_public/password-recovery/done'
-import { Route as LocalePublicPasswordRecoveryNewPasswordRouteImport } from './routes/$locale/_public/password-recovery/new-password'
+import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
+import { Route as PublicRouteImport } from './routes/_public'
+import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/app'
+import { Route as PublicIndexRouteImport } from './routes/_public/index'
+import { Route as PublicLoginRouteImport } from './routes/_public/login'
+import { Route as PublicPasswordRecoveryRouteImport } from './routes/_public/password-recovery'
+import { Route as PublicPasswordRecoveryIndexRouteImport } from './routes/_public/password-recovery/index'
+import { Route as PublicPasswordRecoveryCodeRouteImport } from './routes/_public/password-recovery/code'
+import { Route as PublicPasswordRecoveryDoneRouteImport } from './routes/_public/password-recovery/done'
+import { Route as PublicPasswordRecoveryNewPasswordRouteImport } from './routes/_public/password-recovery/new-password'
 
-const LocaleRoute = LocaleRouteImport.update({
-  id: '/$locale',
-  path: '/$locale',
+const AuthenticatedRoute = AuthenticatedRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LocaleAuthenticatedRoute = LocaleAuthenticatedRouteImport.update({
-  id: '/_authenticated',
-  getParentRoute: () => LocaleRoute,
-} as any)
-const LocalePublicRoute = LocalePublicRouteImport.update({
+const PublicRoute = PublicRouteImport.update({
   id: '/_public',
-  getParentRoute: () => LocaleRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-const LocaleAuthenticatedAppRoute = LocaleAuthenticatedAppRouteImport.update({
+const AuthenticatedAppRoute = AuthenticatedAppRouteImport.update({
   id: '/app',
   path: '/app',
-  getParentRoute: () => LocaleAuthenticatedRoute,
+  getParentRoute: () => AuthenticatedRoute,
 } as any)
-const LocalePublicIndexRoute = LocalePublicIndexRouteImport.update({
+const PublicIndexRoute = PublicIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => LocalePublicRoute,
+  getParentRoute: () => PublicRoute,
 } as any)
-const LocalePublicLoginRoute = LocalePublicLoginRouteImport.update({
+const PublicLoginRoute = PublicLoginRouteImport.update({
   id: '/login',
   path: '/login',
-  getParentRoute: () => LocalePublicRoute,
+  getParentRoute: () => PublicRoute,
 } as any)
-const LocalePublicPasswordRecoveryRoute =
-  LocalePublicPasswordRecoveryRouteImport.update({
-    id: '/password-recovery',
-    path: '/password-recovery',
-    getParentRoute: () => LocalePublicRoute,
-  } as any)
-const LocalePublicPasswordRecoveryIndexRoute =
-  LocalePublicPasswordRecoveryIndexRouteImport.update({
+const PublicPasswordRecoveryRoute = PublicPasswordRecoveryRouteImport.update({
+  id: '/password-recovery',
+  path: '/password-recovery',
+  getParentRoute: () => PublicRoute,
+} as any)
+const PublicPasswordRecoveryIndexRoute =
+  PublicPasswordRecoveryIndexRouteImport.update({
     id: '/',
     path: '/',
-    getParentRoute: () => LocalePublicPasswordRecoveryRoute,
+    getParentRoute: () => PublicPasswordRecoveryRoute,
   } as any)
-const LocalePublicPasswordRecoveryCodeRoute =
-  LocalePublicPasswordRecoveryCodeRouteImport.update({
+const PublicPasswordRecoveryCodeRoute =
+  PublicPasswordRecoveryCodeRouteImport.update({
     id: '/code',
     path: '/code',
-    getParentRoute: () => LocalePublicPasswordRecoveryRoute,
+    getParentRoute: () => PublicPasswordRecoveryRoute,
   } as any)
-const LocalePublicPasswordRecoveryDoneRoute =
-  LocalePublicPasswordRecoveryDoneRouteImport.update({
+const PublicPasswordRecoveryDoneRoute =
+  PublicPasswordRecoveryDoneRouteImport.update({
     id: '/done',
     path: '/done',
-    getParentRoute: () => LocalePublicPasswordRecoveryRoute,
+    getParentRoute: () => PublicPasswordRecoveryRoute,
   } as any)
-const LocalePublicPasswordRecoveryNewPasswordRoute =
-  LocalePublicPasswordRecoveryNewPasswordRouteImport.update({
+const PublicPasswordRecoveryNewPasswordRoute =
+  PublicPasswordRecoveryNewPasswordRouteImport.update({
     id: '/new-password',
     path: '/new-password',
-    getParentRoute: () => LocalePublicPasswordRecoveryRoute,
+    getParentRoute: () => PublicPasswordRecoveryRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
-  '/$locale': typeof LocaleRouteWithChildren
-  '/$locale/app': typeof LocaleAuthenticatedAppRoute
-  '/$locale/login': typeof LocalePublicLoginRoute
-  '/$locale/password-recovery': typeof LocalePublicPasswordRecoveryRouteWithChildren
-  '/$locale/': typeof LocalePublicIndexRoute
-  '/$locale/password-recovery/code': typeof LocalePublicPasswordRecoveryCodeRoute
-  '/$locale/password-recovery/done': typeof LocalePublicPasswordRecoveryDoneRoute
-  '/$locale/password-recovery/new-password': typeof LocalePublicPasswordRecoveryNewPasswordRoute
-  '/$locale/password-recovery/': typeof LocalePublicPasswordRecoveryIndexRoute
+  '/': typeof PublicIndexRoute
+  '/app': typeof AuthenticatedAppRoute
+  '/login': typeof PublicLoginRoute
+  '/password-recovery': typeof PublicPasswordRecoveryRouteWithChildren
+  '/password-recovery/code': typeof PublicPasswordRecoveryCodeRoute
+  '/password-recovery/done': typeof PublicPasswordRecoveryDoneRoute
+  '/password-recovery/new-password': typeof PublicPasswordRecoveryNewPasswordRoute
+  '/password-recovery/': typeof PublicPasswordRecoveryIndexRoute
 }
 export interface FileRoutesByTo {
-  '/$locale': typeof LocalePublicIndexRoute
-  '/$locale/app': typeof LocaleAuthenticatedAppRoute
-  '/$locale/login': typeof LocalePublicLoginRoute
-  '/$locale/password-recovery/code': typeof LocalePublicPasswordRecoveryCodeRoute
-  '/$locale/password-recovery/done': typeof LocalePublicPasswordRecoveryDoneRoute
-  '/$locale/password-recovery/new-password': typeof LocalePublicPasswordRecoveryNewPasswordRoute
-  '/$locale/password-recovery': typeof LocalePublicPasswordRecoveryIndexRoute
+  '/': typeof PublicIndexRoute
+  '/app': typeof AuthenticatedAppRoute
+  '/login': typeof PublicLoginRoute
+  '/password-recovery/code': typeof PublicPasswordRecoveryCodeRoute
+  '/password-recovery/done': typeof PublicPasswordRecoveryDoneRoute
+  '/password-recovery/new-password': typeof PublicPasswordRecoveryNewPasswordRoute
+  '/password-recovery': typeof PublicPasswordRecoveryIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/$locale': typeof LocaleRouteWithChildren
-  '/$locale/_authenticated': typeof LocaleAuthenticatedRouteWithChildren
-  '/$locale/_public': typeof LocalePublicRouteWithChildren
-  '/$locale/_authenticated/app': typeof LocaleAuthenticatedAppRoute
-  '/$locale/_public/login': typeof LocalePublicLoginRoute
-  '/$locale/_public/password-recovery': typeof LocalePublicPasswordRecoveryRouteWithChildren
-  '/$locale/_public/': typeof LocalePublicIndexRoute
-  '/$locale/_public/password-recovery/code': typeof LocalePublicPasswordRecoveryCodeRoute
-  '/$locale/_public/password-recovery/done': typeof LocalePublicPasswordRecoveryDoneRoute
-  '/$locale/_public/password-recovery/new-password': typeof LocalePublicPasswordRecoveryNewPasswordRoute
-  '/$locale/_public/password-recovery/': typeof LocalePublicPasswordRecoveryIndexRoute
+  '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/_public': typeof PublicRouteWithChildren
+  '/_authenticated/app': typeof AuthenticatedAppRoute
+  '/_public/login': typeof PublicLoginRoute
+  '/_public/password-recovery': typeof PublicPasswordRecoveryRouteWithChildren
+  '/_public/': typeof PublicIndexRoute
+  '/_public/password-recovery/code': typeof PublicPasswordRecoveryCodeRoute
+  '/_public/password-recovery/done': typeof PublicPasswordRecoveryDoneRoute
+  '/_public/password-recovery/new-password': typeof PublicPasswordRecoveryNewPasswordRoute
+  '/_public/password-recovery/': typeof PublicPasswordRecoveryIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/$locale'
-    | '/$locale/app'
-    | '/$locale/login'
-    | '/$locale/password-recovery'
-    | '/$locale/'
-    | '/$locale/password-recovery/code'
-    | '/$locale/password-recovery/done'
-    | '/$locale/password-recovery/new-password'
-    | '/$locale/password-recovery/'
+    | '/'
+    | '/app'
+    | '/login'
+    | '/password-recovery'
+    | '/password-recovery/code'
+    | '/password-recovery/done'
+    | '/password-recovery/new-password'
+    | '/password-recovery/'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/$locale'
-    | '/$locale/app'
-    | '/$locale/login'
-    | '/$locale/password-recovery/code'
-    | '/$locale/password-recovery/done'
-    | '/$locale/password-recovery/new-password'
-    | '/$locale/password-recovery'
+    | '/'
+    | '/app'
+    | '/login'
+    | '/password-recovery/code'
+    | '/password-recovery/done'
+    | '/password-recovery/new-password'
+    | '/password-recovery'
   id:
     | '__root__'
-    | '/$locale'
-    | '/$locale/_authenticated'
-    | '/$locale/_public'
-    | '/$locale/_authenticated/app'
-    | '/$locale/_public/login'
-    | '/$locale/_public/password-recovery'
-    | '/$locale/_public/'
-    | '/$locale/_public/password-recovery/code'
-    | '/$locale/_public/password-recovery/done'
-    | '/$locale/_public/password-recovery/new-password'
-    | '/$locale/_public/password-recovery/'
+    | '/_authenticated'
+    | '/_public'
+    | '/_authenticated/app'
+    | '/_public/login'
+    | '/_public/password-recovery'
+    | '/_public/'
+    | '/_public/password-recovery/code'
+    | '/_public/password-recovery/done'
+    | '/_public/password-recovery/new-password'
+    | '/_public/password-recovery/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  LocaleRoute: typeof LocaleRouteWithChildren
+  AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  PublicRoute: typeof PublicRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/$locale': {
-      id: '/$locale'
-      path: '/$locale'
-      fullPath: '/$locale'
-      preLoaderRoute: typeof LocaleRouteImport
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/$locale/_authenticated': {
-      id: '/$locale/_authenticated'
+    '/_public': {
+      id: '/_public'
       path: ''
-      fullPath: '/$locale'
-      preLoaderRoute: typeof LocaleAuthenticatedRouteImport
-      parentRoute: typeof LocaleRoute
+      fullPath: '/'
+      preLoaderRoute: typeof PublicRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/$locale/_public': {
-      id: '/$locale/_public'
-      path: ''
-      fullPath: '/$locale'
-      preLoaderRoute: typeof LocalePublicRouteImport
-      parentRoute: typeof LocaleRoute
-    }
-    '/$locale/_authenticated/app': {
-      id: '/$locale/_authenticated/app'
+    '/_authenticated/app': {
+      id: '/_authenticated/app'
       path: '/app'
-      fullPath: '/$locale/app'
-      preLoaderRoute: typeof LocaleAuthenticatedAppRouteImport
-      parentRoute: typeof LocaleAuthenticatedRoute
+      fullPath: '/app'
+      preLoaderRoute: typeof AuthenticatedAppRouteImport
+      parentRoute: typeof AuthenticatedRoute
     }
-    '/$locale/_public/': {
-      id: '/$locale/_public/'
+    '/_public/': {
+      id: '/_public/'
       path: '/'
-      fullPath: '/$locale/'
-      preLoaderRoute: typeof LocalePublicIndexRouteImport
-      parentRoute: typeof LocalePublicRoute
+      fullPath: '/'
+      preLoaderRoute: typeof PublicIndexRouteImport
+      parentRoute: typeof PublicRoute
     }
-    '/$locale/_public/login': {
-      id: '/$locale/_public/login'
+    '/_public/login': {
+      id: '/_public/login'
       path: '/login'
-      fullPath: '/$locale/login'
-      preLoaderRoute: typeof LocalePublicLoginRouteImport
-      parentRoute: typeof LocalePublicRoute
+      fullPath: '/login'
+      preLoaderRoute: typeof PublicLoginRouteImport
+      parentRoute: typeof PublicRoute
     }
-    '/$locale/_public/password-recovery': {
-      id: '/$locale/_public/password-recovery'
+    '/_public/password-recovery': {
+      id: '/_public/password-recovery'
       path: '/password-recovery'
-      fullPath: '/$locale/password-recovery'
-      preLoaderRoute: typeof LocalePublicPasswordRecoveryRouteImport
-      parentRoute: typeof LocalePublicRoute
+      fullPath: '/password-recovery'
+      preLoaderRoute: typeof PublicPasswordRecoveryRouteImport
+      parentRoute: typeof PublicRoute
     }
-    '/$locale/_public/password-recovery/': {
-      id: '/$locale/_public/password-recovery/'
+    '/_public/password-recovery/': {
+      id: '/_public/password-recovery/'
       path: '/'
-      fullPath: '/$locale/password-recovery/'
-      preLoaderRoute: typeof LocalePublicPasswordRecoveryIndexRouteImport
-      parentRoute: typeof LocalePublicPasswordRecoveryRoute
+      fullPath: '/password-recovery/'
+      preLoaderRoute: typeof PublicPasswordRecoveryIndexRouteImport
+      parentRoute: typeof PublicPasswordRecoveryRoute
     }
-    '/$locale/_public/password-recovery/code': {
-      id: '/$locale/_public/password-recovery/code'
+    '/_public/password-recovery/code': {
+      id: '/_public/password-recovery/code'
       path: '/code'
-      fullPath: '/$locale/password-recovery/code'
-      preLoaderRoute: typeof LocalePublicPasswordRecoveryCodeRouteImport
-      parentRoute: typeof LocalePublicPasswordRecoveryRoute
+      fullPath: '/password-recovery/code'
+      preLoaderRoute: typeof PublicPasswordRecoveryCodeRouteImport
+      parentRoute: typeof PublicPasswordRecoveryRoute
     }
-    '/$locale/_public/password-recovery/done': {
-      id: '/$locale/_public/password-recovery/done'
+    '/_public/password-recovery/done': {
+      id: '/_public/password-recovery/done'
       path: '/done'
-      fullPath: '/$locale/password-recovery/done'
-      preLoaderRoute: typeof LocalePublicPasswordRecoveryDoneRouteImport
-      parentRoute: typeof LocalePublicPasswordRecoveryRoute
+      fullPath: '/password-recovery/done'
+      preLoaderRoute: typeof PublicPasswordRecoveryDoneRouteImport
+      parentRoute: typeof PublicPasswordRecoveryRoute
     }
-    '/$locale/_public/password-recovery/new-password': {
-      id: '/$locale/_public/password-recovery/new-password'
+    '/_public/password-recovery/new-password': {
+      id: '/_public/password-recovery/new-password'
       path: '/new-password'
-      fullPath: '/$locale/password-recovery/new-password'
-      preLoaderRoute: typeof LocalePublicPasswordRecoveryNewPasswordRouteImport
-      parentRoute: typeof LocalePublicPasswordRecoveryRoute
+      fullPath: '/password-recovery/new-password'
+      preLoaderRoute: typeof PublicPasswordRecoveryNewPasswordRouteImport
+      parentRoute: typeof PublicPasswordRecoveryRoute
     }
   }
 }
 
-interface LocaleAuthenticatedRouteChildren {
-  LocaleAuthenticatedAppRoute: typeof LocaleAuthenticatedAppRoute
+interface AuthenticatedRouteChildren {
+  AuthenticatedAppRoute: typeof AuthenticatedAppRoute
 }
 
-const LocaleAuthenticatedRouteChildren: LocaleAuthenticatedRouteChildren = {
-  LocaleAuthenticatedAppRoute: LocaleAuthenticatedAppRoute,
+const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedAppRoute: AuthenticatedAppRoute,
 }
 
-const LocaleAuthenticatedRouteWithChildren =
-  LocaleAuthenticatedRoute._addFileChildren(LocaleAuthenticatedRouteChildren)
-
-interface LocalePublicPasswordRecoveryRouteChildren {
-  LocalePublicPasswordRecoveryCodeRoute: typeof LocalePublicPasswordRecoveryCodeRoute
-  LocalePublicPasswordRecoveryDoneRoute: typeof LocalePublicPasswordRecoveryDoneRoute
-  LocalePublicPasswordRecoveryNewPasswordRoute: typeof LocalePublicPasswordRecoveryNewPasswordRoute
-  LocalePublicPasswordRecoveryIndexRoute: typeof LocalePublicPasswordRecoveryIndexRoute
-}
-
-const LocalePublicPasswordRecoveryRouteChildren: LocalePublicPasswordRecoveryRouteChildren =
-  {
-    LocalePublicPasswordRecoveryCodeRoute:
-      LocalePublicPasswordRecoveryCodeRoute,
-    LocalePublicPasswordRecoveryDoneRoute:
-      LocalePublicPasswordRecoveryDoneRoute,
-    LocalePublicPasswordRecoveryNewPasswordRoute:
-      LocalePublicPasswordRecoveryNewPasswordRoute,
-    LocalePublicPasswordRecoveryIndexRoute:
-      LocalePublicPasswordRecoveryIndexRoute,
-  }
-
-const LocalePublicPasswordRecoveryRouteWithChildren =
-  LocalePublicPasswordRecoveryRoute._addFileChildren(
-    LocalePublicPasswordRecoveryRouteChildren,
-  )
-
-interface LocalePublicRouteChildren {
-  LocalePublicLoginRoute: typeof LocalePublicLoginRoute
-  LocalePublicPasswordRecoveryRoute: typeof LocalePublicPasswordRecoveryRouteWithChildren
-  LocalePublicIndexRoute: typeof LocalePublicIndexRoute
-}
-
-const LocalePublicRouteChildren: LocalePublicRouteChildren = {
-  LocalePublicLoginRoute: LocalePublicLoginRoute,
-  LocalePublicPasswordRecoveryRoute:
-    LocalePublicPasswordRecoveryRouteWithChildren,
-  LocalePublicIndexRoute: LocalePublicIndexRoute,
-}
-
-const LocalePublicRouteWithChildren = LocalePublicRoute._addFileChildren(
-  LocalePublicRouteChildren,
+const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
+  AuthenticatedRouteChildren,
 )
 
-interface LocaleRouteChildren {
-  LocaleAuthenticatedRoute: typeof LocaleAuthenticatedRouteWithChildren
-  LocalePublicRoute: typeof LocalePublicRouteWithChildren
+interface PublicPasswordRecoveryRouteChildren {
+  PublicPasswordRecoveryCodeRoute: typeof PublicPasswordRecoveryCodeRoute
+  PublicPasswordRecoveryDoneRoute: typeof PublicPasswordRecoveryDoneRoute
+  PublicPasswordRecoveryNewPasswordRoute: typeof PublicPasswordRecoveryNewPasswordRoute
+  PublicPasswordRecoveryIndexRoute: typeof PublicPasswordRecoveryIndexRoute
 }
 
-const LocaleRouteChildren: LocaleRouteChildren = {
-  LocaleAuthenticatedRoute: LocaleAuthenticatedRouteWithChildren,
-  LocalePublicRoute: LocalePublicRouteWithChildren,
+const PublicPasswordRecoveryRouteChildren: PublicPasswordRecoveryRouteChildren =
+  {
+    PublicPasswordRecoveryCodeRoute: PublicPasswordRecoveryCodeRoute,
+    PublicPasswordRecoveryDoneRoute: PublicPasswordRecoveryDoneRoute,
+    PublicPasswordRecoveryNewPasswordRoute:
+      PublicPasswordRecoveryNewPasswordRoute,
+    PublicPasswordRecoveryIndexRoute: PublicPasswordRecoveryIndexRoute,
+  }
+
+const PublicPasswordRecoveryRouteWithChildren =
+  PublicPasswordRecoveryRoute._addFileChildren(
+    PublicPasswordRecoveryRouteChildren,
+  )
+
+interface PublicRouteChildren {
+  PublicLoginRoute: typeof PublicLoginRoute
+  PublicPasswordRecoveryRoute: typeof PublicPasswordRecoveryRouteWithChildren
+  PublicIndexRoute: typeof PublicIndexRoute
 }
 
-const LocaleRouteWithChildren =
-  LocaleRoute._addFileChildren(LocaleRouteChildren)
+const PublicRouteChildren: PublicRouteChildren = {
+  PublicLoginRoute: PublicLoginRoute,
+  PublicPasswordRecoveryRoute: PublicPasswordRecoveryRouteWithChildren,
+  PublicIndexRoute: PublicIndexRoute,
+}
+
+const PublicRouteWithChildren =
+  PublicRoute._addFileChildren(PublicRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
-  LocaleRoute: LocaleRouteWithChildren,
+  AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  PublicRoute: PublicRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -7,14 +7,15 @@ import { act } from "react"
 import { createRoot } from "react-dom/client"
 import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it, vi } from "vitest"
+import { overwriteGetLocale } from "../../paraglide/runtime.js"
 import { makeWebRouter } from "../../routes/router.js"
 import { LogoutButton } from "./auth-controls.js"
-import { ProductI18nTestProvider } from "../../testing/product-i18n.js"
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
 
 // @effect-diagnostics-next-line asyncFunction:off
 const renderRoute = async (path: string) => {
+  overwriteGetLocale(() => path.startsWith("/en") ? "en" : "es")
   const host = document.createElement("div")
   const root = createRoot(host)
   const router = makeWebRouter(createMemoryHistory({ initialEntries: [path] }))
@@ -55,14 +56,14 @@ describe("public auth pages", () => {
       expect(host.textContent).toContain(text)
       act(() => root.unmount())
     }
-    expect(renderToStaticMarkup(<ProductI18nTestProvider><LogoutButton onLogout={vi.fn()} /></ProductI18nTestProvider>)).toContain("Cerrar sesión")
+    expect(renderToStaticMarkup(<LogoutButton onLogout={vi.fn()} />)).toContain("Cerrar sesión")
   })
 
   // @effect-diagnostics-next-line asyncFunction:off
   it("resets field identity when email and code routes replace each other", async () => {
     const { host, root, router } = await renderRoute("/es/password-recovery")
     expect(host.querySelector<HTMLInputElement>('input[name="email"]')?.value).toBe("")
-    await act(() => router.navigate({ to: "/$locale/password-recovery/code", params: { locale: "es" } }))
+    await act(() => router.navigate({ to: "/password-recovery/code" }))
     expect(host.querySelector<HTMLInputElement>('input[name="code"]')?.value).toBe("")
     act(() => root.unmount())
   })
