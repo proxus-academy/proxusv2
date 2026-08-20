@@ -3,9 +3,14 @@
   "workspaces": {
     ".": {
       "entry": ["scripts/*.mjs", "*.config.mjs"],
-      "project": ["scripts/*.mjs", "*.config.mjs"]
+      "project": ["scripts/*.mjs", "*.config.mjs"],
+      // Installed by the trusted GitHub workflow and developer Google Cloud SDK, not pnpm.
+      "ignoreBinaries": ["gcloud"]
     },
     "apps/admin": {},
+    "apps/preview-server": {
+      "entry": ["src/initialize.ts"]
+    },
     "apps/storybook": {
       // Effect/shared are used by app-owned stories outside this workspace's source tree.
       // Tailwind is resolved indirectly by Storybook's Vite plugin and shared theme CSS.

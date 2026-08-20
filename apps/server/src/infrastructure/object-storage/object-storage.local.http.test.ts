@@ -1,6 +1,8 @@
 // @effect-diagnostics nodeBuiltinImport:off asyncFunction:off strictEffectProvide:off
+// eslint-disable-next-line no-restricted-imports -- Test-owned temporary directory setup and teardown stays outside the adapter under test.
 import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
+// eslint-disable-next-line no-restricted-imports -- Test-owned temporary directory setup and teardown stays outside the adapter under test.
 import { join } from "node:path"
 import * as NodeFileSystem from "@effect/platform-node/NodeFileSystem"
 import * as NodePath from "@effect/platform-node/NodePath"

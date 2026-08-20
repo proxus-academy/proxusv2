@@ -4,7 +4,7 @@ import { DateTime, Effect, Layer, Random, Ref } from "effect"
 import { EmailDelivery, Passwords, VerificationCodeGenerator } from "@proxus/backend-domain/auth"
 import { consoleEmailSink, makeConsoleEmailDelivery, ProductionEmailDeliveryUnavailable, type ConsoleEmailRecord } from "./email.console.js"
 import { PasswordsLive } from "./passwords.live.js"
-import { VerificationCodeGeneratorLive } from "./verification-code.live.js"
+import { DevelopmentVerificationCodeGeneratorLive, VerificationCodeGeneratorLive } from "./verification-code.live.js"
 
 const runPasswords = <A, E>(effect: Effect.Effect<A, E, Passwords>) =>
   Effect.runPromise(effect.pipe(Effect.provide(PasswordsLive)))
@@ -42,6 +42,15 @@ describe("VerificationCodeGeneratorLive", () => {
 
     expect(codes).toEqual(["000000", "000007", "000042", "999999"])
     for (const code of codes) expect(code).toMatch(/^\d{6}$/)
+  })
+
+  it("uses the documented fixed code in development and previews", async () => {
+    const code = await Effect.runPromise(Effect.flatMap(
+      VerificationCodeGenerator,
+      (generator) => generator.generate(),
+    ).pipe(Effect.provide(DevelopmentVerificationCodeGeneratorLive)))
+
+    expect(code).toBe("424242")
   })
 })
 

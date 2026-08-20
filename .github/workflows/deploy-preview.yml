@@ -1,0 +1,63 @@
+name: PR preview lifecycle
+
+on:
+  pull_request_target:
+    types: [labeled, unlabeled, reopened, closed]
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+concurrency:
+  group: preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  reconcile:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      ((github.event.action == 'labeled' && github.event.label.name == 'deploy-preview') ||
+       (github.event.action == 'unlabeled' && github.event.label.name == 'deploy-preview') ||
+       github.event.action == 'reopened' || github.event.action == 'closed')
+    runs-on: ubuntu-24.04
+    environment: preview
+    timeout-minutes: 30
+    steps:
+      - name: Check out trusted lifecycle code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: main
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: projects/474767709287/locations/global/workloadIdentityPools/github-preview/providers/github
+          service_account: proxus-preview-deployer@proxus-v2.iam.gserviceaccount.com
+      - name: Install Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2
+      - name: Reconcile preview
+        env:
+          ACTION: ${{ github.event.action }}
+          LABEL: ${{ github.event.label.name }}
+          HAS_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'deploy-preview') }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PREVIEW_IAP_GROUP: ${{ vars.PREVIEW_IAP_GROUP }}
+        run: |
+          set -euo pipefail
+          if [[ "$ACTION" == closed || "$ACTION" == unlabeled && "$LABEL" == deploy-preview ]]; then
+            node scripts/preview-lifecycle.mjs destroy "$PR_NUMBER"
+          elif [[ "$HAS_LABEL" == true ]]; then
+            node scripts/preview-lifecycle.mjs create "$PR_NUMBER" "$HEAD_BRANCH"
+          fi
+      - name: Publish preview URL
+        if: >-
+          github.event.action != 'closed' &&
+          !(github.event.action == 'unlabeled' && github.event.label.name == 'deploy-preview') &&
+          contains(github.event.pull_request.labels.*.name, 'deploy-preview')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          origin="$(gcloud run services describe "proxus-pr-${PR_NUMBER}" --project=proxus-v2 --region=europe-southwest1 --format='value(status.url)')"
+          gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body "Preview desplegada: ${origin}"

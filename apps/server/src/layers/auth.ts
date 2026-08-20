@@ -6,6 +6,7 @@ import {
   PasswordsLive,
   ProductionEmailDeliveryUnavailable,
   SecureSessionRandomLive,
+  DevelopmentVerificationCodeGeneratorLive,
   SecureVerificationCodeGeneratorLive,
   makeAuthPersistencePgliteLive,
   makeAuthPersistencePostgresLive,
@@ -71,7 +72,7 @@ export const makeAuthDevLive = (email = ConsoleEmailDelivery, google = makeFakeG
   { code: "dev-google-new", identity: { subject: "dev-google-user", email: "google@example.test", emailVerified: true, displayName: "Development User" } },
   { code: "dev-google-existing", identity: { subject: "qa-google:student-google", email: "student.google.qa@proxus.dev", emailVerified: true, displayName: "QA Existing User" } },
 ]), persistence = makeAuthPersistencePgliteLive(sessionPolicy.ttlMillis).pipe(Layer.provide(PgliteDevelopmentLive))) => {
-  const dependencies = Layer.mergeAll(PasswordsLive, SecureVerificationCodeGeneratorLive, SecureSessionRandomLive, email, google,
+  const dependencies = Layer.mergeAll(PasswordsLive, DevelopmentVerificationCodeGeneratorLive, SecureSessionRandomLive, email, google,
     makeGoogleSecurityLive("proxus-development-google-secret-32-bytes-minimum"), persistence)
   return Layer.mergeAll(services.pipe(Layer.provide(dependencies)), AuthSessionViewLive.pipe(Layer.provide(persistence)), developmentCookies)
 }

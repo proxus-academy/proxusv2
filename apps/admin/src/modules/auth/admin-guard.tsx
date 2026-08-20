@@ -2,13 +2,19 @@ import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { LoginWithPasswordInput } from "@proxus/shared/auth"
 import { Cause, Option, Schema } from "effect"
 import * as AsyncResult from "effect/unstable/reactivity/AsyncResult"
-import { type FormEvent, type ReactNode, useEffect, useState } from "react"
+import { type FormEvent, type ReactNode, useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { AdminForbidden, AdminUnauthorized, adminAuthComposition } from "./admin-auth.js"
 
 const goTo = (path: string) => window.history.replaceState(null, "", path)
 const failure = (result: { readonly cause: Cause.Cause<unknown> }) => Option.getOrUndefined(Cause.findErrorOption(result.cause))
+const previewAdminLogin = import.meta.env.VITE_PREVIEW_ADMIN_AUTO_LOGIN === "true"
+  ? Schema.decodeUnknownSync(LoginWithPasswordInput)({
+    email: import.meta.env.VITE_PREVIEW_ADMIN_EMAIL,
+    password: import.meta.env.VITE_PREVIEW_ADMIN_PASSWORD,
+  })
+  : null
 
 function LoginScreen() {
   const login = useAtomSet(adminAuthComposition.auth.loginAtom)
@@ -46,13 +52,26 @@ function Authorized({ children }: { readonly children: (permissions: ReadonlySet
 export function AdminGuard({ children }: { readonly children: (permissions: ReadonlySet<string>) => ReactNode }) {
   const session = useAtomValue(adminAuthComposition.auth.sessionAtom)
   const restore = useAtomSet(adminAuthComposition.auth.restoreSessionAtom)
+  const login = useAtomSet(adminAuthComposition.auth.loginAtom)
+  const loginResult = useAtomValue(adminAuthComposition.auth.loginAtom)
+  const previewLoginStarted = useRef(false)
   useEffect(() => { restore() }, [restore])
   useEffect(() => {
+    if (session._tag === "Success" && session.value === null && previewAdminLogin !== null) {
+      if (!previewLoginStarted.current) {
+        previewLoginStarted.current = true
+        login(previewAdminLogin)
+      }
+      return
+    }
     if (session._tag === "Success" && session.value === null) goTo("/admin/login")
     if (session._tag === "Success" && session.value !== null && window.location.pathname === "/admin/login") goTo("/admin")
-  }, [session])
+  }, [login, session])
   if (session._tag === "Initial" || AsyncResult.isWaiting(session)) return <p role="status">Comprobando sesión…</p>
   if (session._tag === "Failure") return <p role="alert">No se pudo comprobar la sesión.</p>
+  if (session.value === null && previewAdminLogin !== null) return loginResult._tag === "Failure"
+    ? <p role="alert">No se pudo iniciar la sesión de preview.</p>
+    : <p role="status">Iniciando sesión de preview…</p>
   if (session.value === null) return <LoginScreen />
   return <Authorized>{children}</Authorized>
 }

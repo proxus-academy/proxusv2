@@ -1,0 +1,15 @@
+.git
+.repos
+**/node_modules
+**/.turbo
+**/dist
+**/.data
+**/.data.*
+coverage
+storybook-static
+.env
+.env.*
+!.env.example
+.pi
+artifacts
+test-results

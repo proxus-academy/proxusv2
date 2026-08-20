@@ -1,0 +1,24 @@
+{
+  "name": "@proxus/preview-server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/main.ts",
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@effect/platform-node": "4.0.0-beta.98",
+    "@proxus/backend-admin-transport": "workspace:*",
+    "@proxus/backend-domain": "workspace:*",
+    "@proxus/backend-infra": "workspace:*",
+    "@proxus/backend-transport": "workspace:*",
+    "@proxus/shared": "workspace:*",
+    "effect": "4.0.0-beta.98"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.8.3"
+  }
+}
