@@ -1,0 +1,134 @@
+steps:
+  - id: build
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --file
+      - Dockerfile.preview
+      - --tag
+      - ${_IMAGE_REPOSITORY}:$COMMIT_SHA-$BUILD_ID
+      - .
+  - id: push
+    name: gcr.io/cloud-builders/docker
+    args: [push, "${_IMAGE_REPOSITORY}:$COMMIT_SHA-$BUILD_ID"]
+  - id: initialize
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        if [[ "${_INITIALIZE}" != "true" ]]; then exit 0; fi
+        gcloud run jobs deploy "${_SERVICE}-initialize" \
+          --project="$PROJECT_ID" --region="${_REGION}" \
+          --image="${_IMAGE_REPOSITORY}:$COMMIT_SHA-$BUILD_ID" \
+          --service-account="${_RUNTIME_SERVICE_ACCOUNT}" \
+          --set-cloudsql-instances="${_CLOUD_SQL_CONNECTION}" \
+          --set-secrets="DATABASE_URL=${_DATABASE_SECRET}:latest" \
+          --command=node --args=/app/initialize.mjs --tasks=1 --max-retries=0 \
+          --task-timeout=10m --quiet
+        gcloud run jobs execute "${_SERVICE}-initialize" \
+          --project="$PROJECT_ID" --region="${_REGION}" --wait
+  - id: deploy
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE}
+      - --project=$PROJECT_ID
+      - --region=${_REGION}
+      - --image=${_IMAGE_REPOSITORY}:$COMMIT_SHA-$BUILD_ID
+      - --service-account=${_RUNTIME_SERVICE_ACCOUNT}
+      - --add-cloudsql-instances=${_CLOUD_SQL_CONNECTION}
+      - --set-secrets=DATABASE_URL=${_DATABASE_SECRET}:latest,AUTH_GOOGLE_SIGNING_SECRET=preview-auth-google-signing:latest
+      - --min=0
+      - --max=1
+      - --cpu=1
+      - --memory=512Mi
+      - --port=8080
+      - --no-allow-unauthenticated
+      - --labels=managed-by=proxus,environment=preview,preview-id=${_PREVIEW_ID}
+      - --quiet
+  - id: disable-iap-for-smoke
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - services
+      - update
+      - ${_SERVICE}
+      - --project=$PROJECT_ID
+      - --region=${_REGION}
+      - --no-iap
+      - --quiet
+  - id: authorize-smoke
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - services
+      - add-iam-policy-binding
+      - ${_SERVICE}
+      - --project=$PROJECT_ID
+      - --region=${_REGION}
+      - --member=serviceAccount:${_BUILD_SERVICE_ACCOUNT}
+      - --role=roles/run.invoker
+      - --quiet
+  - id: smoke
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        origin="$(gcloud run services describe "${_SERVICE}" --project="$PROJECT_ID" --region="${_REGION}" --format='value(status.url)')"
+        token="$(gcloud auth print-identity-token --audiences="$${origin}")"
+        # Cloud Run's frontend reserves /healthz. Retry while the Effect HTTP runtime
+        # starts, and advertise browser navigation for SPA fallback routes.
+        for path in /es /admin/ /ui /ui/ /ui/index.json /api/openapi.public.json /admin-api/openapi.admin.json; do
+          expected=200
+          accept="application/json"
+          if [[ "$${path}" == "/ui" ]]; then expected=308; fi
+          if [[ "$${path}" == "/es" || "$${path}" == "/admin/" || "$${path}" == "/ui" || "$${path}" == "/ui/" ]]; then accept="text/html"; fi
+          for attempt in $(seq 1 60); do
+            status="$(curl --max-time 20 --silent --show-error --header "Authorization: Bearer $${token}" --header "Accept: $${accept}" --output /dev/null --write-out '%{http_code}' "$${origin}$${path}" || true)"
+            if [[ "$${status}" == "$${expected}" ]]; then break; fi
+            if [[ "$${attempt}" == 60 ]]; then
+              echo "Smoke failed: $${path} returned $${status}; expected $${expected}" >&2
+              exit 1
+            fi
+            sleep 2
+          done
+        done
+  - id: authorize-iap
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        project_number="$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')"
+        gcloud run services update "${_SERVICE}" \
+          --project="$PROJECT_ID" --region="${_REGION}" --iap --quiet
+        gcloud run services add-iam-policy-binding "${_SERVICE}" \
+          --project="$PROJECT_ID" --region="${_REGION}" \
+          --member="serviceAccount:service-$${project_number}@gcp-sa-iap.iam.gserviceaccount.com" \
+          --role=roles/run.invoker --quiet
+        gcloud iap web add-iam-policy-binding \
+          --project="$PROJECT_ID" --region="${_REGION}" \
+          --resource-type=cloud-run --service="${_SERVICE}" \
+          --member="group:${_IAP_GROUP}" --role=roles/iap.httpsResourceAccessor --quiet
+        gcloud iap web remove-iam-policy-binding \
+          --project="$PROJECT_ID" --region="${_REGION}" \
+          --resource-type=cloud-run --service="${_SERVICE}" \
+          --member="serviceAccount:${_BUILD_SERVICE_ACCOUNT}" \
+          --role=roles/iap.httpsResourceAccessor --quiet || true
+        gcloud run services remove-iam-policy-binding "${_SERVICE}" \
+          --project="$PROJECT_ID" --region="${_REGION}" \
+          --member="serviceAccount:${_BUILD_SERVICE_ACCOUNT}" \
+          --role=roles/run.invoker --quiet
+        origin="$(gcloud run services describe "${_SERVICE}" --project="$PROJECT_ID" --region="${_REGION}" --format='value(status.url)')"
+        status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$${origin}/es")"
+        [[ "$${status}" == 302 ]] || { echo "IAP gate returned $${status}; expected 302" >&2; exit 1; }
+options:
+  logging: CLOUD_LOGGING_ONLY
+images:
+  - ${_IMAGE_REPOSITORY}:$COMMIT_SHA-$BUILD_ID

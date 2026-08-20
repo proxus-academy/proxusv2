@@ -105,7 +105,7 @@ pending.
 
 Domain prueba normalización, path de onboarding, estados/proveedor derivado, auto-link solo de email verificado y policies RBAC con clocks/randomness deterministas. Infra ejecuta el mismo contrato de users/challenges/sessions contra memory y PGlite: unicidad, hashes, propósito/TTL/intentos/uso único, consumo/rotación atómicos y revocación global. Las pruebas de composición cubren email/Google fake, cookie opaca y la matriz admin anónimo/student/editor/admin.
 
-Los adapters consola/fake solo pertenecen a desarrollo/test. Producción tiene un gate que rechaza su selección; esto no prueba proveedores reales, que siguen pendientes. Los tests y listados QA nunca imprimen passwords, hashes, tokens ni códigos persistidos.
+Los adapters consola/fake solo pertenecen a desarrollo/test. Desarrollo local y las previews desechables generan deliberadamente el código `424242` para verificación de email y recuperación de contraseña; producción conserva el generador criptográfico y tiene un gate que rechaza adapters de entrega no reales. Esto no prueba proveedores reales, que siguen pendientes. Los tests y listados QA nunca imprimen passwords, hashes, tokens ni códigos persistidos.
 
 ### HTTP
 
@@ -228,16 +228,19 @@ repeated race tests and additional PostgreSQL versions.
 The checks have no generated allowlist or accepted-violation baseline:
 
 - `effect:diagnostics` obtains the workspace inventory from `pnpm list -r`, sorts
-  every discovered `tsconfig.json`, and checks all 14 projects. The wrapper also
+  every discovered `tsconfig.json`, and checks all 15 projects. The wrapper also
   accepts `--root` and a JSON `--inventory` for isolated probes. It passes the
   root Effect Language Service configuration explicitly, so a leaf `plugins`
   override cannot silently reduce coverage. Workspace tsconfigs include their
   Vite, Drizzle and Storybook TypeScript configuration files.
-- `lint` is type-aware and deliberately has no formatting rules. Its workspace
-  globs include source, Storybook and root `*.config.ts` files while excluding
-  generated trees. It enforces only unsafe Promise use (`await-thenable`,
-  `no-floating-promises`, `no-misused-promises`) and dangerous assertions
-  (`no-non-null-assertion`, `no-unsafe-type-assertion`).
+- `lint` is type-aware for TypeScript and deliberately has no formatting rules.
+  Its workspace globs include application JavaScript/ESM, TypeScript source,
+  Storybook and root `*.config.ts` files while excluding generated trees. It enforces unsafe Promise use (`await-thenable`,
+  `no-floating-promises`, `no-misused-promises`), dangerous assertions
+  (`no-non-null-assertion`, `no-unsafe-type-assertion`), and rejects direct
+  imports of Node filesystem, path, child-process and HTTP APIs that have
+  Effect-native counterparts. Narrow platform composition roots and test-owned
+  temporary-directory harnesses must document any inline exception.
 - `boundaries` ignores generated `dist`, `coverage` and `storybook-static`
   trees and enforces the documented DDD direction: shared is runtime-neutral;
   Domain cannot reach adapters/transports/apps; Infra cannot reach
@@ -278,7 +281,10 @@ and the repository's `pnpm@10.32.1`, and installs with `--frozen-lockfile`.
 
 `pnpm static` has no accepted-finding baseline: every finding must be fixed.
 The 15 Effect projects include current TypeScript configs; the same configs are
-covered by typecheck and type-aware ESLint. A green static run says nothing about
+covered by typecheck and type-aware ESLint. All 77 diagnostics exposed by the
+installed Effect Language Service are configured as errors in `tsconfig.base.json`;
+workspace tsconfigs inherit that plugin configuration without disabling it. A green
+static run says nothing about
 the separate PostgreSQL gate or pending browser suites. Knip's dependency ignores are limited
 to dependencies loaded indirectly by Vite/Storybook builds, shared CSS or inline
 `index.html` development bootstraps; each exception is documented in

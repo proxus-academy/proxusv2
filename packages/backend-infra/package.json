@@ -5,7 +5,9 @@
   "exports": {
     "./database/pglite": "./src/database/pglite.ts",
     "./database/postgres": "./src/database/postgres.ts",
+    "./database/preview-initialize": "./src/database/preview-initialize.ts",
     "./auth": "./src/modules/auth/index.ts",
+    "./auth/preview-runtime": "./src/modules/auth/preview-runtime.ts",
     "./auth/authentication-live": "./src/modules/auth/authentication.live.ts",
     "./auth/google-fake": "./src/modules/auth/google.fake.ts",
     "./auth/google-security-live": "./src/modules/auth/google.security.live.ts",
@@ -39,6 +41,7 @@
     "auth:qa:list": "tsx src/auth-qa/command.ts list"
   },
   "dependencies": {
+    "@effect/platform-node": "4.0.0-beta.98",
     "@effect/sql-pg": "4.0.0-beta.98",
     "@effect/sql-pglite": "4.0.0-beta.98",
     "@electric-sql/pglite": "0.5.4",

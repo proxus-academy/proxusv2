@@ -1,0 +1,37 @@
+services:
+  postgres:
+    image: postgres:17.7-bookworm
+    environment:
+      POSTGRES_DB: proxus_preview
+      POSTGRES_USER: proxus
+      POSTGRES_PASSWORD: proxus-preview-local
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U proxus -d proxus_preview"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+    ports:
+      - "55432:5432"
+  initialize:
+    build:
+      context: .
+      dockerfile: Dockerfile.preview
+    command: ["node", "/app/initialize.mjs"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://proxus:proxus-preview-local@postgres:5432/proxus_preview
+  preview:
+    build:
+      context: .
+      dockerfile: Dockerfile.preview
+    depends_on:
+      initialize:
+        condition: service_completed_successfully
+    environment:
+      PORT: "8080"
+      DATABASE_URL: postgresql://proxus:proxus-preview-local@postgres:5432/proxus_preview
+      AUTH_GOOGLE_SIGNING_SECRET: local-preview-signing-secret-at-least-32-bytes
+    ports:
+      - "8080:8080"

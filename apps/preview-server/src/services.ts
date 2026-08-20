@@ -12,25 +12,24 @@ import { FeatureFlagSnapshotReaderLive } from "@proxus/backend-domain/feature-fl
 import { ProductAnalyticsLive } from "@proxus/backend-domain/product-analytics"
 import { StudyCatalogLive } from "@proxus/backend-domain/study-catalog"
 import { AdminSessionAuthorizationLive } from "@proxus/backend-admin-transport/session"
-import { RoleAssignmentsRepositoryPgliteLive } from "@proxus/backend-infra/access-control/pglite"
+import { RoleAssignmentsRepositoryPostgresLive } from "@proxus/backend-infra/access-control/postgres"
 import {
   ConsoleEmailDelivery,
   GoogleSessionIssuerLive,
   PasswordsLive,
   SecureSessionRandomLive,
   DevelopmentVerificationCodeGeneratorLive,
-  makeAuthPersistencePgliteLive,
+  makeAuthPersistencePostgresLive,
   makeAuthenticationLive,
   makeEmailRegistrationServiceLive,
   makeFakeGoogleIdentityProvider,
   makeGoogleSecurityLive,
   makeOpaqueSessionsLive,
-} from "@proxus/backend-infra/auth"
-import { seedAuthQa } from "@proxus/backend-infra/auth-qa"
-import { PgliteDevelopmentLive, defaultMigrationsFolder, migratePglite, seedPgliteStudyCatalog } from "@proxus/backend-infra/database/pglite"
-import { FeatureFlagSnapshotRepositoryPgliteLive } from "@proxus/backend-infra/feature-flags/pglite"
-import { ProductAnalyticsRepositoryPgliteLive } from "@proxus/backend-infra/product-analytics/pglite"
-import { StudyCatalogRepositoryPgliteLive } from "@proxus/backend-infra/study-catalog/pglite"
+} from "@proxus/backend-infra/auth/preview-runtime"
+import { PostgresMigrationCheckLive, makePostgresProductionLive } from "@proxus/backend-infra/database/postgres"
+import { FeatureFlagSnapshotRepositoryPostgresLive } from "@proxus/backend-infra/feature-flags/postgres"
+import { ProductAnalyticsRepositoryMemory } from "@proxus/backend-infra/product-analytics/memory"
+import { StudyCatalogRepositoryPostgresLive } from "@proxus/backend-infra/study-catalog/postgres"
 import { AuthSessionView, makeAuthSessionCookies } from "@proxus/backend-transport/auth"
 import { ProductAnalyticsHttpContextDevelopment } from "@proxus/backend-transport/product-analytics"
 import { AccountSummary, CurrentSession } from "@proxus/shared/auth"
@@ -42,13 +41,12 @@ const sessionPolicy = { ttlMillis: 30 * day, renewalWindowMillis: 7 * day, rotat
 const registrationPolicy = { challengeTtlMillis: 15 * 60_000, resendCooldownMillis: 60_000, maximumAttempts: 5 }
 const authenticationPolicy = { passwordResetTtlMillis: 15 * 60_000, passwordResetMaximumAttempts: 5 }
 
-const database = PgliteDevelopmentLive
+const database = makePostgresProductionLive("proxus-preview")
 const persistence = Layer.mergeAll(
-  RoleAssignmentsRepositoryPgliteLive,
-  StudyCatalogRepositoryPgliteLive,
-  FeatureFlagSnapshotRepositoryPgliteLive,
-  ProductAnalyticsRepositoryPgliteLive,
-  makeAuthPersistencePgliteLive(sessionPolicy.ttlMillis),
+  RoleAssignmentsRepositoryPostgresLive,
+  StudyCatalogRepositoryPostgresLive,
+  FeatureFlagSnapshotRepositoryPostgresLive,
+  makeAuthPersistencePostgresLive(sessionPolicy.ttlMillis),
 ).pipe(Layer.provide(database))
 
 const AuthSessionViewLive = Layer.effect(AuthSessionView, Effect.gen(function*() {
@@ -77,13 +75,10 @@ const AuthSessionViewLive = Layer.effect(AuthSessionView, Effect.gen(function*()
 }))
 
 const opaqueSessions = makeOpaqueSessionsLive(sessionPolicy).pipe(Layer.provide(persistence))
-const sessionServices = Layer.merge(
-  opaqueSessions,
-  GoogleSessionIssuerLive.pipe(Layer.provide(opaqueSessions)),
-)
+const sessionServices = Layer.merge(opaqueSessions, GoogleSessionIssuerLive.pipe(Layer.provide(opaqueSessions)))
 const google = makeFakeGoogleIdentityProvider([
-  { code: "dev-google-new", identity: { subject: "dev-google-user", email: "google@example.test", emailVerified: true, displayName: "Development User" } },
-  { code: "dev-google-existing", identity: { subject: "qa-google:student-google", email: "student.google.qa@proxus.dev", emailVerified: true, displayName: "QA Existing User" } },
+  { code: "preview-google-new", identity: { subject: "preview-google-user", email: "google@example.test", emailVerified: true, displayName: "Preview User" } },
+  { code: "preview-google-existing", identity: { subject: "qa-google:student-google", email: "student.google.qa@proxus.dev", emailVerified: true, displayName: "QA Existing User" } },
 ])
 const authDependencies = Layer.mergeAll(
   persistence,
@@ -92,51 +87,37 @@ const authDependencies = Layer.mergeAll(
   SecureSessionRandomLive,
   ConsoleEmailDelivery,
   google,
-  makeGoogleSecurityLive("proxus-development-google-secret-32-bytes-minimum"),
+  Layer.unwrap(Config.string("AUTH_GOOGLE_SIGNING_SECRET").pipe(Effect.map(makeGoogleSecurityLive))),
 )
 const auth = Layer.mergeAll(
   makeEmailRegistrationServiceLive(registrationPolicy),
   RegistrationAvailability.layer,
   makeAuthenticationLive(authenticationPolicy),
   makeGoogleFlowLive({ stateTtlMillis: 10 * 60_000, pendingTtlMillis: 30 * 60_000 }),
-).pipe(
-  Layer.provideMerge(sessionServices),
-  Layer.provide(authDependencies),
-)
+).pipe(Layer.provideMerge(sessionServices), Layer.provide(authDependencies))
 const access = AccessControlServiceLive.pipe(Layer.provide(persistence))
 const catalog = StudyCatalogLive.pipe(Layer.provide(Layer.merge(persistence, access)))
 const studyPath = StudyPathValidator.layer.pipe(Layer.provide(catalog))
 const authSurface = Layer.mergeAll(
   auth.pipe(Layer.provide(studyPath)),
   AuthSessionViewLive.pipe(Layer.provide(persistence)),
-  makeAuthSessionCookies({ secure: false, sameSite: "lax" }),
+  makeAuthSessionCookies({ secure: true, sameSite: "lax" }),
 )
-const analytics = ProductAnalyticsLive.pipe(Layer.provide(persistence))
+const analytics = ProductAnalyticsLive.pipe(Layer.provide(ProductAnalyticsRepositoryMemory))
 const flags = FeatureFlagSnapshotReaderLive.pipe(Layer.provide(persistence))
 const adminUsers = AdminUsersServiceLive.pipe(Layer.provide(Layer.merge(persistence, access)))
 
-const seed = Layer.effectDiscard(Effect.gen(function*() {
-  const migrations = yield* Config.string("DATABASE_MIGRATIONS_DIR").pipe(Config.withDefault(defaultMigrationsFolder))
-  yield* migratePglite(migrations)
-  yield* seedPgliteStudyCatalog
-  yield* seedAuthQa()
-})).pipe(Layer.provide(Layer.merge(database, Layer.merge(persistence, PasswordsLive))))
+const migrationCheck = PostgresMigrationCheckLive.pipe(Layer.provide(database))
 
 const sharedServices = Layer.merge(
   Layer.mergeAll(persistence, authSurface, access, catalog, studyPath),
-  Layer.mergeAll(analytics, ProductAnalyticsHttpContextDevelopment, flags, adminUsers, seed),
+  Layer.mergeAll(analytics, ProductAnalyticsHttpContextDevelopment, flags, adminUsers, migrationCheck),
 )
-
 const adminSession = AdminSessionAuthorizationLive.pipe(Layer.provide(sharedServices))
 
-export const DevelopmentPublicSupportLive = Layer.merge(authSurface, studyPath)
-const developmentServices = Layer.mergeAll(
-  sharedServices,
-  adminSession,
-  authSurface,
-  studyPath,
-)
-export const DevelopmentServicesLive = Layer.merge(
-  developmentServices.pipe(Layer.provide(DevelopmentPublicSupportLive)),
-  DevelopmentPublicSupportLive,
+export const PreviewPublicSupportLive = Layer.merge(authSurface, studyPath)
+const previewServices = Layer.mergeAll(sharedServices, adminSession, authSurface, studyPath)
+export const PreviewServicesLive = Layer.merge(
+  previewServices.pipe(Layer.provide(PreviewPublicSupportLive)),
+  PreviewPublicSupportLive,
 )

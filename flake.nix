@@ -25,6 +25,8 @@
               pkgs.bun
               pkgs.git
               pkgs.gh
+              pkgs.actionlint
+              pkgs.shellcheck
               pnpm
               stack
             ];
