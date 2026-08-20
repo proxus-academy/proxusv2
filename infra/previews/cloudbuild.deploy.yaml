@@ -47,6 +47,7 @@ steps:
       - --memory=512Mi
       - --port=8080
       - --no-allow-unauthenticated
+      - --no-iap
       - --labels=managed-by=proxus,environment=preview,preview-id=${_PREVIEW_ID}
       - --quiet
   - id: authorize-smoke
