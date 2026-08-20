@@ -47,8 +47,19 @@ steps:
       - --memory=512Mi
       - --port=8080
       - --no-allow-unauthenticated
-      - --no-iap
       - --labels=managed-by=proxus,environment=preview,preview-id=${_PREVIEW_ID}
+      - --quiet
+  - id: disable-iap-for-smoke
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - services
+      - update
+      - ${_SERVICE}
+      - --project=$PROJECT_ID
+      - --region=${_REGION}
+      - --no-iap
       - --quiet
   - id: authorize-smoke
     name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
