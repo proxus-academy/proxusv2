@@ -1,29 +1,37 @@
 steps:
+  - id: warm-gcloud
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    waitFor: ["-"]
+    entrypoint: gcloud
+    args: [version]
   - id: build
     name: gcr.io/cloud-builders/docker
+    waitFor: ["-"]
     entrypoint: bash
     env: [DOCKER_BUILDKIT=1]
     args:
       - -ceu
       - |
-        docker pull "${_IMAGE_REPOSITORY}:cache" || true
+        docker pull "${_CACHE_REPOSITORY}:cache" || true
         docker build \
           --file Dockerfile.preview \
           --build-arg BUILDKIT_INLINE_CACHE=1 \
-          --cache-from "${_IMAGE_REPOSITORY}:cache" \
+          --cache-from "${_CACHE_REPOSITORY}:cache" \
           --tag "${_IMAGE_REPOSITORY}:$COMMIT_SHA-$BUILD_ID" \
-          --tag "${_IMAGE_REPOSITORY}:cache" \
+          --tag "${_CACHE_REPOSITORY}:cache" \
           .
   - id: push
     name: gcr.io/cloud-builders/docker
+    waitFor: [build]
     entrypoint: bash
     args:
       - -ceu
       - |
         docker push "${_IMAGE_REPOSITORY}:$COMMIT_SHA-$BUILD_ID"
-        docker push "${_IMAGE_REPOSITORY}:cache"
+        docker push "${_CACHE_REPOSITORY}:cache"
   - id: initialize
     name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    waitFor: [push, warm-gcloud]
     entrypoint: bash
     args:
       - -ceu
