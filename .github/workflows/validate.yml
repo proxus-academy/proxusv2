@@ -57,7 +57,7 @@ jobs:
             command: pnpm boundaries
             turbo_cache_key: ""
           - name: Knip
-            command: pnpm knip
+            command: pnpm --filter @proxus/web paraglide && pnpm knip
             turbo_cache_key: ""
           - name: Workspace contracts
             command: pnpm workspace:contracts
