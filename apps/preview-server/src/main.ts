@@ -7,7 +7,13 @@ import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import { makeAdminApiRoutes } from "@proxus/backend-admin-transport"
 import { makePublicApiRoutes } from "@proxus/backend-transport"
 import { Config, Effect, Layer } from "effect"
-import { HttpRouter, HttpServerResponse, HttpStaticServer } from "effect/unstable/http"
+import {
+  HttpRouter,
+  HttpServerRequest,
+  HttpServerRespondable,
+  HttpServerResponse,
+  HttpStaticServer,
+} from "effect/unstable/http"
 import { PreviewPublicSupportLive, PreviewServicesLive } from "./services.js"
 
 const prefixed = <A, E, R>(prefix: string, routes: Layer.Layer<A, E, R>) => Layer.unwrap(
@@ -35,11 +41,18 @@ const staticAssets = Layer.unwrap(Effect.gen(function*() {
       index: "index.html",
       spa: true,
     }),
-    HttpStaticServer.layer({
-      root: uiRoot,
-      prefix: "/ui",
-      index: "index.html",
-    }),
+    Layer.effectDiscard(Effect.gen(function*() {
+      const router = yield* HttpRouter.HttpRouter
+      const handler = (yield* HttpStaticServer.make({ root: uiRoot, index: "index.html" })).pipe(
+        Effect.catch(HttpServerRespondable.toResponse),
+      )
+      yield* router.prefixed("/ui").add("GET", "/*", Effect.gen(function*() {
+        const request = yield* HttpServerRequest.HttpServerRequest
+        return request.originalUrl === "/ui"
+          ? HttpServerResponse.redirect("/ui/", { status: 308 })
+          : yield* handler
+      }))
+    })),
     HttpStaticServer.layer({
       root: webRoot,
       index: "index.html",
