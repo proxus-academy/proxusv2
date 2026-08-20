@@ -1,9 +1,9 @@
-import { cloneElement, type ReactElement, type ReactNode } from "react"
+import { Fragment, type ReactElement, type ReactNode } from "react"
 
 /** Renders the explicitly supported markup emitted by an already-localized message. */
 export function RichText({ message, components }: Readonly<{
   message: string
-  components: Readonly<Record<"terms" | "privacy", ReactElement>>
+  components: Readonly<Record<"terms" | "privacy", (children: string) => ReactElement>>
 }>) {
   const parts: ReactNode[] = []
   const pattern = /<(terms|privacy)>(.*?)<\/\1>/g
@@ -14,7 +14,7 @@ export function RichText({ message, components }: Readonly<{
     const content = match[2] ?? ""
     parts.push(message.slice(cursor, index))
     if (tag === "terms" || tag === "privacy") {
-      parts.push(cloneElement(components[tag], { key: `${tag}-${index}` }, content))
+      parts.push(<Fragment key={`${tag}-${index}`}>{components[tag](content)}</Fragment>)
     }
     cursor = index + match[0].length
   }

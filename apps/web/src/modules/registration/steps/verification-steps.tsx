@@ -33,9 +33,11 @@ export function EmailVerification({ state, onComplete = () => Promise.resolve() 
   }, [cooldown])
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    void verify({ code: String(new FormData(event.currentTarget).get("code")) }).then((exit) => {
-      if (Exit.isSuccess(exit)) void onComplete()
-    })
+    void verify({ code: String(new FormData(event.currentTarget).get("code")) })
+      .then((exit) => {
+        if (Exit.isSuccess(exit)) void onComplete()
+      })
+      .catch((error: unknown) => globalThis.reportError(error))
   }
   return (
     <main className="mx-auto flex max-w-xl flex-col items-center gap-5 text-center">
@@ -83,9 +85,11 @@ export function ConfirmGoogle({ state, onComplete = () => Promise.resolve() }: {
       <RegistrationFailure />
       <form id="google-confirm" onSubmit={(event) => {
         event.preventDefault()
-        void confirm().then((exit) => {
-          if (Exit.isSuccess(exit)) void onComplete()
-        })
+        void confirm()
+          .then((exit) => {
+            if (Exit.isSuccess(exit)) void onComplete()
+          })
+          .catch((error: unknown) => globalThis.reportError(error))
       }}>
         <label className="flex items-start gap-2">
           <Checkbox
@@ -94,7 +98,15 @@ export function ConfirmGoogle({ state, onComplete = () => Promise.resolve() }: {
             aria-required="true"
             aria-label={registration_verification_accept()}
           />
-          <span><RichText message={registration_verification_legal()} components={{ terms: <a className="text-primary underline" href="https://proxus.es/terms" target="_blank" rel="noreferrer" />, privacy: <a className="text-primary underline" href="https://proxus.es/privacy" target="_blank" rel="noreferrer" /> }} /></span>
+          <span>
+            <RichText
+              message={registration_verification_legal()}
+              components={{
+                terms: (children) => <a className="text-primary underline" href="https://proxus.es/terms" target="_blank" rel="noreferrer">{children}</a>,
+                privacy: (children) => <a className="text-primary underline" href="https://proxus.es/privacy" target="_blank" rel="noreferrer">{children}</a>,
+              }}
+            />
+          </span>
         </label>
         <Button loading={busy} disabled={!accepted} type="submit">{registration_verification_confirmGoogle()}</Button>
       </form>

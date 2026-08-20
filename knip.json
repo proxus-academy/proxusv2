@@ -12,9 +12,9 @@
       "entry": ["src/initialize.ts"]
     },
     "apps/storybook": {
-      // Effect/shared are used by app-owned stories outside this workspace's source tree.
+      // Effect is used by app-owned stories outside this workspace's source tree.
       // Tailwind is resolved indirectly by Storybook's Vite plugin and shared theme CSS.
-      "ignoreDependencies": ["@effect/atom-react", "@proxus/shared", "effect", "tailwindcss"]
+      "ignoreDependencies": ["@effect/atom-react", "effect", "tailwindcss"]
     },
     "apps/web": {
       // Tailwind is resolved indirectly by Vite/shared theme CSS. Paraglide's

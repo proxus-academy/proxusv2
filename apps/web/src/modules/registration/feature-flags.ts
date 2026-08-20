@@ -4,9 +4,9 @@ import {
 } from "@proxus/frontend-core/feature-flags"
 import {
   FeatureFlagInstallationIdentityWebLive,
-  makeFeatureFlagDistributionWebLive,
-  registrationLandingAnalyticsWebLayer,
-} from "../../platform/feature-flags/index.js"
+} from "../../platform/feature-flags/installation-identity.web.js"
+import { makeFeatureFlagDistributionWebLive } from "../../platform/feature-flags/distribution.web.js"
+import { registrationLandingAnalyticsWebLayer } from "../../platform/feature-flags/landing.web.js"
 import { Layer } from "effect"
 import * as Atom from "effect/unstable/reactivity/Atom"
 

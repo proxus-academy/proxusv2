@@ -58,7 +58,13 @@ function AccountFormContent({ draft: _draft }: { readonly draft: RegistrationDra
           <RegistrationAccountForm.confirmation label={registration_account_confirmation()} type="password" />
           <RegistrationAccountForm.terms label={registration_account_accept()} />
           <Text className="text-sm leading-relaxed" tone="muted">
-            <RichText message={registration_account_legal()} components={{ terms: <a className="text-primary underline" href="https://proxus.es/terms" target="_blank" rel="noreferrer" />, privacy: <a className="text-primary underline" href="https://proxus.es/privacy" target="_blank" rel="noreferrer" /> }} />
+            <RichText
+              message={registration_account_legal()}
+              components={{
+                terms: (children) => <a className="text-primary underline" href="https://proxus.es/terms" target="_blank" rel="noreferrer">{children}</a>,
+                privacy: (children) => <a className="text-primary underline" href="https://proxus.es/privacy" target="_blank" rel="noreferrer">{children}</a>,
+              }}
+            />
           </Text>
         <div className="flex justify-end pt-1">
           <Button type="submit" loading={busy} disabled={!canSubmit}>{registration_account_submit()}</Button>
