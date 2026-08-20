@@ -15,9 +15,8 @@ ENV NODE_ENV=production
 ENV DATABASE_MIGRATIONS_DIR=/app/drizzle
 ENV WEB_ROOT=/app/web
 ENV ADMIN_ROOT=/app/admin
-ENV API_PORT=3000
 WORKDIR /app
 COPY --from=build --chown=node:node /workspace/dist/preview-runtime/ /app/
 USER node
 EXPOSE 8080
-CMD ["node", "/app/entrypoint.mjs"]
+CMD ["node", "/app/api.mjs"]

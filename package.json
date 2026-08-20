@@ -34,7 +34,7 @@
     "test:ci": "turbo run test --concurrency=1",
     "check": "pnpm typecheck && pnpm build",
     "effect:diagnostics": "node scripts/run-effect-diagnostics.mjs",
-    "lint": "eslint \"apps/*/**/*.{ts,tsx}\" \"packages/*/**/*.{ts,tsx}\" --no-error-on-unmatched-pattern --no-warn-ignored --max-warnings 0",
+    "lint": "eslint \"apps/**/*.{js,mjs,ts,tsx}\" \"packages/*/**/*.{ts,tsx}\" --no-error-on-unmatched-pattern --no-warn-ignored --max-warnings 0",
     "boundaries": "depcruise --config dependency-cruiser.config.mjs apps packages",
     "knip": "knip --config knip.json --no-progress",
     "workspace:contracts": "node scripts/check-workspace-contracts.mjs",

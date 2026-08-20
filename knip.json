@@ -9,7 +9,7 @@
     },
     "apps/admin": {},
     "apps/preview-server": {
-      "entry": ["src/*.mjs"]
+      "entry": ["src/initialize.ts"]
     },
     "apps/storybook": {
       // Effect/shared are used by app-owned stories outside this workspace's source tree.

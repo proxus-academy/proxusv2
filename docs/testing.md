@@ -233,9 +233,9 @@ The checks have no generated allowlist or accepted-violation baseline:
   root Effect Language Service configuration explicitly, so a leaf `plugins`
   override cannot silently reduce coverage. Workspace tsconfigs include their
   Vite, Drizzle and Storybook TypeScript configuration files.
-- `lint` is type-aware and deliberately has no formatting rules. Its workspace
-  globs include source, Storybook and root `*.config.ts` files while excluding
-  generated trees. It enforces unsafe Promise use (`await-thenable`,
+- `lint` is type-aware for TypeScript and deliberately has no formatting rules.
+  Its workspace globs include application JavaScript/ESM, TypeScript source,
+  Storybook and root `*.config.ts` files while excluding generated trees. It enforces unsafe Promise use (`await-thenable`,
   `no-floating-promises`, `no-misused-promises`), dangerous assertions
   (`no-non-null-assertion`, `no-unsafe-type-assertion`), and rejects direct
   imports of Node filesystem, path, child-process and HTTP APIs that have

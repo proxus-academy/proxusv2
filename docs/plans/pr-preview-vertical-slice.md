@@ -35,11 +35,11 @@ Cloud Run :8080
              └── dedicated preview database in shared Cloud SQL
 ```
 
-The gateway and API runtime are separate processes inside the same preview-only container. The entrypoint propagates termination and terminates the container if either child exits. Cloud Run receives traffic only on port 8080. The API listens on loopback and is not exposed independently.
+A single Effect HTTP runtime serves both API surfaces and the compiled frontends. Public and administrative routes are mounted under `/api` and `/admin-api`; Effect's static server serves the Web and Admin SPAs under `/` and `/admin`. Cloud Run receives traffic on port 8080, and `NodeRuntime` owns interruption and graceful server shutdown. There is no internal proxy, second listener or child-process supervisor.
 
 The preview runtime uses real PostgreSQL repositories. Startup only checks the Drizzle ledger and fails when migrations are pending; it never changes the schema. A one-shot Cloud Run Job applies migrations and installs deterministic synthetic catalog/auth fixtures when the preview database is first created. It deliberately uses fake Google identity, console email and in-memory analytics; no production data or provider credentials are used.
 
-The multi-stage image bundles the API into a standalone Node ESM artifact. Its final stage contains only that bundle, the gateway/entrypoint, Drizzle migrations and compiled frontend assets. Build-time checks reject PGlite, `tsx` and TypeScript runtime content. The final image runs as the unprivileged Node user.
+The multi-stage image bundles the complete preview HTTP runtime into a standalone Node ESM artifact. Its final stage contains only that bundle, the database initializer, Drizzle migrations and compiled frontend assets. Build-time checks reject PGlite, `tsx` and TypeScript runtime content. The final image runs as the unprivileged Node user.
 
 ## Local proof
 

@@ -6,20 +6,48 @@ import * as NodeHttpServer from "@effect/platform-node/NodeHttpServer"
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import { makeAdminApiRoutes } from "@proxus/backend-admin-transport"
 import { makePublicApiRoutes } from "@proxus/backend-transport"
-import { Config, Layer } from "effect"
-import { HttpRouter } from "effect/unstable/http"
+import { Config, Effect, Layer } from "effect"
+import { HttpRouter, HttpServerResponse, HttpStaticServer } from "effect/unstable/http"
 import { PreviewPublicSupportLive, PreviewServicesLive } from "./services.js"
 
-const publicRoutes = makePublicApiRoutes("/openapi.public.json").pipe(Layer.provide(
+const prefixed = <A, E, R>(prefix: string, routes: Layer.Layer<A, E, R>) => Layer.unwrap(
+  HttpRouter.HttpRouter.pipe(Effect.map((router) => routes.pipe(
+    Layer.provide(Layer.succeed(HttpRouter.HttpRouter, router.prefixed(prefix))),
+  ))),
+)
+
+const publicRoutes = prefixed("/api", makePublicApiRoutes("/openapi.public.json").pipe(Layer.provide(
   Layer.merge(PreviewServicesLive, PreviewPublicSupportLive),
-))
-const adminRoutes = makeAdminApiRoutes("/openapi.admin.json").pipe(Layer.provide(PreviewServicesLive))
+)))
+const adminRoutes = prefixed(
+  "/admin-api",
+  makeAdminApiRoutes("/openapi.admin.json").pipe(Layer.provide(PreviewServicesLive)),
+)
+const healthRoute = HttpRouter.add("GET", "/healthz", HttpServerResponse.empty({ status: 204 }))
+const staticAssets = Layer.unwrap(Effect.gen(function*() {
+  const adminRoot = yield* Config.string("ADMIN_ROOT").pipe(Config.withDefault("/app/admin"))
+  const webRoot = yield* Config.string("WEB_ROOT").pipe(Config.withDefault("/app/web"))
+  return Layer.merge(
+    HttpStaticServer.layer({
+      root: adminRoot,
+      prefix: "/admin",
+      index: "index.html",
+      spa: true,
+    }),
+    HttpStaticServer.layer({
+      root: webRoot,
+      index: "index.html",
+      spa: true,
+    }),
+  )
+}))
+const routes = Layer.mergeAll(publicRoutes, adminRoutes, healthRoute, staticAssets)
 const server = NodeHttpServer.layerConfig(createServer, {
-  host: Config.string("API_HOST").pipe(Config.withDefault("127.0.0.1")),
-  port: Config.int("API_PORT").pipe(Config.withDefault(3000)),
+  host: Config.string("HOST").pipe(Config.withDefault("0.0.0.0")),
+  port: Config.int("PORT").pipe(Config.withDefault(8080)),
 })
 
-HttpRouter.serve(Layer.merge(publicRoutes, adminRoutes)).pipe(
+HttpRouter.serve(routes).pipe(
   Layer.provide(PreviewPublicSupportLive),
   Layer.provide(server),
   Layer.launch,

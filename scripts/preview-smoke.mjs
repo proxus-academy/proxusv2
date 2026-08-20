@@ -1,8 +1,8 @@
 const origin = process.env.PREVIEW_ORIGIN ?? "http://localhost:8080"
 const checks = [
   ["health", "/healthz", 204],
-  ["web", "/es", 200],
-  ["admin", "/admin/", 200],
+  ["web", "/es", 200, { accept: "text/html" }],
+  ["admin", "/admin/", 200, { accept: "text/html" }],
   ["public API", "/api/openapi.public.json", 200],
   ["admin API", "/admin-api/openapi.admin.json", 200],
 ]
@@ -18,8 +18,8 @@ for (let attempt = 1; attempt <= 60; attempt++) {
   await new Promise((resolve) => setTimeout(resolve, 2_000))
 }
 
-for (const [name, path, expected] of checks) {
-  const response = await fetch(`${origin}${path}`)
+for (const [name, path, expected, headers] of checks) {
+  const response = await fetch(`${origin}${path}`, { headers })
   if (response.status !== expected) throw new Error(`${name} returned ${response.status}; expected ${expected}`)
   console.log(`✓ ${name}: ${origin}${path}`)
 }

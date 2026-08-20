@@ -32,8 +32,6 @@ for (const [name, entry] of Object.entries(entries)) {
   }
 }
 
-cpSync(new URL("../apps/preview-server/src/gateway.mjs", import.meta.url), new URL("gateway.mjs", output))
-cpSync(new URL("../apps/preview-server/src/container-entrypoint.mjs", import.meta.url), new URL("entrypoint.mjs", output))
 cpSync(new URL("../packages/backend-infra/drizzle", import.meta.url), new URL("drizzle", output), { recursive: true })
 cpSync(new URL("../apps/web/dist", import.meta.url), new URL("web", output), { recursive: true })
 cpSync(new URL("../apps/admin/dist", import.meta.url), new URL("admin", output), { recursive: true })
