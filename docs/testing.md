@@ -177,7 +177,7 @@ un proceso vacío.
 
 ## Current CI gates and pending suites
 
-The current `.github/workflows/validate.yml` has two independent required jobs.
+The current `.github/workflows/validate.yml` retains two authoritative jobs.
 After a frozen install, `validate` runs `pnpm validate:pr`, which performs:
 
 1. validator self-tests;
@@ -187,6 +187,14 @@ After a frozen install, `validate` runs `pnpm validate:pr`, which performs:
 4. every workspace build through the package dependency graph, including the
    static Storybook build.
 
+Pull requests additionally run an advisory `Experiment / ...` matrix that
+duplicates the same coverage as independent validator self-test, Effect
+diagnostics, typecheck, lint/architecture, Vitest/PGlite and build jobs. These
+jobs use `continue-on-error` and do not replace the authoritative `validate`
+result while the scheduling and caches are evaluated. The PostgreSQL job remains
+unchanged and is not duplicated. Whether a reported check is required for merge
+is repository policy configured outside this workflow.
+
 Turborepo schedules `build`, `typecheck` and `test` from the dependencies declared
 in workspace manifests and caches deterministic task results locally. Builds run
 dependency builds first and cache declared `dist` and `storybook-static` outputs;
@@ -194,7 +202,12 @@ typechecks and tests cache successful logs because they do not produce committed
 artifacts. CI intentionally keeps normal tests at concurrency one for the PGlite
 resource constraints described above. Global validators (`lint`, `boundaries`,
 `knip`, workspace contracts and validator self-tests) remain explicit root tasks
-and are not treated as package-local affected checks. No remote cache is configured.
+and are not treated as package-local affected checks. No Turbo Remote Cache is
+configured. Experimental jobs persist the pnpm store and use distinct GitHub
+Actions cache namespaces for the `typecheck`, `tests` and `build` `.turbo`
+directories so concurrent jobs cannot save different partial caches under one
+key. The original `validate` job deliberately remains uncached during the
+comparison.
 
 `postgres` provisions `postgres:17.7-bookworm` with a `pg_isready` healthcheck
 and a fresh `proxus_postgres_test` database. It explicitly runs the production
