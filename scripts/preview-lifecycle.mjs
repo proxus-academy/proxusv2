@@ -10,6 +10,7 @@ const REPOSITORY = `projects/${PROJECT}/locations/${REGION}/connections/proxus-g
 const BUILD_SA = `projects/${PROJECT}/serviceAccounts/proxus-cloud-build@${PROJECT}.iam.gserviceaccount.com`
 const RUNTIME_SA = `proxus-preview-runtime@${PROJECT}.iam.gserviceaccount.com`
 const IMAGE_REPOSITORY = `${REGION}-docker.pkg.dev/${PROJECT}/proxus/preview`
+const CACHE_REPOSITORY = `${REGION}-docker.pkg.dev/${PROJECT}/proxus-preview-cache/preview`
 const CONFIG = resolve("infra/previews/cloudbuild.deploy.yaml")
 const IAP_GROUP = process.env.PREVIEW_IAP_GROUP ?? ""
 
@@ -78,7 +79,7 @@ function create() {
   const branchPattern = `^${branch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`
   const installTrigger = (initialize) => {
     remove("builds", "triggers", "delete", trigger, `--region=${REGION}`)
-    gcloud("builds", "triggers", "create", "github", `--name=${trigger}`, `--region=${REGION}`, `--repository=${REPOSITORY}`, `--branch-pattern=${branchPattern}`, `--inline-config=${CONFIG}`, `--service-account=${BUILD_SA}`, `--substitutions=_REGION=${REGION},_SERVICE=${service},_PREVIEW_ID=${id},_IMAGE_REPOSITORY=${IMAGE_REPOSITORY},_RUNTIME_SERVICE_ACCOUNT=${RUNTIME_SA},_BUILD_SERVICE_ACCOUNT=proxus-cloud-build@${PROJECT}.iam.gserviceaccount.com,_CLOUD_SQL_CONNECTION=${SQL_CONNECTION},_DATABASE_SECRET=${secret},_IAP_GROUP=${IAP_GROUP},_INITIALIZE=${initialize}`)
+    gcloud("builds", "triggers", "create", "github", `--name=${trigger}`, `--region=${REGION}`, `--repository=${REPOSITORY}`, `--branch-pattern=${branchPattern}`, `--inline-config=${CONFIG}`, `--service-account=${BUILD_SA}`, `--substitutions=_REGION=${REGION},_SERVICE=${service},_PREVIEW_ID=${id},_IMAGE_REPOSITORY=${IMAGE_REPOSITORY},_CACHE_REPOSITORY=${CACHE_REPOSITORY},_RUNTIME_SERVICE_ACCOUNT=${RUNTIME_SA},_BUILD_SERVICE_ACCOUNT=proxus-cloud-build@${PROJECT}.iam.gserviceaccount.com,_CLOUD_SQL_CONNECTION=${SQL_CONNECTION},_DATABASE_SECRET=${secret},_IAP_GROUP=${IAP_GROUP},_INITIALIZE=${initialize}`)
   }
   installTrigger(needsInitialization)
   const buildId = capture("builds", "triggers", "run", trigger, `--region=${REGION}`, `--branch=${branch}`, "--format=value(metadata.build.id)")
