@@ -13,28 +13,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  validate:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - name: Use pinned Node.js
-        uses: actions/setup-node@0a44ba7841725637a19e28fa30b79a866c81b0a6 # v4.0.4
-        with:
-          node-version: 22.22.2
-      - name: Enable pinned pnpm
-        run: |
-          npm install --global corepack@0.35.0
-          corepack enable pnpm
-      - name: Install frozen dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Validate static, Vitest/PGlite, and build checks
-        run: pnpm validate:pr
-
-  validation-experiment:
-    name: Experiment / ${{ matrix.name }}
-    if: github.event_name == 'pull_request'
+  validation:
+    name: ${{ matrix.name }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
@@ -56,8 +36,9 @@ jobs:
           - name: Architecture
             command: pnpm boundaries
             turbo_cache_key: ""
+          # Knip resolves generated Paraglide imports, so this job owns that prerequisite.
           - name: Knip
-            command: pnpm --filter @proxus/web paraglide && pnpm knip
+            command: pnpm knip
             turbo_cache_key: ""
           - name: Workspace contracts
             command: pnpm workspace:contracts
@@ -71,7 +52,7 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - name: Set up experimental validation
+      - name: Set up validation
         uses: ./.github/actions/setup-validation
         with:
           turbo_cache_key: ${{ matrix.turbo_cache_key }}

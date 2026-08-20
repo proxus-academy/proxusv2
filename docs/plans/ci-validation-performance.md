@@ -1,5 +1,9 @@
 # CI validation performance plan
 
+## Outcome
+
+Phase 1 was promoted after the parallel jobs reproduced the monolithic gate and the TypeScript 7-backed Oxlint spike preserved the configured lint findings. CI now runs the strict gates independently without the duplicate sequential job. Measured validation feedback is normally dominated by complete Effect diagnostics at roughly 1.5–2.5 minutes; runner and cache variance remains visible in each named check. Effect diagnostics retain the complete project inventory and zero-warning policy.
+
 ## Objective
 
 Reduce pull-request feedback time without removing any existing static, Vitest/PGlite, build, or PostgreSQL gate. The first target is a cold critical path of 2–3 minutes and a cached path below 2 minutes for small changes.
@@ -93,7 +97,7 @@ Cache correctness requirements:
 
 ### Experimental rollout
 
-Before replacing the existing gate, retain the original `validate` and `postgres` jobs as the authoritative result and run the parallel jobs only on pull requests. Experimental jobs are advisory because they are not configured as required checks in repository policy; they intentionally do not use `continue-on-error`, so a detected defect remains visibly red and can be compared with the authoritative result.
+This rollout is complete. During measurement, the original `validate` and `postgres` jobs remained authoritative while parallel jobs ran on pull requests. Experimental jobs are advisory because they are not configured as required checks in repository policy; they intentionally do not use `continue-on-error`, so a detected defect remains visibly red and can be compared with the authoritative result.
 
 Compare the original and experimental paths on the same commits:
 

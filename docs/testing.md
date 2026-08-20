@@ -177,24 +177,9 @@ un proceso vacío.
 
 ## Current CI gates and pending suites
 
-The current `.github/workflows/validate.yml` retains two authoritative jobs.
-After a frozen install, `validate` runs `pnpm validate:pr`, which performs:
+The current `.github/workflows/validate.yml` exposes every authoritative gate independently and starts them in parallel: validator self-test, Effect diagnostics, typecheck, type-aware lint, dependency-cruiser architecture, Knip, workspace contracts, Vitest/PGlite, build and PostgreSQL 17. There is no duplicate monolithic CI job and no validator uses `continue-on-error`. A failure or warning in any strict validator remains a failed check.
 
-1. validator self-tests;
-2. static validation;
-3. the implemented normal Vitest suites through Turborepo with concurrency one,
-   including PGlite but excluding `packages/backend-infra/src/postgres`;
-4. every workspace build through the package dependency graph, including the
-   static Storybook build.
-
-Pull requests additionally run an advisory `Experiment / ...` matrix that
-duplicates the same coverage as independent validator self-test, Effect
-diagnostics, typecheck, lint, dependency-cruiser architecture, Knip, workspace
-contracts, Vitest/PGlite and build jobs. These jobs preserve their real failure
-conclusion but do not replace the authoritative `validate` result while the
-scheduling and caches are evaluated. They are advisory because repository merge
-requirements are configured outside this workflow, not because failures are
-suppressed. The PostgreSQL job remains unchanged and is not duplicated.
+The root `pnpm validate:pr` command retains the same complete sequential validation for local use: validator self-tests, static validation, normal Vitest/PGlite suites and every workspace build including Storybook. CI changes scheduling, not coverage. Knip generates Paraglide before analysis because its fresh runner must resolve those generated imports without relying on another job's filesystem.
 
 Turborepo schedules `build`, `typecheck` and `test` from the dependencies declared
 in workspace manifests and caches deterministic task results locally. Builds run
@@ -203,15 +188,7 @@ typechecks and tests cache successful logs because they do not produce committed
 artifacts. CI intentionally keeps normal tests at concurrency one for the PGlite
 resource constraints described above. Global validators (`lint`, `boundaries`,
 `knip`, workspace contracts and validator self-tests) remain explicit root tasks
-and are not treated as package-local affected checks. No Turbo Remote Cache is
-configured. Experimental jobs persist the pnpm store and use distinct GitHub
-Actions cache namespaces for the `typecheck`, `tests` and `build` `.turbo`
-directories so concurrent jobs cannot save different partial caches under one
-key. The original `validate` job deliberately remains uncached during the
-comparison. The validator self-test also remains unconditional during parity
-measurement; after promotion it will be limited to validator, workspace,
-TypeScript and workflow configuration changes, with an explicit or scheduled
-full run retained.
+and are not treated as package-local affected checks. No Turbo Remote Cache is configured. CI jobs persist the pnpm store and use distinct GitHub Actions cache namespaces for the `typecheck`, `tests` and `build` `.turbo` directories so concurrent jobs cannot save different partial caches under one key. The validator self-test remains unconditional to preserve strict verification of the validation harness.
 
 `postgres` provisions `postgres:17.7-bookworm` with a `pg_isready` healthcheck
 and a fresh `proxus_postgres_test` database. It explicitly runs the production
