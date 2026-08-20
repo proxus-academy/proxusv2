@@ -30,12 +30,13 @@ Cloud Run :8080
     ├── /api/*       → combined Effect HTTP runtime, public routes
     ├── /admin-api/* → combined Effect HTTP runtime, admin routes
     ├── /admin/*     → compiled Admin SPA
+    ├── /ui/*        → compiled Storybook
     └── /*           → compiled Web SPA
              │
              └── dedicated preview database in shared Cloud SQL
 ```
 
-A single Effect HTTP runtime serves both API surfaces and the compiled frontends. Public and administrative routes are mounted under `/api` and `/admin-api`; Effect's static server serves the Web and Admin SPAs under `/` and `/admin`. Cloud Run receives traffic on port 8080, and `NodeRuntime` owns interruption and graceful server shutdown. There is no internal proxy, second listener or child-process supervisor.
+A single Effect HTTP runtime serves both API surfaces and the compiled frontends. Public and administrative routes are mounted under `/api` and `/admin-api`; Effect's static server serves the Web and Admin SPAs under `/` and `/admin`, plus the compiled Storybook under `/ui`. Cloud Run receives traffic on port 8080, and `NodeRuntime` owns interruption and graceful server shutdown. There is no internal proxy, second listener or child-process supervisor.
 
 The preview runtime uses real PostgreSQL repositories. Startup only checks the Drizzle ledger and fails when migrations are pending; it never changes the schema. A one-shot Cloud Run Job applies migrations and installs deterministic synthetic catalog/auth fixtures when the preview database is first created. It deliberately uses fake Google identity, console email and in-memory analytics; no production data or provider credentials are used.
 
@@ -49,7 +50,7 @@ pnpm preview:smoke
 pnpm preview:down
 ```
 
-Local Compose uses PostgreSQL 17.7. The smoke command waits for migration/seed completion and verifies Web, Admin, Public OpenAPI and Admin OpenAPI through the same gateway URL.
+Local Compose uses PostgreSQL 17.7. The smoke command waits for migration/seed completion and verifies Web, Admin, Storybook, Public OpenAPI and Admin OpenAPI through the same preview URL.
 
 ## GCP spike
 
@@ -70,7 +71,7 @@ Each PR owns resources named from its number:
 - database URL secret `proxus-pr-<number>-database-url`;
 - initialization Job `proxus-pr-<number>-initialize`.
 
-The trusted `pull_request_target` workflow checks out lifecycle code from `main`. Adding `deploy-preview` to an internal PR creates the database and secret, creates a trigger with an inline trusted build configuration, forces the first build, initializes the database from that exact image, deploys and comments the URL. The stored trigger is then replaced with an update-only variant. New commits build and deploy automatically without migrations or seeds. Removing the label or closing the PR deletes all PR-owned resources.
+The trusted `pull_request_target` workflow checks out lifecycle code from `main`. Opening or reopening an internal PR creates the database and secret, creates a trigger with an inline trusted build configuration, forces the first build, initializes the database from that exact image, deploys and comments the URL. The stored trigger is then replaced with an update-only variant. New commits build and deploy automatically without migrations or seeds. Closing the PR deletes all PR-owned resources.
 
 The inline Cloud Build configuration is captured when the trigger is created; it is not read from the observed PR branch. Image tags include both commit and build IDs because Artifact Registry enforces immutable tags. Every preview is initially deployed without anonymous access. Cloud Build receives a temporary resource-level Cloud Run invoker binding, verifies both SPAs and API surfaces with an identity token, and then removes that binding. The build finally enables IAP directly on the service, grants `roles/iap.httpsResourceAccessor` only to the Google Group configured by the trusted `PREVIEW_IAP_GROUP` environment variable, grants the IAP service agent Cloud Run invocation, and verifies that anonymous navigation redirects to IAP. The final service has no direct user or build-service-account invoker binding.
 

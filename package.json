@@ -9,7 +9,7 @@
     "dev:web": "concurrently --kill-others-on-fail --names dev-server,web \"pnpm --filter @proxus/dev-server dev\" \"pnpm --filter @proxus/web dev\"",
     "dev:server": "pnpm --filter @proxus/dev-server dev",
     "dev:admin-server": "pnpm --filter @proxus/dev-server dev",
-    "preview:artifact": "pnpm --filter @proxus/web build && pnpm --filter @proxus/admin exec vite build --base=/admin/ && node scripts/build-preview-artifact.mjs",
+    "preview:artifact": "pnpm --filter @proxus/web build && pnpm --filter @proxus/admin exec vite build --base=/admin/ && pnpm --filter @proxus/storybook build && node scripts/build-preview-artifact.mjs",
     "preview:up": "docker compose -f compose.preview.yml up --build -d",
     "preview:smoke": "node scripts/preview-smoke.mjs",
     "preview:down": "docker compose -f compose.preview.yml down --volumes --remove-orphans",

@@ -2,7 +2,7 @@ name: PR preview lifecycle
 
 on:
   pull_request_target:
-    types: [labeled, unlabeled, reopened, closed]
+    types: [opened, reopened, closed]
 
 permissions:
   contents: read
@@ -15,11 +15,7 @@ concurrency:
 
 jobs:
   reconcile:
-    if: >-
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      ((github.event.action == 'labeled' && github.event.label.name == 'deploy-preview') ||
-       (github.event.action == 'unlabeled' && github.event.label.name == 'deploy-preview') ||
-       github.event.action == 'reopened' || github.event.action == 'closed')
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
     environment: preview
     timeout-minutes: 30
@@ -38,23 +34,18 @@ jobs:
       - name: Reconcile preview
         env:
           ACTION: ${{ github.event.action }}
-          LABEL: ${{ github.event.label.name }}
-          HAS_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'deploy-preview') }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
           PREVIEW_IAP_GROUP: ${{ vars.PREVIEW_IAP_GROUP }}
         run: |
           set -euo pipefail
-          if [[ "$ACTION" == closed || "$ACTION" == unlabeled && "$LABEL" == deploy-preview ]]; then
+          if [[ "$ACTION" == closed ]]; then
             node scripts/preview-lifecycle.mjs destroy "$PR_NUMBER"
-          elif [[ "$HAS_LABEL" == true ]]; then
+          else
             node scripts/preview-lifecycle.mjs create "$PR_NUMBER" "$HEAD_BRANCH"
           fi
       - name: Publish preview URL
-        if: >-
-          github.event.action != 'closed' &&
-          !(github.event.action == 'unlabeled' && github.event.label.name == 'deploy-preview') &&
-          contains(github.event.pull_request.labels.*.name, 'deploy-preview')
+        if: github.event.action != 'closed'
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
