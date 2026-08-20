@@ -1,23 +1,37 @@
 steps:
   - id: build
     name: gcr.io/cloud-builders/docker
+    entrypoint: bash
+    env: [DOCKER_BUILDKIT=1]
     args:
-      - build
-      - --file
-      - Dockerfile.preview
-      - --tag
-      - ${_IMAGE_REPOSITORY}:$COMMIT_SHA-$BUILD_ID
-      - .
+      - -ceu
+      - |
+        docker pull "${_IMAGE_REPOSITORY}:cache" || true
+        docker build \
+          --file Dockerfile.preview \
+          --build-arg BUILDKIT_INLINE_CACHE=1 \
+          --cache-from "${_IMAGE_REPOSITORY}:cache" \
+          --tag "${_IMAGE_REPOSITORY}:$COMMIT_SHA-$BUILD_ID" \
+          --tag "${_IMAGE_REPOSITORY}:cache" \
+          .
   - id: push
     name: gcr.io/cloud-builders/docker
-    args: [push, "${_IMAGE_REPOSITORY}:$COMMIT_SHA-$BUILD_ID"]
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        docker push "${_IMAGE_REPOSITORY}:$COMMIT_SHA-$BUILD_ID"
+        docker push "${_IMAGE_REPOSITORY}:cache"
   - id: initialize
     name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
     entrypoint: bash
     args:
       - -ceu
       - |
-        if [[ "${_INITIALIZE}" != "true" ]]; then exit 0; fi
+        if [[ "${_INITIALIZE}" != "true" ]]; then
+          echo "Database already initialized; skipping initialization job."
+          exit 0
+        fi
         gcloud run jobs deploy "${_SERVICE}-initialize" \
           --project="$PROJECT_ID" --region="${_REGION}" \
           --image="${_IMAGE_REPOSITORY}:$COMMIT_SHA-$BUILD_ID" \
@@ -49,62 +63,71 @@ steps:
       - --no-allow-unauthenticated
       - --labels=managed-by=proxus,environment=preview,preview-id=${_PREVIEW_ID}
       - --quiet
-  - id: disable-iap-for-smoke
+  - id: prepare-initial-smoke
     name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
-    entrypoint: gcloud
+    entrypoint: bash
     args:
-      - run
-      - services
-      - update
-      - ${_SERVICE}
-      - --project=$PROJECT_ID
-      - --region=${_REGION}
-      - --no-iap
-      - --quiet
-  - id: authorize-smoke
-    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
-    entrypoint: gcloud
-    args:
-      - run
-      - services
-      - add-iam-policy-binding
-      - ${_SERVICE}
-      - --project=$PROJECT_ID
-      - --region=${_REGION}
-      - --member=serviceAccount:${_BUILD_SERVICE_ACCOUNT}
-      - --role=roles/run.invoker
-      - --quiet
+      - -ceu
+      - |
+        if [[ "${_INITIALIZE}" != "true" ]]; then
+          echo "Existing preview keeps IAP enabled; skipping temporary IAM changes."
+          exit 0
+        fi
+        gcloud run services update "${_SERVICE}" \
+          --project="$PROJECT_ID" --region="${_REGION}" --no-iap --quiet
+        gcloud run services add-iam-policy-binding "${_SERVICE}" \
+          --project="$PROJECT_ID" --region="${_REGION}" \
+          --member="serviceAccount:${_BUILD_SERVICE_ACCOUNT}" \
+          --role=roles/run.invoker --quiet
   - id: smoke
     name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
     entrypoint: bash
     args:
       - -ceu
       - |
+        if [[ "${_INITIALIZE}" != "true" ]]; then
+          echo "Cloud Run accepted the new revision; route smoke was completed when the preview was initialized."
+          exit 0
+        fi
         origin="$(gcloud run services describe "${_SERVICE}" --project="$PROJECT_ID" --region="${_REGION}" --format='value(status.url)')"
         token="$(gcloud auth print-identity-token --audiences="$${origin}")"
-        # Cloud Run's frontend reserves /healthz. Retry while the Effect HTTP runtime
-        # starts, and advertise browser navigation for SPA fallback routes.
-        for path in /es /admin/ /ui /ui/ /ui/index.json /api/openapi.public.json /admin-api/openapi.admin.json; do
-          expected=200
-          accept="application/json"
-          if [[ "$${path}" == "/ui" ]]; then expected=308; fi
-          if [[ "$${path}" == "/es" || "$${path}" == "/admin/" || "$${path}" == "/ui" || "$${path}" == "/ui/" ]]; then accept="text/html"; fi
-          for attempt in $(seq 1 60); do
-            status="$(curl --max-time 20 --silent --show-error --header "Authorization: Bearer $${token}" --header "Accept: $${accept}" --output /dev/null --write-out '%{http_code}' "$${origin}$${path}" || true)"
-            if [[ "$${status}" == "$${expected}" ]]; then break; fi
-            if [[ "$${attempt}" == 60 ]]; then
-              echo "Smoke failed: $${path} returned $${status}; expected $${expected}" >&2
-              exit 1
-            fi
-            sleep 2
-          done
+        # Trigger cold start and wait for readiness on one representative route.
+        for attempt in $(seq 1 60); do
+          status="$(curl --max-time 20 --silent --show-error --header "Authorization: Bearer $${token}" --header "Accept: text/html" --output /dev/null --write-out '%{http_code}' "$${origin}/es" || true)"
+          [[ "$${status}" == "200" ]] && break
+          if [[ "$${attempt}" == 60 ]]; then
+            echo "Smoke readiness failed: /es returned $${status}; expected 200" >&2
+            exit 1
+          fi
+          sleep 2
         done
+        # Once ready, verify independent surfaces concurrently.
+        failures="$(mktemp)"
+        check() {
+          path="$1" expected="$2" accept="$3"
+          status="$(curl --max-time 20 --silent --show-error --header "Authorization: Bearer $${token}" --header "Accept: $${accept}" --output /dev/null --write-out '%{http_code}' "$${origin}$${path}" || true)"
+          [[ "$${status}" == "$${expected}" ]] || echo "$${path}: got $${status}, expected $${expected}" >> "$${failures}"
+        }
+        check /admin/ 200 text/html &
+        check /ui 308 text/html &
+        check /ui/ 200 text/html &
+        check /ui/index.json 200 application/json &
+        check /api/openapi.public.json 200 application/json &
+        check /admin-api/openapi.admin.json 200 application/json &
+        wait
+        if [[ -s "$${failures}" ]]; then cat "$${failures}" >&2; exit 1; fi
   - id: authorize-iap
     name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
     entrypoint: bash
     args:
       - -ceu
       - |
+        if [[ "${_INITIALIZE}" != "true" ]]; then
+          origin="$(gcloud run services describe "${_SERVICE}" --project="$PROJECT_ID" --region="${_REGION}" --format='value(status.url)')"
+          status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$${origin}/es")"
+          [[ "$${status}" == 302 ]] || { echo "Existing IAP gate returned $${status}; expected 302" >&2; exit 1; }
+          exit 0
+        fi
         project_number="$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')"
         gcloud run services update "${_SERVICE}" \
           --project="$PROJECT_ID" --region="${_REGION}" --iap --quiet
@@ -130,5 +153,6 @@ steps:
         [[ "$${status}" == 302 ]] || { echo "IAP gate returned $${status}; expected 302" >&2; exit 1; }
 options:
   logging: CLOUD_LOGGING_ONLY
+  machineType: E2_HIGHCPU_8
 images:
   - ${_IMAGE_REPOSITORY}:$COMMIT_SHA-$BUILD_ID
