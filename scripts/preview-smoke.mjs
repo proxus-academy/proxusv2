@@ -3,6 +3,7 @@ const checks = [
   ["health", "/healthz", 204],
   ["web", "/es", 200, { accept: "text/html" }],
   ["admin", "/admin/", 200, { accept: "text/html" }],
+  ["storybook", "/ui/", 200, { accept: "text/html" }],
   ["public API", "/api/openapi.public.json", 200],
   ["admin API", "/admin-api/openapi.admin.json", 200],
 ]

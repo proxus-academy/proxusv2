@@ -84,10 +84,10 @@ steps:
         token="$(gcloud auth print-identity-token --audiences="$${origin}")"
         # Cloud Run's frontend reserves /healthz. Retry while the Effect HTTP runtime
         # starts, and advertise browser navigation for SPA fallback routes.
-        for path in /es /admin/ /api/openapi.public.json /admin-api/openapi.admin.json; do
+        for path in /es /admin/ /ui/ /api/openapi.public.json /admin-api/openapi.admin.json; do
           expected=200
           accept="application/json"
-          if [[ "$${path}" == "/es" || "$${path}" == "/admin/" ]]; then accept="text/html"; fi
+          if [[ "$${path}" == "/es" || "$${path}" == "/admin/" || "$${path}" == "/ui/" ]]; then accept="text/html"; fi
           for attempt in $(seq 1 60); do
             status="$(curl --max-time 20 --silent --show-error --header "Authorization: Bearer $${token}" --header "Accept: $${accept}" --output /dev/null --write-out '%{http_code}' "$${origin}$${path}" || true)"
             if [[ "$${status}" == "$${expected}" ]]; then break; fi

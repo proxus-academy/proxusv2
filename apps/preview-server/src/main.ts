@@ -26,13 +26,19 @@ const adminRoutes = prefixed(
 const healthRoute = HttpRouter.add("GET", "/healthz", HttpServerResponse.empty({ status: 204 }))
 const staticAssets = Layer.unwrap(Effect.gen(function*() {
   const adminRoot = yield* Config.string("ADMIN_ROOT").pipe(Config.withDefault("/app/admin"))
+  const uiRoot = yield* Config.string("UI_ROOT").pipe(Config.withDefault("/app/ui"))
   const webRoot = yield* Config.string("WEB_ROOT").pipe(Config.withDefault("/app/web"))
-  return Layer.merge(
+  return Layer.mergeAll(
     HttpStaticServer.layer({
       root: adminRoot,
       prefix: "/admin",
       index: "index.html",
       spa: true,
+    }),
+    HttpStaticServer.layer({
+      root: uiRoot,
+      prefix: "/ui",
+      index: "index.html",
     }),
     HttpStaticServer.layer({
       root: webRoot,
