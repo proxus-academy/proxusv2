@@ -18,6 +18,7 @@ const meta = {
     open: { control: "boolean" },
     modal: { control: "boolean" }
   },
+  // SAFETY: widening the literal lets Storybook's boolean control toggle the argument.
   args: { open: true as boolean, modal: true }
 } satisfies Meta<typeof DropdownMenu>
 

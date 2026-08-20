@@ -27,7 +27,9 @@ export const makeAuthTransactionsDrizzle = (db: Database, sessionTtlMillis: numb
     })
     return program.pipe(
       Effect.provideService(SessionIssuer, issuer),
+      // SAFETY: transaction callbacks expose the same Drizzle database surface consumed by these repositories.
       Effect.provideService(AuthChallengeRepository, makeAuthChallengeRepositoryDrizzle(tx as Database, true)),
+      // SAFETY: transaction callbacks expose the same Drizzle database surface consumed by these repositories.
       Effect.provideService(UserRepository, makeUserRepositoryDrizzle(tx as Database)),
     )
   }).pipe(Effect.catchTag("SqlError", (cause) => new AuthRepositoryError({ operation: "auth.transaction", cause }))),

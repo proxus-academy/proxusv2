@@ -234,7 +234,13 @@ The checks have no generated allowlist or accepted-violation baseline:
   (`no-non-null-assertion`, `no-unsafe-type-assertion`), and rejects direct
   imports of Node filesystem, path, child-process and HTTP APIs that have
   Effect-native counterparts. Narrow platform composition roots and test-owned
-  temporary-directory harnesses must document any inline exception.
+  temporary-directory harnesses must document any inline exception. The same
+  gate then runs the vendored anti-slop rules selected in
+  `oxlint.anti-slop.config.ts`: they preserve inferred evidence, reject module
+  mocking and reflective access, use domain-owned contract names, and require a
+  `SAFETY:` invariant for every necessary non-const assertion. Rules that would
+  reject Proxus's documented boundary parsing, exact optional-property spreads,
+  or composition-root Layer assembly remain explicitly disabled in that config.
 - `boundaries` ignores generated `dist`, `coverage` and `storybook-static`
   trees and enforces the documented DDD direction: shared is runtime-neutral;
   Domain cannot reach adapters/transports/apps; Infra cannot reach

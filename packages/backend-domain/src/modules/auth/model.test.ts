@@ -5,6 +5,7 @@ import { AuthProviderMissing, InvalidCredentials, InvalidUserState, authProvider
 const instant = (value: string): Date => DateTime.toDateUtc(DateTime.makeUnsafe(value))
 
 const user = (overrides: Partial<User> = {}): User => makeUser({
+  // SAFETY: this branded identifier is confined to a domain model fixture.
   id: "user-1" as UserId,
   email: " Alice@Example.COM ",
   status: "pending",
@@ -50,7 +51,9 @@ describe("auth domain model", () => {
 
   it("exposes discriminated domain errors", () => {
     expect(new InvalidCredentials()._tag).toBe("InvalidCredentials")
+    // SAFETY: these branded identifiers are confined to error-construction test fixtures.
     expect(new InvalidUserState({ userId: "u" as UserId, actual: "disabled" }).actual).toBe("disabled")
+    // SAFETY: this branded identifier is confined to an error-construction test fixture.
     expect(new AuthProviderMissing({ userId: "u" as UserId })._tag).toBe("AuthProviderMissing")
   })
 })

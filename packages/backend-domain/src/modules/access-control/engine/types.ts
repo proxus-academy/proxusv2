@@ -59,15 +59,15 @@ export interface RoleQuery<ScopeType extends string = string> {
   readonly scopes: readonly Scope<ScopeType>[]
 }
 
-export interface RoleStoreShape<Role extends string = string, ScopeType extends string = string, Error = never> {
+export interface RoleStoreContract<Role extends string = string, ScopeType extends string = string, Error = never> {
   readonly getRoles: (query: RoleQuery<ScopeType>) => Effect.Effect<readonly Role[], Error>
 }
 
 export type RoleStoreImplementation<AccessOrRole = string, ScopeTypeOrError = string, Error = never> =
   [AccessOrRole] extends [string]
-    ? RoleStoreShape<AccessOrRole, ScopeTypeOrError extends string ? ScopeTypeOrError : never, Error>
+    ? RoleStoreContract<AccessOrRole, ScopeTypeOrError extends string ? ScopeTypeOrError : never, Error>
     : AccessOrRole extends { readonly RoleStore: Context.Service<any, infer Store> }
-      ? Store extends RoleStoreShape<infer Role, infer Scope, unknown>
-        ? RoleStoreShape<Role, Scope, ScopeTypeOrError>
+      ? Store extends RoleStoreContract<infer Role, infer Scope, unknown>
+        ? RoleStoreContract<Role, Scope, ScopeTypeOrError>
         : never
       : never

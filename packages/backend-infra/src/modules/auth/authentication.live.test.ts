@@ -95,6 +95,7 @@ describe("AuthenticationService live", () => {
   it("issues only reset-password challenges and rejects another purpose", async () => {
     const account = user()
     const verification: AuthChallenge = {
+      // SAFETY: the deliberately short identifier is confined to this in-memory test fixture.
       id: "verify" as AuthChallenge["id"], userId: account.id, purpose: "verify-email", codeHash: "hash:654321",
       expiresAt: new Date(Date.now() + 60_000), failedAttempts: 0, maximumAttempts: 3, consumedAt: null, createdAt: now,
     }

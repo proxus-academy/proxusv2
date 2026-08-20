@@ -26,6 +26,7 @@ const meta = {
     className: { control: "text" }
   },
   args: {
+    // SAFETY: widening the initial literal lets Storybook's control select any supported value.
     value: "medicina" as string | null,
     onChange: () => {},
     options: CARRERAS,

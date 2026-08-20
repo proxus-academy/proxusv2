@@ -177,11 +177,7 @@ const edges: Array<StudyEdge> = [
   ),
 ]
 
-export const studyCatalogSeed: {
-  readonly assets: ReadonlyArray<StudyAsset>
-  readonly nodes: ReadonlyArray<StudyNode>
-  readonly edges: ReadonlyArray<StudyEdge>
-} = {
+export const studyCatalogSeed = {
   assets: [
     new StudyAsset({
       id: makeStudyAssetId("10000000-0000-4000-8000-000000000001"),
@@ -198,6 +194,10 @@ export const studyCatalogSeed: {
   ],
   nodes: [...countries, ...studyTypes, ...universities, ...degrees, ...subjects],
   edges,
+} satisfies {
+  readonly assets: ReadonlyArray<StudyAsset>
+  readonly nodes: ReadonlyArray<StudyNode>
+  readonly edges: ReadonlyArray<StudyEdge>
 }
 
 type SeedDatabase = PgEffectDatabase<

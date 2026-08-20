@@ -18,6 +18,7 @@ export const decodeRegistrationQuery = (searchValue: string): RegistrationUrlSta
   const rawStep = search.get("step")
   const rawPath = search.get("path")
   const decodedStep = rawStep === null ? Option.some("start" as const) : Schema.decodeUnknownOption(RegistrationStepParam)(rawStep)
+  // SAFETY: the empty path contains no element that could violate RegistrationNodeIds.
   const decodedPath = rawPath === null ? Option.some([] as RegistrationNodeIds) : Schema.decodeUnknownOption(RegistrationPathParam)(rawPath)
   const step = Option.getOrElse(decodedStep, () => "start" as const)
   const nodeIds = Option.getOrElse(decodedPath, (): RegistrationNodeIds => [])
@@ -31,4 +32,3 @@ export const encodeRegistrationQuery = (current: string, step: RegistrationStep,
   if (nodeIds.length === 0) search.delete("path"); else search.set("path", Schema.encodeSync(RegistrationPathParam)(nodeIds))
   return search.toString()
 }
-

@@ -34,6 +34,7 @@ export const resource = <const Type extends string, const Id extends string>(
 
 export const isObjectRef = (value: unknown): value is ObjectRef => {
   if (typeof value !== "object" || value === null) return false
+  // SAFETY: the object guard permits optional property inspection before both fields are validated below.
   const candidate = value as { readonly type?: unknown; readonly id?: unknown }
   return typeof candidate.type === "string" && candidate.type.length > 0 &&
     typeof candidate.id === "string" && candidate.id.length > 0
