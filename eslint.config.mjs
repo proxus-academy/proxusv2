@@ -2,7 +2,7 @@ import tseslint from "typescript-eslint"
 
 export default tseslint.config(
   {
-    ignores: ["**/node_modules/**", "**/dist/**", "**/storybook-static/**", "**/coverage/**", ".repos/**"]
+    ignores: ["**/node_modules/**", "**/dist/**", "**/storybook-static/**", "**/coverage/**", "apps/web/src/paraglide/**", ".repos/**"]
   },
   {
     files: ["apps/**/*.{js,mjs}"],
