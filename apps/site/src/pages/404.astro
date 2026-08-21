@@ -1,4 +1,5 @@
 ---
 import SiteLayout from "../layouts/SiteLayout.astro"
+import * as m from "../paraglide/messages.js"
 ---
-<SiteLayout title="Página no encontrada — Proxus" description="La página solicitada no existe." noindex><section class="page-hero"><div class="container"><span class="eyebrow">Error 404</span><h1>Esta página no está en tus apuntes</h1><p>Puede que haya cambiado de dirección o que el enlace no sea correcto.</p><div class="hero-actions"><a class="button" href="/">Volver al inicio</a></div></div></section></SiteLayout>
+<SiteLayout title={m.site_notFoundTitle()} description={m.site_notFoundDescription()} noindex><section class="page-hero"><div class="container"><span class="eyebrow">Error 404</span><h1>{m.site_notFoundHeading()}</h1><p>{m.site_notFoundIntro()}</p><div class="hero-actions"><a class="button" href="/">{m.site_backHome()}</a></div></div></section></SiteLayout>

@@ -2,12 +2,18 @@
 import Header from "../components/Header.astro"
 import Footer from "../components/Footer.astro"
 import "../styles/site.css"
+import { getAbsoluteLocaleUrl } from "astro:i18n"
+import * as m from "../paraglide/messages.js"
+import { getLocale, getTextDirection } from "../paraglide/runtime.js"
+import { canonicalSitePath, toSiteLocale } from "../site-config"
+import type { SiteLocale } from "../site-config"
 
 interface Props {
   title: string
   description: string
   image?: string
   noindex?: boolean
+  alternatePaths?: Partial<Record<SiteLocale, string>>
 }
 
 const {
@@ -15,13 +21,24 @@ const {
   description,
   image = "/social-card.svg",
   noindex = false,
+  alternatePaths = {},
 } = Astro.props
 const canonical = new URL(Astro.url.pathname, Astro.site)
 const socialImage = new URL(image, Astro.site)
+const locale = toSiteLocale(getLocale())
+const canonicalPath = canonicalSitePath(Astro.url.pathname).replace(/^\//, "")
+const alternates = (["es", "en"] as const).map(alternateLocale => ({
+  locale: alternateLocale,
+  url: getAbsoluteLocaleUrl(alternateLocale, alternatePaths[alternateLocale] ?? canonicalPath),
+}))
+const defaultAlternate = getAbsoluteLocaleUrl("es", alternatePaths.es ?? canonicalPath)
+const openGraphLocale = locale === "es" ? "es_ES" : "en_US"
+const headerAlternatePath = alternatePaths[locale === "es" ? "en" : "es"]
+const headerProps = headerAlternatePath ? { alternatePath: headerAlternatePath } : {}
 ---
 
 <!doctype html>
-<html lang="es">
+<html lang={locale} dir={getTextDirection(locale)}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />
@@ -29,11 +46,15 @@ const socialImage = new URL(image, Astro.site)
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
+    {alternates.map(alternate => (
+      <link rel="alternate" hreflang={alternate.locale} href={alternate.url} />
+    ))}
+    <link rel="alternate" hreflang="x-default" href={defaultAlternate} />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     {noindex && <meta name="robots" content="noindex,nofollow" />}
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Proxus" />
-    <meta property="og:locale" content="es_ES" />
+    <meta property="og:locale" content={openGraphLocale} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
@@ -45,8 +66,8 @@ const socialImage = new URL(image, Astro.site)
     <slot name="head" />
   </head>
   <body>
-    <a class="skip-link" href="#contenido">Saltar al contenido</a>
-    <Header />
+    <a class="skip-link" href="#contenido">{m.site_skipToContent()}</a>
+    <Header {...headerProps} />
     <main id="contenido"><slot /></main>
     <Footer />
   </body>

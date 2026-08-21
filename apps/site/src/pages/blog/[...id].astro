@@ -1,11 +1,19 @@
 ---
 import { getCollection, render } from "astro:content"
 import SiteLayout from "../../layouts/SiteLayout.astro"
+import * as m from "../../paraglide/messages.js"
 export async function getStaticPaths() {
   const posts = await getCollection("blog", ({ data }) => !data.draft)
-  return posts.map(post => ({ params: { id: post.id }, props: { post } }))
+  const spanishPosts = posts.filter(post => post.data.locale === "es")
+  return spanishPosts.map(post => {
+    const englishPost = posts.find(candidate => candidate.data.locale === "en" && candidate.data.translationKey === post.data.translationKey)
+    return {
+      params: { id: post.id },
+      props: { post, englishId: englishPost?.id.replace(/^en\//, "") },
+    }
+  })
 }
-const { post } = Astro.props
+const { post, englishId } = Astro.props
 const { Content } = await render(post)
 ---
-<SiteLayout title={`${post.data.title} — Proxus`} description={post.data.description} image={post.data.image ?? "/social-card.svg"}><article><header class="page-hero"><div class="container"><span class="eyebrow">Guía de estudio</span><h1>{post.data.title}</h1><p>{post.data.description}</p></div></header><div class="prose"><Content /></div></article></SiteLayout>
+<SiteLayout title={`${post.data.title} — Proxus`} description={post.data.description} image={post.data.image ?? "/social-card.svg"} alternatePaths={{ es: `blog/${post.id}`, ...(englishId ? { en: `blog/${englishId}` } : {}) }}><article><header class="page-hero"><div class="container"><span class="eyebrow">{m.site_studyGuide()}</span><h1>{post.data.title}</h1><p>{post.data.description}</p></div></header><div class="prose"><Content /></div></article></SiteLayout>

@@ -4,9 +4,12 @@
   "locales": ["es", "en"],
   "modules": [
     "https://cdn.jsdelivr.net/npm/@inlang/plugin-message-format@4.4.3/dist/index.js",
-    "https://cdn.jsdelivr.net/npm/@inlang/plugin-m-function-matcher@2.2.12/dist/index.js"
+    "https://cdn.jsdelivr.net/npm/@inlang/plugin-m-function-matcher@2/dist/index.js"
   ],
   "plugin.inlang.messageFormat": {
-    "pathPattern": "./messages/{locale}.json"
+    "pathPattern": [
+      "./apps/web/messages/{locale}.json",
+      "./apps/site/messages/{locale}.json"
+    ]
   }
 }

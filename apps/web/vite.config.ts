@@ -19,7 +19,7 @@ export default defineConfig({
     tailwindcss(),
     react(),
     paraglideVitePlugin({
-      project: "./project.inlang",
+      project: "../../project.inlang",
       outdir: "./src/paraglide",
       emitTsDeclarations: true,
       strategy: ["url", "preferredLanguage", "baseLocale"],

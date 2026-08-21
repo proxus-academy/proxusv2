@@ -4,11 +4,13 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev --host 0.0.0.0 --port 4321",
-    "build": "astro check && astro build",
-    "typecheck": "astro check",
-    "test": "vitest run --passWithNoTests"
+    "paraglide": "paraglide-js compile --project ../../project.inlang --outdir ./src/paraglide --emit-ts-declarations --strategy url,globalVariable,baseLocale",
+    "build": "pnpm paraglide && astro check && astro build",
+    "typecheck": "pnpm paraglide && astro check",
+    "test": "pnpm paraglide && vitest run"
   },
   "devDependencies": {
+    "@inlang/paraglide-js": "2.24.1",
     "@astrojs/check": "^0.9.10",
     "@astrojs/sitemap": "^3.7.3",
     "astro": "^7.2.1",

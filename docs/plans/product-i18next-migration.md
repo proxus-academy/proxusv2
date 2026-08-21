@@ -2,7 +2,10 @@
 
 ## Estado
 
-Implementada para las superficies de producto de `apps/web`.
+Obsoleto. La implementación final usa Paraglide JS, no i18next. La arquitectura
+vigente está documentada en `docs/webapp-architecture.md` para el producto y en
+`docs/architecture/public-site.md` para Astro. Este archivo se conserva solamente
+como registro histórico de la propuesta descartada y no debe guiar cambios.
 
 Este documento reemplaza la decisión de usar catálogos TypeScript ejecutables
 adoptada inicialmente para la internacionalización del producto. Conserva las

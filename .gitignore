@@ -4,6 +4,7 @@ node_modules
 .direnv/
 dist
 apps/**/dist
+apps/web/project.inlang/
 apps/server/.data
 apps/server/.data.stale-*/
 apps/admin-server/.data/

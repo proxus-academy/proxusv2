@@ -1,20 +1,36 @@
 ---
 import { resolveProductUrl } from "../site-config"
-const productUrl = resolveProductUrl(import.meta.env.PUBLIC_PRODUCT_URL)
+import { getRelativeLocaleUrl } from "astro:i18n"
+import * as m from "../paraglide/messages.js"
+import { getLocale } from "../paraglide/runtime.js"
+import { canonicalSitePath, toSiteLocale } from "../site-config"
+interface Props {
+  alternatePath?: string
+}
+const { alternatePath } = Astro.props
+const locale = toSiteLocale(getLocale())
+const productUrl = resolveProductUrl(import.meta.env.PUBLIC_PRODUCT_URL, locale)
+const canonicalPath = canonicalSitePath(Astro.url.pathname).replace(/^\//, "")
+const homeUrl = getRelativeLocaleUrl(locale)
+const pricingUrl = getRelativeLocaleUrl(locale, "pricing")
+const blogUrl = getRelativeLocaleUrl(locale, "blog")
+const alternateLocale = locale === "es" ? "en" : "es"
+const alternateUrl = getRelativeLocaleUrl(alternateLocale, alternatePath ?? canonicalPath)
 ---
 <header class="site-header">
-  <nav class="nav container" aria-label="Navegación principal">
-    <a class="brand" href="/" aria-label="Proxus, inicio"><span aria-hidden="true">P</span> PROXUS</a>
+  <nav class="nav container" aria-label={m.site_navLabel()}>
+    <a class="brand" href={homeUrl} aria-label={m.site_homeLabel()}><span aria-hidden="true">P</span> PROXUS</a>
     <button class="menu-button" type="button" aria-expanded="false" aria-controls="main-menu">
-      <span class="sr-only">Abrir menú</span><span aria-hidden="true">☰</span>
+      <span class="sr-only">{m.site_openMenu()}</span><span aria-hidden="true">☰</span>
     </button>
     <div class="nav-links" id="main-menu">
-      <a href="/#como-funciona">Cómo funciona</a>
-      <a href="/#herramientas">Herramientas</a>
-      <a href="/pricing">Precios</a>
-      <a href="/blog">Blog</a>
-      <a href={`${productUrl}/login`}>Iniciar sesión</a>
-      <a class="button button-small" href={productUrl}>Empieza gratis</a>
+      <a href={`${homeUrl}#como-funciona`}>{m.site_howItWorks()}</a>
+      <a href={`${homeUrl}#herramientas`}>{m.site_tools()}</a>
+      <a href={pricingUrl}>{m.site_pricing()}</a>
+      <a href={blogUrl}>{m.site_blog()}</a>
+      <a href={alternateUrl} hreflang={alternateLocale} aria-label={m.site_languageLabel()}>{alternateLocale.toUpperCase()}</a>
+      <a href={`${productUrl}/login`}>{m.site_signIn()}</a>
+      <a class="button button-small" href={productUrl}>{m.site_startFree()}</a>
     </div>
   </nav>
 </header>

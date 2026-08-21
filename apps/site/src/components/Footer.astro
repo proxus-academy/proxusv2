@@ -1,12 +1,24 @@
 ---
-import { internalSiteRoutes as routes } from "../site-config"
+import { getRelativeLocaleUrl } from "astro:i18n"
+import * as m from "../paraglide/messages.js"
+import { getLocale } from "../paraglide/runtime.js"
+import { toSiteLocale } from "../site-config"
+const locale = toSiteLocale(getLocale())
+const routes = {
+  home: getRelativeLocaleUrl(locale),
+  pricing: getRelativeLocaleUrl(locale, "pricing"),
+  blog: getRelativeLocaleUrl(locale, "blog"),
+  careers: getRelativeLocaleUrl(locale, "careers"),
+  contact: getRelativeLocaleUrl(locale, "contact"),
+  support: getRelativeLocaleUrl(locale, "support"),
+}
 ---
 <footer class="site-footer">
   <div class="container footer-grid">
-    <div><a class="brand brand-light" href="/"><span aria-hidden="true">P</span> PROXUS</a><p>Convierte tus apuntes en una forma mejor de estudiar.</p></div>
-    <nav aria-label="Producto"><strong>Producto</strong><a href="/#herramientas">Herramientas</a><a href={routes.pricing}>Precios</a><a href={routes.blog}>Blog</a></nav>
-    <nav aria-label="Compañía"><strong>Compañía</strong><a href={routes.careers}>Trabaja con nosotros</a><a href={routes.contact}>Contacto</a><a href={routes.support}>Soporte</a></nav>
-    <nav aria-label="Legal"><strong>Legal</strong><a href="https://proxus.es/legal">Aviso legal</a><a href="https://proxus.es/privacy">Privacidad</a><a href="https://proxus.es/cookies">Cookies</a><a href="https://proxus.es/terms">Términos</a></nav>
+    <div><a class="brand brand-light" href={routes.home}><span aria-hidden="true">P</span> PROXUS</a><p>{m.site_footerTagline()}</p></div>
+    <nav aria-label={m.site_product()}><strong>{m.site_product()}</strong><a href={`${routes.home}#herramientas`}>{m.site_tools()}</a><a href={routes.pricing}>{m.site_pricing()}</a><a href={routes.blog}>{m.site_blog()}</a></nav>
+    <nav aria-label={m.site_company()}><strong>{m.site_company()}</strong><a href={routes.careers}>{m.site_careers()}</a><a href={routes.contact}>{m.site_contact()}</a><a href={routes.support}>{m.site_support()}</a></nav>
+    <nav aria-label={m.site_legal()}><strong>{m.site_legal()}</strong><a href="https://proxus.es/legal">{m.site_legalNotice()}</a><a href="https://proxus.es/privacy">{m.site_privacy()}</a><a href="https://proxus.es/cookies">{m.site_cookies()}</a><a href="https://proxus.es/terms">{m.site_terms()}</a></nav>
   </div>
   <div class="container footer-bottom"><small>© {new Date().getFullYear()} Proxus</small></div>
 </footer>

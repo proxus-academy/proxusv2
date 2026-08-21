@@ -40,7 +40,7 @@
     "lint:anti-slop": "oxlint --config oxlint.anti-slop.config.ts --deny-warnings apps packages",
     "react:doctor": "react-doctor --project apps/web,apps/admin,apps/storybook --blocking warning --no-score --no-supply-chain",
     "boundaries": "depcruise --config dependency-cruiser.config.mjs apps packages",
-    "knip": "pnpm --filter @proxus/web --if-present paraglide && knip --config knip.json --no-progress",
+    "knip": "pnpm --filter @proxus/web --filter @proxus/site --if-present paraglide && knip --config knip.json --no-progress",
     "workspace:contracts": "node scripts/check-workspace-contracts.mjs",
     "static": "pnpm effect:diagnostics && pnpm typecheck && pnpm lint && pnpm react:doctor && pnpm boundaries && pnpm knip && pnpm workspace:contracts",
     "validate:self-test": "node scripts/validation-self-test.mjs",

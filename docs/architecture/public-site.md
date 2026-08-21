@@ -33,9 +33,29 @@ Astro Content Collections es el seam de publicación para familias editoriales. 
 
 `.repos/proxus` es referencia de contenido y diseño, no fuente importable ni artefacto de build. Toda migración debe comprobar vigencia, canonical y redirects antes de retirar la URL anterior.
 
+## Internacionalización
+
+Site publica español como locale base sin prefijo e inglés bajo `/en`. Astro es
+el único propietario del routing localizado y genera enlaces, canonicals y
+alternates mediante `astro:i18n`. Paraglide compila los mensajes tipados y el
+middleware de prerender sincroniza su locale con `Astro.currentLocale`; Site no
+usa `paraglideMiddleware`, porque no existe una request de producción en la
+salida estática.
+
+El proyecto Inlang compartido vive en `project.inlang`. Cada aplicación conserva
+su catálogo (`apps/site/messages` y `apps/web/messages`) y compila un runtime
+propio con la estrategia adecuada a su plataforma. Los módulos generados bajo
+`src/paraglide` no se versionan. Las copias editoriales largas permanecen en
+Content Collections y declaran su locale; no se trasladan a funciones de mensaje.
+
+Cada ruta informativa publicada en español debe tener una variante inglesa o
+una decisión explícita de fallback. El layout genera `lang`, `dir`, canonical,
+`hreflang`, `x-default` y `og:locale` desde el locale efectivo. Cambiar de idioma
+es navegar a otro documento estático, no mutar estado cliente.
+
 ## Integración con producto
 
-`PUBLIC_PRODUCT_URL` selecciona el origen de `apps/web`; en desarrollo usa `http://localhost:5173/es`. Los CTAs usan enlaces normales y pueden preservar únicamente parámetros de atribución explícitamente permitidos. Site no accede a persistencia. Si una futura página necesita información dinámica, consume un contrato de `PublicApi`.
+`PUBLIC_PRODUCT_URL` selecciona el origen o base path de `apps/web`; en desarrollo usa `http://localhost:5173`. Site añade `/en` para destinos ingleses y mantiene español sin prefijo. En preview, un valor `/app` produce `/app` y `/app/en`. Los CTAs usan enlaces normales y pueden preservar únicamente parámetros de atribución explícitamente permitidos. Site no accede a persistencia. Si una futura página necesita información dinámica, consume un contrato de `PublicApi`.
 
 El pricing mostrado en Site es informativo hasta disponer de una fuente pública canónica. La aplicación confirma precio, moneda y disponibilidad antes de cualquier compra.
 
