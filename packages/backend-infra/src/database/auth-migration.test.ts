@@ -7,7 +7,7 @@ import { DateTime, Effect, Layer, Schema } from "effect"
 import { describe, expect, test } from "vitest"
 import { defaultMigrationsFolder } from "./paths.js"
 import { migratePglite } from "./pglite.js"
-import { users } from "./schema.js"
+import { users } from "./schema/auth.js"
 
 const acquisitionMigrationName = "20260731071341_fuzzy_queen_noir"
 const subjectId = "00000000-0000-4000-8000-000000000401"

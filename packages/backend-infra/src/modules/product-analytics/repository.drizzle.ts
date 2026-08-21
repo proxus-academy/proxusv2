@@ -3,7 +3,7 @@ import { PublicProductAnalyticsEvent } from "@proxus/shared/product-analytics"
 import type { EffectPgQueryEffectHKT, EffectPgQueryResultHKT } from "drizzle-orm/effect-pglite"
 import type { PgEffectDatabase } from "drizzle-orm/pg-core/effect"
 import { DateTime, Effect, Schema } from "effect"
-import { productAnalyticsEvents } from "../../database/schema.js"
+import { productAnalyticsEvents } from "../../database/schema/product-analytics.js"
 
 type Database = PgEffectDatabase<EffectPgQueryEffectHKT, EffectPgQueryResultHKT>
 

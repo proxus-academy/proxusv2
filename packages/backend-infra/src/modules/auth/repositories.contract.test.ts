@@ -4,7 +4,7 @@ import { AuthChallengeRepository, UserRepository } from "@proxus/backend-domain/
 import * as PgliteDrizzle from "drizzle-orm/effect-pglite"
 import { Effect, Layer, Scope } from "effect"
 import { migratePglite } from "../../database/pglite.js"
-import { studyNodes } from "../../database/schema.js"
+import { studyNodes } from "../../database/schema/study-catalog.js"
 import { makeAuthChallengeRepositoryDrizzle, makeUserRepositoryDrizzle } from "./repositories.drizzle.js"
 import { makeAuthChallengeRepositoryMemory, makeAuthUserRepositoryMemory } from "./repositories.memory.js"
 import { authRepositoryContract, subjectId, type RepositoryContractRun } from "./test/repository-contract.js"

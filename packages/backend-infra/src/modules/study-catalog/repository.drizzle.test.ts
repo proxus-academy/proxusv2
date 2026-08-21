@@ -25,8 +25,8 @@ import {
   studyAssets,
   studyEdges,
   studyNodes,
-  users,
-} from "../../database/schema.js"
+} from "../../database/schema/study-catalog.js"
+import { users } from "../../database/schema/auth.js"
 import {
   StudyCatalog,
   StudyCatalogLive,

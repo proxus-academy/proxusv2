@@ -5,7 +5,7 @@ import * as PgliteDrizzle from "drizzle-orm/effect-pglite"
 import { Effect, Layer } from "effect"
 import { describe, expect, test } from "vitest"
 import { migratePglite } from "../../database/pglite.js"
-import { featureFlagSnapshots } from "../../database/schema.js"
+import { featureFlagSnapshots } from "../../database/schema/feature-flags.js"
 
 const configuration = [{ key: "registration.cta", enabled: true, allocationVersion: 2, default: "control", variants: [{ value: "control", weight: 5000 }, { value: "benefitCopy", weight: 5000 }] }]
 import { FeatureFlagSnapshotRepositoryPgliteLive } from "./repository.pglite.layer.js"

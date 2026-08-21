@@ -13,7 +13,7 @@ import { Effect, Layer, Schema } from "effect"
 import { defaultMigrationsFolder } from "./paths.js"
 import { migratePglite } from "./pglite.js"
 import { FeatureFlagSnapshotRepositoryPgliteLive } from "../modules/feature-flags/repository.pglite.layer.js"
-import { featureFlagSnapshots } from "./schema.js"
+import { featureFlagSnapshots } from "./schema/feature-flags.js"
 import { checkDatabaseMigrations } from "./postgres.js"
 
 describe("database migration check", () => {

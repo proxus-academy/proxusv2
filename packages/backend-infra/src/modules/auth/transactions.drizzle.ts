@@ -3,7 +3,7 @@ import { AuthChallengeRepository, AuthRepositoryError, AuthTransactions, Session
 import type { EffectPgQueryEffectHKT, EffectPgQueryResultHKT } from "drizzle-orm/effect-pglite"
 import type { PgEffectDatabase } from "drizzle-orm/pg-core/effect"
 import { Clock, DateTime, Effect } from "effect"
-import { authSessions } from "../../database/schema.js"
+import { authSessions } from "../../database/schema/auth.js"
 import { makeAuthChallengeRepositoryDrizzle, makeUserRepositoryDrizzle } from "./repositories.drizzle.js"
 import { hashSessionToken } from "./sessions.js"
 

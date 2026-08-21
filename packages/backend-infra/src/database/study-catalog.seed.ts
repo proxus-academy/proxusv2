@@ -26,7 +26,7 @@ import { inArray, sql } from "drizzle-orm"
 import type { PgEffectDatabase } from "drizzle-orm/pg-core/effect"
 import { DateTime, Effect } from "effect"
 import { StudyAsset } from "@proxus/backend-domain/study-catalog"
-import { studyAssets, studyEdges, studyNodes } from "./schema.js"
+import { studyAssets, studyEdges, studyNodes } from "./schema/study-catalog.js"
 
 const createdAt = DateTime.makeUnsafe("2026-07-15T00:00:00.000Z")
 const nodeUuid = (sequence: number) =>

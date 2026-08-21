@@ -5,7 +5,7 @@ import * as PgliteDrizzle from "drizzle-orm/effect-pglite"
 import { DateTime, Effect, Layer } from "effect"
 import { describe, expect, test } from "vitest"
 import { migratePglite } from "../../database/pglite.js"
-import { productAnalyticsEvents } from "../../database/schema.js"
+import { productAnalyticsEvents } from "../../database/schema/product-analytics.js"
 import { ProductAnalyticsRepositoryPgliteLive } from "./repository.pglite.layer.js"
 
 describe("ProductAnalyticsRepository Drizzle", () => {
