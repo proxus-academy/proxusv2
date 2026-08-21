@@ -38,4 +38,14 @@ describe("web route tree", () => {
     }))
     expect(router.history.location.href).toBe("/en/password-recovery/code")
   })))
+
+  it("keeps localized routes below a deployment base path", () => Effect.runPromise(Effect.gen(function*() {
+    overwriteGetLocale(() => "es")
+    const router = makeWebRouter(createMemoryHistory({ initialEntries: ["/app"] }), "/app")
+    yield* Effect.promise(() => router.load())
+
+    expect(router.state.matches.at(-1)?.fullPath).toBe("/")
+    yield* Effect.promise(() => router.navigate({ to: "/login" }))
+    expect(router.history.location.href).toBe("/app/login")
+  })))
 })

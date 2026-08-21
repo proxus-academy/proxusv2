@@ -2,9 +2,10 @@ import { createRouter, RouterProvider as TanStackRouterProvider, type RouterHist
 import { deLocalizeUrl, localizeUrl } from "../paraglide/runtime.js"
 import { routeTree } from "../routeTree.gen.js"
 
-export const makeWebRouter = (history?: RouterHistory) => createRouter({
+export const makeWebRouter = (history?: RouterHistory, basepath = import.meta.env.VITE_WEB_BASE_PATH) => createRouter({
   routeTree,
   defaultPreload: "intent",
+  ...(basepath === undefined || basepath === "" ? {} : { basepath }),
   rewrite: {
     input: ({ url }) => deLocalizeUrl(url),
     output: ({ url }) => localizeUrl(url),
