@@ -42,7 +42,7 @@
     "boundaries": "depcruise --config dependency-cruiser.config.mjs apps packages",
     "knip": "pnpm --filter @proxus/web --if-present paraglide && knip --config knip.json --no-progress",
     "workspace:contracts": "node scripts/check-workspace-contracts.mjs",
-    "static": "pnpm effect:diagnostics && pnpm typecheck && pnpm lint && pnpm boundaries && pnpm knip && pnpm workspace:contracts",
+    "static": "pnpm effect:diagnostics && pnpm typecheck && pnpm lint && pnpm react:doctor && pnpm boundaries && pnpm knip && pnpm workspace:contracts",
     "validate:self-test": "node scripts/validation-self-test.mjs",
     "validate:pr": "pnpm validate:self-test && pnpm static && pnpm test:anti-slop && pnpm test:ci && pnpm build",
     "postinstall": "effect-language-service patch"

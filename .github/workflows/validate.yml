@@ -36,6 +36,9 @@ jobs:
           - name: Anti-slop rule tests
             command: pnpm test:anti-slop
             turbo_cache_key: ""
+          - name: React Doctor
+            command: pnpm react:doctor
+            turbo_cache_key: ""
           - name: Architecture
             command: pnpm boundaries
             turbo_cache_key: ""

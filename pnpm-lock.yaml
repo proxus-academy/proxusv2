@@ -13,7 +13,7 @@ importers:
         version: 0.87.0
       '@kitlangton/motel':
         specifier: 0.2.6
-        version: 0.2.6(@opentelemetry/api-logs@0.219.0)(@opentelemetry/resources@2.9.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/semantic-conventions@1.43.0)(react-devtools-core@7.0.1)(typescript@5.9.3)(web-tree-sitter@0.25.10)(ws@8.21.1)
+        version: 0.2.6(@opentelemetry/api-logs@0.220.0)(@opentelemetry/resources@2.9.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/semantic-conventions@1.43.0)(react-devtools-core@7.0.1)(typescript@5.9.3)(web-tree-sitter@0.25.10)(ws@8.21.1)
       '@oxlint/plugins':
         specifier: 1.78.0
         version: 1.78.0
