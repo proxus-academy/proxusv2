@@ -177,7 +177,7 @@ un proceso vacío.
 
 ## Current CI gates and pending suites
 
-The current `.github/workflows/validate.yml` exposes every authoritative gate independently and starts them in parallel: validator self-test, Effect diagnostics, typecheck, type-aware lint, anti-slop rule regressions, dependency-cruiser architecture, Knip, workspace contracts, Vitest/PGlite, build and PostgreSQL 17. There is no duplicate monolithic CI job and no validator uses `continue-on-error`. A failure or warning in any strict validator remains a failed check.
+The current `.github/workflows/validate.yml` exposes every authoritative gate independently and starts them in parallel: validator self-test, Effect diagnostics, typecheck, type-aware lint, anti-slop rule regressions, React Doctor, dependency-cruiser architecture, Knip, workspace contracts, Vitest/PGlite, build and PostgreSQL 17. There is no duplicate monolithic CI job and no validator uses `continue-on-error`. A failure or warning in any strict validator remains a failed check.
 
 The root `pnpm validate:pr` command retains the same complete sequential validation for local use: validator self-tests, static validation, vendored anti-slop rule regressions, normal Vitest/PGlite suites and every workspace build including Storybook. CI changes scheduling, not coverage. Knip generates Paraglide before analysis because its fresh runner must resolve those generated imports without relying on another job's filesystem.
 
@@ -245,6 +245,10 @@ The checks have no generated allowlist or accepted-violation baseline:
   test runner and TypeScript stripping; `validate:pr` runs it independently of
   lint so a broken rule implementation cannot pass merely because the current
   workspace happens not to trigger it.
+- `react:doctor` scans the React surfaces in Web, Admin and Storybook with
+  warnings treated as blocking findings. Supply-chain checks remain outside
+  this repository gate; narrow project overrides document framework-owned
+  exports and development dependencies that the analyzer cannot infer.
 - `boundaries` ignores generated `dist`, `coverage` and `storybook-static`
   trees and enforces the documented DDD direction: shared is runtime-neutral;
   Domain cannot reach adapters/transports/apps; Infra cannot reach

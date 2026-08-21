@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@effect/atom-react": "4.0.0-beta.98",
-    "@proxus/shared": "workspace:*",
     "@proxus/ui": "workspace:*",
     "effect": "4.0.0-beta.98",
     "react": "^19.2.3",

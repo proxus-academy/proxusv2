@@ -32,11 +32,13 @@ export function RecoveryCodePage() {
       <Text tone="muted">{recovery.email}</Text>
         <form className="space-y-4" onSubmit={(event) => {
           event.preventDefault()
-          void submit({ code }).then((exit) => {
-            if (Exit.isSuccess(exit)) {
-              void navigate({ to: "/password-recovery/new-password" })
-            }
-          })
+          void submit({ code })
+            .then((exit) => {
+              if (Exit.isSuccess(exit)) {
+                void navigate({ to: "/password-recovery/new-password" })
+              }
+            })
+            .catch((error: unknown) => globalThis.reportError(error))
         }}> 
           <OtpInput value={code} onChange={setCode} label={auth_recoveryCode_code()} loading={busy} />
           <AuthError visible={submitResult._tag === "Failure" || resendResult._tag === "Failure"} />
