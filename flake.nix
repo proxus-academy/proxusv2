@@ -14,9 +14,6 @@
           pnpm = pkgs.writeShellScriptBin "pnpm" ''
             exec ${pkgs.corepack}/bin/corepack pnpm "$@"
           '';
-          stack = pkgs.writeShellScriptBin "stack" ''
-            exec ${pkgs.corepack}/bin/corepack pnpm dlx @kitlangton/stack@0.4.2 "$@"
-          '';
         in {
           default = pkgs.mkShell {
             packages = [
@@ -28,7 +25,6 @@
               pkgs.actionlint
               pkgs.shellcheck
               pnpm
-              stack
             ];
 
             shellHook = ''
