@@ -12,13 +12,13 @@ export {
   RoleAssignmentStoreError,
   makeMemoryRoleAssignmentsRepository
 } from "./service.js"
-export type { AccessControlServiceShape, RoleAssignment } from "./service.js"
+export type { AccessControlServiceContract, RoleAssignment } from "./service.js"
 export type {
   Resource,
   RoleBinding,
   RoleQuery,
   RoleStoreImplementation,
-  RoleStoreShape,
+  RoleStoreContract,
   Scope,
   Subject
 } from "./engine/index.js"

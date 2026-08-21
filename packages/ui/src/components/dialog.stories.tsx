@@ -10,6 +10,7 @@ const meta = {
   argTypes: {
     open: { control: "boolean" }
   },
+  // SAFETY: widening the literal lets Storybook's boolean control toggle the argument.
   args: { open: false as boolean }
 } satisfies Meta<typeof Dialog>
 

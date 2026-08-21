@@ -77,5 +77,6 @@ export const listAuthQa = Effect.gen(function* () {
       studyPath: [user.studyId, user.subjectId],
     })
   }
+  // SAFETY: both branches above construct every AuthQaListing field from schema-backed query rows.
   return result as readonly AuthQaListing[]
 })

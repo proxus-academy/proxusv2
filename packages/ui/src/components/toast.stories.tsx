@@ -10,6 +10,7 @@ const meta = {
     variant: { control: "select", options: ["default", "success", "destructive"] },
     open: { control: "boolean" }
   },
+  // SAFETY: widening the literal lets Storybook's boolean control toggle the argument.
   args: { open: true as boolean, variant: "default" }
 } satisfies Meta<typeof Toast>
 

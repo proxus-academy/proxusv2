@@ -18,6 +18,7 @@ import { authChallenges, users, type AuthChallengeRow, type UserRow } from "../.
 type AuthDatabase = PgEffectDatabase<EffectPgQueryEffectHKT, EffectPgQueryResultHKT>
 
 const userFromRow = (row: UserRow): User => ({
+  // SAFETY: persisted user identifiers are produced from UserId values by this repository.
   id: row.id as User["id"], email: row.emailNormalized, status: row.status,
   emailVerifiedAt: row.emailVerifiedAt, passwordHash: row.passwordHash, googleSubject: row.googleSubject,
   usernameNormalized: row.usernameNormalized, birthYear: row.birthYear, problemKind: row.problemKind,
@@ -26,7 +27,10 @@ const userFromRow = (row: UserRow): User => ({
   createdAt: row.createdAt, updatedAt: row.updatedAt,
 })
 const challengeFromRow = (row: AuthChallengeRow): AuthChallenge => ({
-  id: row.id as AuthChallenge["id"], userId: row.userId as AuthChallenge["userId"], purpose: row.purpose,
+  // SAFETY: the persisted challenge identifier originates from a branded domain identifier on writes.
+  id: row.id as AuthChallenge["id"],
+  // SAFETY: the persisted user identifier originates from a branded domain identifier on writes.
+  userId: row.userId as AuthChallenge["userId"], purpose: row.purpose,
   codeHash: row.codeHash, expiresAt: row.expiresAt, failedAttempts: row.failedAttempts,
   maximumAttempts: row.maximumAttempts, consumedAt: row.consumedAt, createdAt: row.createdAt,
 })

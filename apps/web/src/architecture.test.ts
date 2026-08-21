@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 import { describe, expect, it } from "vitest"
 
+// SAFETY: Vite expands this static glob to modules whose default exports are irrelevant to this architecture test.
 const modules = import.meta.glob([
   "./**/*.{ts,tsx}",
   "../../../packages/frontend-core/src/**/*.{ts,tsx}",

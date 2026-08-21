@@ -27,6 +27,7 @@ export interface AuthenticationPolicy {
 
 const randomId = (random: typeof Random.Random.Service): AuthChallengeId => {
   const parts = Array.from({ length: 4 }, () => Math.abs(random.nextIntUnsafe()).toString(36).padStart(7, "0"))
+  // SAFETY: four fixed-width base36 parts satisfy the opaque challenge identifier representation.
   return parts.join("") as AuthChallengeId
 }
 

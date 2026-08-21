@@ -9,6 +9,7 @@ type Database = PgEffectDatabase<EffectPgQueryEffectHKT, EffectPgQueryResultHKT>
 const failure = (operation: RoleAssignmentStoreError["operation"]) => (cause: unknown) => new RoleAssignmentStoreError({ operation, cause })
 const uniqueViolation = (cause: unknown): boolean => {
   if (typeof cause !== "object" || cause === null) return false
+  // SAFETY: the object guard establishes safe optional property reads for recursive inspection.
   const value = cause as { readonly code?: unknown; readonly cause?: unknown }
   return value.code === "23505" || uniqueViolation(value.cause)
 }
@@ -20,6 +21,7 @@ export const makeRoleAssignmentsRepositoryDrizzle = (db: Database): typeof RoleA
       eq(roleAssignments.userId, subject.id),
       or(...scopes.map((scope) => and(eq(roleAssignments.scopeType, scope.type), eq(roleAssignments.scopeId, scope.id)))),
     )).pipe(
+      // SAFETY: the database column is constrained to the AccessRole values persisted by this repository.
       Effect.map((rows) => [...new Set(rows.map(({ role }) => role as AccessRole))]),
       Effect.mapError(failure("getRoles")),
     )

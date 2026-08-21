@@ -32,6 +32,7 @@ describe("web form field adapters", () => {
   it("maps checkbox values and disabled", () => {
     const field = state(false)
     render(<CheckboxField field={field} props={{ label: "Terms", disabled: true }} />)
+    // SAFETY: getByRole guarantees the rendered checkbox element used by this component contract.
     expect((screen.getByRole("checkbox", { name: "Terms" }) as HTMLButtonElement).disabled).toBe(true)
   })
 })
