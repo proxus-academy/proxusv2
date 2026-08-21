@@ -101,10 +101,10 @@ steps:
         token="$(gcloud auth print-identity-token --audiences="$${origin}")"
         # Trigger cold start and wait for readiness on one representative route.
         for attempt in $(seq 1 60); do
-          status="$(curl --max-time 20 --silent --show-error --header "Authorization: Bearer $${token}" --header "Accept: text/html" --output /dev/null --write-out '%{http_code}' "$${origin}/es" || true)"
+          status="$(curl --max-time 20 --silent --show-error --header "Authorization: Bearer $${token}" --header "Accept: text/html" --output /dev/null --write-out '%{http_code}' "$${origin}/app" || true)"
           [[ "$${status}" == "200" ]] && break
           if [[ "$${attempt}" == 60 ]]; then
-            echo "Smoke readiness failed: /es returned $${status}; expected 200" >&2
+            echo "Smoke readiness failed: /app returned $${status}; expected 200" >&2
             exit 1
           fi
           sleep 2
@@ -116,6 +116,9 @@ steps:
           status="$(curl --max-time 20 --silent --show-error --header "Authorization: Bearer $${token}" --header "Accept: $${accept}" --output /dev/null --write-out '%{http_code}' "$${origin}$${path}" || true)"
           [[ "$${status}" == "$${expected}" ]] || echo "$${path}: got $${status}, expected $${expected}" >> "$${failures}"
         }
+        check / 200 text/html &
+        check /pricing 200 text/html &
+        check /app 200 text/html &
         check /admin/ 200 text/html &
         check /ui 308 text/html &
         check /ui/ 200 text/html &
@@ -132,7 +135,7 @@ steps:
       - |
         if [[ "${_INITIALIZE}" != "true" ]]; then
           origin="$(gcloud run services describe "${_SERVICE}" --project="$PROJECT_ID" --region="${_REGION}" --format='value(status.url)')"
-          status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$${origin}/es")"
+          status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$${origin}/app")"
           [[ "$${status}" == 302 ]] || { echo "Existing IAP gate returned $${status}; expected 302" >&2; exit 1; }
           exit 0
         fi
@@ -157,7 +160,7 @@ steps:
           --member="serviceAccount:${_BUILD_SERVICE_ACCOUNT}" \
           --role=roles/run.invoker --quiet
         origin="$(gcloud run services describe "${_SERVICE}" --project="$PROJECT_ID" --region="${_REGION}" --format='value(status.url)')"
-        status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$${origin}/es")"
+        status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$${origin}/app")"
         [[ "$${status}" == 302 ]] || { echo "IAP gate returned $${status}; expected 302" >&2; exit 1; }
 options:
   logging: CLOUD_LOGGING_ONLY
