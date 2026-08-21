@@ -87,7 +87,8 @@ El frontend sigue un enfoque atom-first con Effect Atom:
 - El estado puramente visual y local puede permanecer en el componente; no eleves estado sin necesidad.
 - La lógica compartida e independiente de plataforma pertenece a `packages/frontend-core`.
 - Los adapters e integración específicos del navegador pertenecen a `apps/web/src/platform`; Admin posee sus propios adapters.
-- Los componentes reutilizables y primitives visuales pertenecen a `packages/ui`.
+- Toda implementación visual React pertenece a `packages/ui`, incluidos primitives, layouts y patterns específicos de producto conectados mediante props planas.
+- `apps/web` y `apps/admin` no usan HTML host visual, `className`, `style`, CSS local, Tailwind ni dependencias directas de styling. Solo se admite un `div` sin props como contenedor estructural neutro.
 - Las aplicaciones componen rutas, pantallas y comportamiento específico del producto; no deben duplicar lógica compartible sin motivo.
 - Mantén el branching de carga, éxito y error visible y cerca de la superficie que lo presenta.
 - Las mutaciones deben invalidar o actualizar todos los atoms afectados por el cambio.
@@ -96,7 +97,7 @@ Consulta `docs/webapp-architecture.md` y `docs/effect/90_react_and_effect_atom.m
 
 ## UI y Storybook
 
-- Reutiliza `packages/ui` antes de crear componentes equivalentes dentro de una aplicación.
+- Reutiliza, extiende o mejora `packages/ui`; no crees componentes visuales equivalentes dentro de una aplicación.
 - Mantén la lógica de producto fuera de primitives genéricas de UI.
 - Prefiere composición a componentes con proliferación de props booleanas.
 - Añade stories junto a los componentes cuando introduzcas estados visuales o interacciones reutilizables relevantes.

@@ -5,6 +5,7 @@ import * as AsyncResult from "effect/unstable/reactivity/AsyncResult"
 import { createContext, useContext, useEffect } from "react"
 import { AdminLayout } from "../../app/admin-layout.js"
 import { AdminForbidden, adminAuthComposition } from "./admin-auth.js"
+import { Box, Heading, Text } from "@proxus/ui"
 
 const failure = (result: { readonly cause: Cause.Cause<unknown> }) =>
   Option.getOrUndefined(Cause.findErrorOption(result.cause))
@@ -32,7 +33,7 @@ function AuthorizedLayout() {
   const capabilities = useAtomValue(adminAuthComposition.capabilitiesAtom)
   if (capabilities._tag !== "Success") {
     const forbidden = capabilities._tag === "Failure" && failure(capabilities) instanceof AdminForbidden
-    return <main className="p-8"><h1>{forbidden ? "Acceso prohibido" : "Acceso no disponible"}</h1><p role="alert">No tienes acceso a la administración.</p></main>
+    return <Box as="main" padding="2xl"><Heading level={1}>{forbidden ? "Acceso prohibido" : "Acceso no disponible"}</Heading><Text role="alert">No tienes acceso a la administración.</Text></Box>
   }
   const permissions = new Set(capabilities.value.permissions)
   return <PermissionsContext value={permissions}><AdminLayout><Outlet /></AdminLayout></PermissionsContext>
@@ -43,9 +44,9 @@ export function AuthenticatedLayout() {
   return <>
     <SessionLifecycle />
     {session._tag === "Initial" || AsyncResult.isWaiting(session)
-      ? <p role="status">Comprobando sesión…</p>
+      ? <Text role="status">Comprobando sesión…</Text>
       : session._tag === "Failure"
-        ? <p role="alert">No se pudo comprobar la sesión.</p>
+        ? <Text role="alert">No se pudo comprobar la sesión.</Text>
         : session.value === null
           ? <Navigate to="/admin/login" replace />
           : <AuthorizedLayout />}

@@ -2,7 +2,7 @@ import { auth_newPassword_confirmation, auth_newPassword_description, auth_newPa
 import { createFileRoute } from "@tanstack/react-router"
 import { Exit } from "effect"
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
-import { Button, Text } from "@proxus/ui"
+import { Button, Form, Text, VisuallyHidden } from "@proxus/ui"
 import { AuthError, BackToLoginButton } from "../../../modules/auth/auth-controls.js"
 import { backToLoginAction, submitNewPasswordAction } from "../../../modules/auth/actions.js"
 import { NewPasswordForm } from "../../../modules/auth/forms.js"
@@ -18,10 +18,10 @@ export function NewPasswordPage() {
   return (
     <AuthPage title={auth_newPassword_title()}>
       <Text tone="muted">{auth_newPassword_description()}</Text>
-      <span className="sr-only">{auth_newPassword_confirmation()}</span>
+      <VisuallyHidden>{auth_newPassword_confirmation()}</VisuallyHidden>
       <NewPasswordForm.Initialize defaultValues={{ password: "", confirmation: "" }}>
-        <form
-          className="space-y-4"
+        <Form
+          gap="lg"
           onSubmit={(event) => {
             event.preventDefault()
             submitForm((value: { readonly password: string }) => {
@@ -47,7 +47,7 @@ export function NewPasswordPage() {
           />
           <AuthError visible={result._tag === "Failure"} />
           <Button type="submit" disabled={result.waiting}>{auth_newPassword_submit()}</Button>
-        </form>
+        </Form>
       </NewPasswordForm.Initialize>
       <BackToLoginButton onClick={() => {
         void back().then((exit) => {

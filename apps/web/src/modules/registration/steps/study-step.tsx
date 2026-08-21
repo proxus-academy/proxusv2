@@ -8,7 +8,7 @@ import {
 } from "@proxus/frontend-core/study-catalog"
 import type { RegistrationDraft } from "@proxus/frontend-core/registration"
 import type { StudyNode } from "@proxus/shared/study-catalog"
-import { ChoiceCard, EmptyState, Heading, Input, Pagination, Skeleton } from "@proxus/ui"
+import { Breadcrumbs, ChoiceCard, EmptyState, Grid, Heading, Initials, Input, Pagination, Skeleton, Stack } from "@proxus/ui"
 import { useEffect, useMemo, useState } from "react"
 
 import { changeRegistrationStudyPathAction, dispatchRegistrationAction } from "../state.js"
@@ -28,33 +28,30 @@ function StudyOptions({ state }: {
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize))
   useEffect(() => setPage(1), [query])
   if (state._tag === "Initial") {
-    return <div className="grid gap-3 sm:grid-cols-2" aria-label={registration_study_loading()}>{Array.from({ length: 6 }, (_, index) => <Skeleton key={index} className="h-24 rounded-2xl" />)}</div>
+    return <Grid columns={{ base: "one", md: "two" }} gap="md" label={registration_study_loading()}>{Array.from({ length: 6 }, (_, index) => <Skeleton key={index} size="card" />)}</Grid>
   }
   if (state._tag === "Failure") return <EmptyState title={registration_study_loadFailed()} description={registration_study_loadFailedDescription()} />
   if (state.value.length === 0) return <EmptyState title={registration_study_nonePublished()} />
   return (
-    <div className="space-y-5">
-      <label className="relative block">
-        <span className="sr-only">{registration_study_search()}</span>
-        <Input value={query} onChange={(event) => setQuery(event.currentTarget.value)} placeholder={registration_study_searchPlaceholder()} />
-      </label>
+    <Stack gap="xl">
+      <Input aria-label={registration_study_search()} value={query} onChange={(event) => setQuery(event.currentTarget.value)} placeholder={registration_study_searchPlaceholder()} />
       {filtered.length === 0 ? <EmptyState title={registration_study_noResults()} description={registration_study_noResultsDescription()} /> : (
-      <div className="grid gap-3 sm:grid-cols-2">
+      <Grid columns={{ base: "one", md: "two" }} gap="md">
       {filtered.slice((page - 1) * pageSize, page * pageSize).map((node) => (
         <ChoiceCard
           key={node.id}
           title={node.name}
           description={nodeLabels[node.kind]()}
           meta={node.userCount === undefined ? undefined : registration_study_users({ count: node.userCount })}
-          leading={<span className="flex size-12 items-center justify-center rounded-xl bg-primary/10 font-bold text-primary">{node.name.slice(0, 2).toLocaleUpperCase()}</span>}
+          leading={<Initials>{node.name.slice(0, 2).toLocaleUpperCase()}</Initials>}
           leadingVariant="plain"
           onClick={() => dispatch({ _tag: "StudyNodeSelected", node })}
         />
       ))}
-      </div>
+      </Grid>
       )}
-      {pageCount > 1 ? <Pagination className="justify-center" page={page} pageCount={pageCount} onPageChange={setPage} /> : null}
-    </div>
+      {pageCount > 1 ? <Pagination align="center" page={page} pageCount={pageCount} onPageChange={setPage} /> : null}
+    </Stack>
   )
 }
 
@@ -84,25 +81,12 @@ export function StudyStepPage({ draft }: {
     ? registration_study_titles_subject()
     : parent === undefined ? registration_study_titles_root() : registration_study_titles_continueFrom({ name: parent.name })
   return (
-    <main className="space-y-6">
+    <Stack as="main" gap="xl">
       <Heading level={1}>{title}</Heading>
       {draft.path.length === 0 ? null : (
-        <nav aria-label={registration_study_currentSelection()} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-          {draft.path.map((node, index) => (
-            <span className="inline-flex items-center gap-2" key={node.id}>
-              {index > 0 ? <span aria-hidden="true">/</span> : null}
-              <button
-                className="rounded px-1 py-1 font-medium hover:bg-accent hover:text-foreground"
-                type="button"
-                onClick={() => changePath(draft.path.slice(0, index))}
-              >
-                {node.name}
-              </button>
-            </span>
-          ))}
-        </nav>
+        <Breadcrumbs label={registration_study_currentSelection()} items={draft.path.map((node) => ({ id: node.id, label: node.name }))} onSelect={(index) => changePath(draft.path.slice(0, index))} />
       )}
       <StudyOptions state={viewState} />
-    </main>
+    </Stack>
   )
 }

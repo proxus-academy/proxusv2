@@ -2,7 +2,7 @@ import { registration_verification_accept, registration_verification_confirm, re
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { RegistrationDraft, RegistrationState } from "@proxus/frontend-core/registration"
 import { Exit } from "effect"
-import { Button, Checkbox, Heading, OtpInput, Text } from "@proxus/ui"
+import { Button, Checkbox, Form, Heading, Inline, LinkButton, OtpInput, Stack, Text } from "@proxus/ui"
 import { useEffect, useState, type FormEvent } from "react"
 import { DraftSummary, RegistrationFailure } from "../registration-summary.js"
 import {
@@ -40,13 +40,13 @@ export function EmailVerification({ state, onComplete = () => Promise.resolve() 
       .catch((error: unknown) => globalThis.reportError(error))
   }
   return (
-    <main className="mx-auto flex max-w-xl flex-col items-center gap-5 text-center">
+    <Stack as="main" maxWidth="lg" align="center" gap="xl">
       <Heading level={1}>{registration_verification_title()}</Heading>
       <Text>{registration_verification_sentTo({ email: state.maskedEmail })}</Text>
       <RegistrationFailure />
-      <form onSubmit={onSubmit} className="flex w-full flex-col items-center gap-5">
+      <Form onSubmit={onSubmit} width="full" align="center" gap="xl">
         <OtpInput value={code} onChange={setCode} loading={busy} />
-        <div className="flex flex-wrap items-center justify-center gap-3">
+        <Inline wrap justify="center" gap="md">
           <Button loading={busy} disabled={code.length !== 6} type="submit">{registration_verification_confirm()}</Button>
           <Button
             type="button"
@@ -59,13 +59,13 @@ export function EmailVerification({ state, onComplete = () => Promise.resolve() 
           >
             {cooldown > 0 ? registration_verification_resendIn({ seconds: cooldown }) : registration_verification_resend()}
           </Button>
-        </div>
-      </form>
+        </Inline>
+      </Form>
       {resendResult._tag === "Success"
         ? <Text role="status">{registration_verification_resent()}</Text>
         : null}
       <Text tone="muted">{registration_verification_spam()}</Text>
-    </main>
+    </Stack>
   )
 }
 
@@ -78,12 +78,12 @@ export function ConfirmGoogle({ state, onComplete = () => Promise.resolve() }: {
   const busy = useAtomValue(registrationBusyAtom)
   const [accepted, setAccepted] = useState(false)
   return (
-    <main>
+    <Stack as="main" gap="lg">
       <Heading level={1}>{registration_verification_googleTitle()}</Heading>
       <Text>{registration_verification_verifiedEmail({ email: state.googleRegistration.email })}</Text>
       <DraftSummary draft={draft} />
       <RegistrationFailure />
-      <form id="google-confirm" onSubmit={(event) => {
+      <Form id="google-confirm" gap="lg" onSubmit={(event) => {
         event.preventDefault()
         void confirm()
           .then((exit) => {
@@ -91,25 +91,25 @@ export function ConfirmGoogle({ state, onComplete = () => Promise.resolve() }: {
           })
           .catch((error: unknown) => globalThis.reportError(error))
       }}>
-        <label className="flex items-start gap-2">
+        <Inline align="start" gap="sm">
           <Checkbox
             checked={accepted}
             onCheckedChange={(checked) => setAccepted(checked === true)}
             aria-required="true"
             aria-label={registration_verification_accept()}
           />
-          <span>
+          <Text as="div">
             <RichText
               message={registration_verification_legal()}
               components={{
-                terms: (children) => <a className="text-primary underline" href="https://proxus.es/terms" target="_blank" rel="noreferrer">{children}</a>,
-                privacy: (children) => <a className="text-primary underline" href="https://proxus.es/privacy" target="_blank" rel="noreferrer">{children}</a>,
+                terms: (children) => <LinkButton href="https://proxus.es/terms" target="_blank" rel="noreferrer">{children}</LinkButton>,
+                privacy: (children) => <LinkButton href="https://proxus.es/privacy" target="_blank" rel="noreferrer">{children}</LinkButton>,
               }}
             />
-          </span>
-        </label>
+          </Text>
+        </Inline>
         <Button loading={busy} disabled={!accepted} type="submit">{registration_verification_confirmGoogle()}</Button>
-      </form>
-    </main>
+      </Form>
+    </Stack>
   )
 }

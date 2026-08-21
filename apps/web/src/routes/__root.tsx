@@ -1,5 +1,5 @@
 import { common_routeError } from "../paraglide/messages.js"
-import { Heading } from "@proxus/ui"
+import { Box, Heading } from "@proxus/ui"
 import { createRootRoute, Outlet } from "@tanstack/react-router"
 import { useEffect } from "react"
 import { getLocale, getTextDirection } from "../paraglide/runtime.js"
@@ -23,5 +23,5 @@ function RootLayout() {
 }
 
 function RouteError() {
-  return <main><Heading level={1}>{common_routeError()}</Heading></main>
+  return <Box as="main"><Heading level={1}>{common_routeError()}</Heading></Box>
 }

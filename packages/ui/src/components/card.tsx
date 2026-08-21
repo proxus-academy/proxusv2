@@ -23,9 +23,9 @@ const cardVariants = cva("relative overflow-hidden rounded-xl bg-card text-card-
   }
 })
 
-export interface CardProps extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof cardVariants> {}
+export interface CardProps extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof cardVariants> { readonly marginTop?: "none" | "lg" | "xl" }
 
-export function Card({ className, variant, padding, ref, ...props }: CardProps & { ref?: React.Ref<HTMLDivElement> }) {
+export function Card({ className, variant, padding, marginTop = "none", ref, ...props }: CardProps & { ref?: React.Ref<HTMLDivElement> }) {
   const interactiveProps =
     variant === "interactive"
       ? {
@@ -41,7 +41,7 @@ export function Card({ className, variant, padding, ref, ...props }: CardProps &
       : {}
 
   return (
-    <div ref={ref} className={cn(cardVariants({ variant, padding }), className)} {...interactiveProps} {...props} />
+    <div ref={ref} className={cn(cardVariants({ variant, padding }), marginTop === "lg" && "mt-4", marginTop === "xl" && "mt-6", className)} {...interactiveProps} {...props} />
   )
 }
 

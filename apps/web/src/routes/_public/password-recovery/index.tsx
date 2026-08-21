@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router"
 import { Exit } from "effect"
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { recoveryStateAtom } from "@proxus/frontend-core/auth"
-import { Button, Text } from "@proxus/ui"
+import { Button, Form, Text } from "@proxus/ui"
 import { AuthError, BackToLoginButton } from "../../../modules/auth/auth-controls.js"
 import { backToLoginAction, submitPasswordRecoveryAction } from "../../../modules/auth/actions.js"
 import { ForgotPasswordForm } from "../../../modules/auth/forms.js"
@@ -21,8 +21,8 @@ export function PasswordRecoveryPage() {
     <AuthPage title={auth_forgotPassword_title()}>
       <Text tone="muted">{auth_forgotPassword_description()}</Text>
       <ForgotPasswordForm.Initialize defaultValues={{ email: recovery.email }}>
-        <form
-          className="space-y-4"
+        <Form
+          gap="lg"
           onSubmit={(event) => {
             event.preventDefault()
             submitForm((value: { readonly email: string }) => {
@@ -42,7 +42,7 @@ export function PasswordRecoveryPage() {
           />
           <AuthError visible={result._tag === "Failure"} />
           <Button type="submit" disabled={result.waiting}>{auth_forgotPassword_submit()}</Button>
-        </form>
+        </Form>
       </ForgotPasswordForm.Initialize>
       <BackToLoginButton onClick={() => {
         void back().then((exit) => {

@@ -1,7 +1,7 @@
 import { auth_login_createAccount, auth_login_email, auth_login_failed, auth_login_forgotPassword, auth_login_google, auth_login_password, auth_login_submit, auth_login_submitting, auth_login_title } from "../../paraglide/messages.js"
 import { createFileRoute } from "@tanstack/react-router"
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
-import { Button } from "@proxus/ui"
+import { Button, Form } from "@proxus/ui"
 import { Exit } from "effect"
 import * as AsyncResult from "effect/unstable/reactivity/AsyncResult"
 import { AuthError } from "../../modules/auth/auth-controls.js"
@@ -24,17 +24,17 @@ export function LoginPage() {
         message={auth_login_failed()}
       />
       <LoginForm.Initialize defaultValues={{ email: "", password: "" }}>
-        <form className="space-y-4" onSubmit={(event) => {
+        <Form gap="lg" onSubmit={(event) => {
           event.preventDefault()
           submitLogin()
         }}>
           <LoginForm.email label={auth_login_email()} name="email" type="email" autoComplete="email" />
           <LoginForm.password label={auth_login_password()} name="password" type="password" autoComplete="current-password" />
-          <Button className="w-full" type="submit">{loginResult.waiting ? auth_login_submitting() : auth_login_submit()}</Button>
-        </form>
+          <Button width="full" type="submit">{loginResult.waiting ? auth_login_submitting() : auth_login_submit()}</Button>
+        </Form>
       </LoginForm.Initialize>
       <Button
-        className="w-full"
+        width="full"
         variant="secondary"
         disabled={startGoogleResult.waiting}
         onClick={() => startGoogle({
@@ -43,7 +43,7 @@ export function LoginPage() {
       >
         {auth_login_google()}
       </Button>
-      <Button className="w-full" variant="ghost" onClick={() => {
+      <Button width="full" variant="ghost" onClick={() => {
         void navigate({ to: "/", search: {} })
       }}> 
         {auth_login_createAccount()}

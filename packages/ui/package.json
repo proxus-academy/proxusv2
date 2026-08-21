@@ -4,6 +4,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./admin": "./src/admin/index.ts",
     "./theme.css": "./src/styles/theme.css"
   },
   "scripts": {
@@ -14,6 +15,7 @@
     "@fontsource/vt323": "^5.2.7",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "framer-motion": "^12.42.2",
     "lucide-react": "^1.24.0",
     "radix-ui": "^1.6.2",
     "tailwind-merge": "^3.6.0"

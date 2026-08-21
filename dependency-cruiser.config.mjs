@@ -25,6 +25,11 @@ const testExternalAllowlist = [
   "(^|/)node_modules/(effect|vitest)(/|$)",
   "(^|/)node_modules/[.]pnpm/(effect|vitest)@[^/]+/node_modules/(effect|vitest)(/|$)"
 ]
+const stylingPackages = "(radix-ui|class-variance-authority|tailwind-merge|clsx|framer-motion)"
+const stylingDependencies = [
+  `(^|/)node_modules/${stylingPackages}(/|$)`,
+  `(^|/)node_modules/[.]pnpm/${stylingPackages}@[^/]+/node_modules/${stylingPackages}(/|$)`
+]
 const testFile = "[.](test|spec)[.](js|jsx|mjs|mts|cjs|cts|ts|tsx)$"
 
 export default {
@@ -136,6 +141,12 @@ export default {
       "Generic UI primitives cannot import contracts, feature logic, adapters, or apps.",
       { path: "^packages/ui/src" },
       { path: "^(apps|packages/(backend-|frontend-|product-messages|shared))" }
+    ),
+    errorRule(
+      "react-apps-use-ui-styling",
+      "React applications consume styling implementation through @proxus/ui.",
+      { path: "^apps/(admin|web)/src" },
+      { dependencyTypes: externalDependencyTypes, path: stylingDependencies }
     )
   ],
   options: {

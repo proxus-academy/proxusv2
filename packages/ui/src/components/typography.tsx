@@ -9,7 +9,13 @@ const headingVariants = cva("font-semibold tracking-tight text-foreground", {
       2: "text-2xl md:text-3xl font-bold",
       3: "text-xl md:text-2xl",
       4: "text-lg md:text-xl"
-    }
+    },
+    size: {
+      default: "",
+      hero: "text-4xl leading-[1.08] md:text-6xl",
+      display: "text-[2.5rem] leading-tight"
+    },
+    width: { auto: "", prose: "max-w-2xl" }
   },
   defaultVariants: {
     level: 2
@@ -20,10 +26,10 @@ export interface HeadingProps extends React.HTMLAttributes<HTMLHeadingElement>, 
   as?: "h1" | "h2" | "h3" | "h4"
 }
 
-export function Heading({ className, level, as, ref, ...props }: HeadingProps & { ref?: React.Ref<HTMLHeadingElement> }) {
+export function Heading({ className, level, size, width, as, ref, ...props }: HeadingProps & { ref?: React.Ref<HTMLHeadingElement> }) {
   const resolvedLevel = level ?? 2
   const Comp = as ?? (`h${resolvedLevel}` as const)
-  return <Comp ref={ref} className={cn(headingVariants({ level: resolvedLevel }), className)} {...props} />
+  return <Comp ref={ref} className={cn(headingVariants({ level: resolvedLevel, size, width }), className)} {...props} />
 }
 
 const textVariants = cva("text-foreground", {
@@ -45,7 +51,11 @@ const textVariants = cva("text-foreground", {
       medium: "font-medium",
       semibold: "font-semibold",
       bold: "font-bold"
-    }
+    },
+    display: { block: "block", inline: "inline", badge: "inline-flex rounded-full border border-primary/15 bg-primary/10 px-3 py-1" },
+    width: { auto: "", prose: "max-w-xl", detail: "max-w-md" },
+    align: { start: "text-left", center: "text-center", end: "text-right" },
+    wrap: { normal: "", anywhere: "break-all" }
   },
   defaultVariants: {
     size: "default",
@@ -58,7 +68,7 @@ export interface TextProps extends React.HTMLAttributes<HTMLParagraphElement>, V
   as?: "p" | "span" | "div"
 }
 
-export function Text({ className, size, tone, weight, as = "p", ref, ...props }: TextProps & { ref?: React.Ref<HTMLParagraphElement> }) {
+export function Text({ className, size, tone, weight, display, width, align, wrap, as = "p", ref, ...props }: TextProps & { ref?: React.Ref<HTMLParagraphElement> }) {
   const Comp = as
-  return <Comp ref={ref} className={cn(textVariants({ size, tone, weight }), className)} {...props} />
+  return <Comp ref={ref} className={cn(textVariants({ size, tone, weight, display, width, align, wrap }), className)} {...props} />
 }

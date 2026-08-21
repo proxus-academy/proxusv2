@@ -2,9 +2,8 @@ import { registration_discovery_sources_ai, registration_discovery_sources_event
 import { useAtomSet } from "@effect/atom-react"
 import type { RegistrationDraft } from "@proxus/frontend-core/registration"
 import type { AcquisitionSource } from "@proxus/shared/auth"
-import { Button, ChoiceCard, Heading, Text, Textarea } from "@proxus/ui"
+import { Button, ChoiceCard, DiscoverySourceIcon, Form, Grid, Heading, Inline, Stack, Text, Textarea } from "@proxus/ui"
 import { useState, type FormEvent } from "react"
-import { DiscoverySourceIcon } from "./discovery-source-icon.js"
 import { dispatchRegistrationAction } from "../state.js"
 
 const sourceLabels = { friend: registration_discovery_sources_friend, tiktok: registration_discovery_sources_tiktok, instagram: registration_discovery_sources_instagram, whatsapp: registration_discovery_sources_whatsapp, google: registration_discovery_sources_google, ai: registration_discovery_sources_ai, event: registration_discovery_sources_event, other: registration_discovery_sources_other }
@@ -28,41 +27,41 @@ export function DiscoveryStep({ draft }: { readonly draft: RegistrationDraft }) 
   }
   if (other) {
     return (
-      <main className="space-y-7">
+      <Stack as="main" gap="xl">
         <Heading level={1}>{registration_discovery_otherTitle()}</Heading>
-        <Text className="-mt-4" tone="muted">{registration_discovery_otherDescription()}</Text>
-        <form className="space-y-4" onSubmit={submitOther}>
+        <Text tone="muted">{registration_discovery_otherDescription()}</Text>
+        <Form gap="lg" onSubmit={submitOther}>
           <Textarea
             aria-label={registration_discovery_otherLabel()}
             autoFocus
-            className="min-h-32 bg-white"
+            rows={5}
             maxLength={200}
             required
             value={otherText}
             onChange={(event) => setOtherText(event.currentTarget.value)}
           />
-          <div className="flex justify-end">
+          <Inline justify="end">
             <Button disabled={otherText.trim().length === 0} type="submit">{registration_discovery_continue()}</Button>
-          </div>
-        </form>
-      </main>
+          </Inline>
+        </Form>
+      </Stack>
     )
   }
   return (
-    <main className="space-y-7">
+    <Stack as="main" gap="xl">
       <Heading level={1}>{registration_discovery_title()}</Heading>
-      <Text className="-mt-4" tone="muted">{registration_discovery_description()}</Text>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <Text tone="muted">{registration_discovery_description()}</Text>
+      <Grid columns={{ base: "one", md: "two" }} gap="md">
         {sources.map((source) => (
           <ChoiceCard
-            className="p-4"
+            density="compact"
             key={source}
             leading={<DiscoverySourceIcon source={source} />}
             title={sourceLabels[source]()}
             onClick={() => select(source)}
           />
         ))}
-      </div>
-    </main>
+      </Grid>
+    </Stack>
   )
 }
