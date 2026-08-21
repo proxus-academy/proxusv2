@@ -3,6 +3,7 @@ import { ProductAnalyticsLive } from "@proxus/backend-domain/product-analytics"
 import { AccessControlServiceLive, makeMemoryRoleAssignmentsRepository } from "@proxus/backend-domain/access-control"
 import { StudyPathValidator } from "@proxus/backend-domain/auth"
 import { StudyCatalogLive } from "@proxus/backend-domain/study-catalog"
+import { ApplicationRealtimeLive } from "@proxus/backend-domain/realtime"
 import { PgliteLive, PgliteMigrationLive } from "@proxus/backend-infra/database/pglite"
 import { FeatureFlagSnapshotRepositoryPgliteLive } from "@proxus/backend-infra/feature-flags/pglite"
 import { makeAuthPersistencePgliteLive } from "@proxus/backend-infra/auth"
@@ -36,6 +37,7 @@ const EmbeddedRoutesLive = makePublicApiRoutes(Layer.merge(EmbeddedAuthLive, Emb
     EmbeddedFeatureFlagsLive,
     ProductAnalyticsLive.pipe(Layer.provide(ProductAnalyticsRepositoryMemory)),
     ProductAnalyticsHttpContextFailClosed,
+    ApplicationRealtimeLive,
   )),
   Layer.provide(HttpServer.layerServices),
   Layer.provide(EmbeddedAuthLive),

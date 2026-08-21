@@ -12,7 +12,8 @@
     "./registration": "./src/registration/index.ts",
     "./registration/testing": "./src/registration/testing.ts",
     "./feature-flags": "./src/feature-flags/index.ts",
-    "./study-catalog": "./src/study-catalog/index.ts"
+    "./study-catalog": "./src/study-catalog/index.ts",
+    "./realtime": "./src/realtime/index.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",

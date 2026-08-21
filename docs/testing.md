@@ -175,6 +175,15 @@ un proceso vacío.
 - Builders return valid deterministic domain values; fixtures perform Effectful
   arrangement through public interfaces.
 
+### Realtime
+
+Realtime se prueba en tres seams: la proyección backend verifica routing por
+cuenta, el adapter web verifica validación Schema y cleanup de `EventSource`, y
+el lifecycle de `frontend-core` verifica invalidaciones semánticas mediante
+`Reactivity`. Los tests no mockean el global `EventSource`; inyectan una factory
+del adapter web. SSE no sustituye todavía a los journeys de browser, que siguen
+sin ser un gate.
+
 ## Current CI gates and pending suites
 
 The current `.github/workflows/validate.yml` exposes every authoritative gate independently and starts them in parallel: validator self-test, Effect diagnostics, typecheck, type-aware lint, anti-slop rule regressions, React Doctor, dependency-cruiser architecture, Knip, workspace contracts, Vitest/PGlite, build and PostgreSQL 17. There is no duplicate monolithic CI job and no validator uses `continue-on-error`. A failure or warning in any strict validator remains a failed check.

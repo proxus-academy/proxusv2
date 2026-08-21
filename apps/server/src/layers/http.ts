@@ -6,6 +6,7 @@ import * as NodeHttpServer from "@effect/platform-node/NodeHttpServer"
 import * as NodeFileSystem from "@effect/platform-node/NodeFileSystem"
 import * as NodePath from "@effect/platform-node/NodePath"
 import { AccessControlServiceLive, makeMemoryRoleAssignmentsRepository } from "@proxus/backend-domain/access-control"
+import { ApplicationRealtimeLive } from "@proxus/backend-domain/realtime"
 import { AuthenticationService, GoogleFlow, RegistrationService, StudyPathValidator } from "@proxus/backend-domain/auth"
 import { AuthSessionCookies, AuthSessionView } from "@proxus/backend-transport/auth"
 import { Config, Effect, Layer, Redacted } from "effect"
@@ -65,9 +66,11 @@ export const HttpDevLive = makeHttpLive(Layer.mergeAll(
   DevCatalogLive,
   ProductAnalyticsDevLive,
   FeatureFlagsDevLive,
+  ApplicationRealtimeLive,
 ), AuthDevLive, devCatalogSupport, DevObjectStorageLive).pipe(Layer.provide(AuthDevLive), Layer.provide(devCatalogSupport))
 export const HttpProdLive = makeHttpLive(Layer.mergeAll(
   ProdCatalogLive,
   ProductAnalyticsProdLive,
   FeatureFlagsProdLive,
+  ApplicationRealtimeLive,
 ), AuthProdLive, prodCatalogSupport, ProdObjectStorageLive).pipe(Layer.provide(AuthProdLive), Layer.provide(prodCatalogSupport))

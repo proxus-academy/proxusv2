@@ -1,6 +1,7 @@
 // @effect-diagnostics globalDate:off globalDateInEffect:off
 import { Clock, Effect, Layer, Option, Random } from "effect"
 import {
+  AccountSessionsRevoked,
   AuthChallengeRepository,
   AuthRepositoryError,
   AuthenticationService,
@@ -18,6 +19,7 @@ import {
   type AuthChallengeId,
   type User,
 } from "@proxus/backend-domain/auth"
+import { ApplicationEventPublisher } from "@proxus/backend-domain/application-events"
 import { OpaqueSessions } from "./sessions.js"
 
 export interface AuthenticationPolicy {
@@ -42,6 +44,7 @@ export const makeAuthenticationLive = (policy: AuthenticationPolicy) => Layer.ef
     const challenges = yield* AuthChallengeRepository
     const codes = yield* VerificationCodeGenerator
     const email = yield* EmailDelivery
+    const applicationEvents = yield* ApplicationEventPublisher
     const random = yield* Random.Random
     const now = () => Clock.currentTimeMillis.pipe(Effect.map((millis) => new Date(millis)))
 
@@ -131,6 +134,10 @@ export const makeAuthenticationLive = (policy: AuthenticationPolicy) => Layer.ef
           Effect.mapError((cause) => new AuthRepositoryError({ operation: "consumePasswordReset", cause })),
         )
         yield* sessions.revokeAllForAccount(user.id, changedAt)
+        yield* applicationEvents.publish(new AccountSessionsRevoked({
+          version: 1,
+          accountId: user.id,
+        }))
       }),
     })
   }),

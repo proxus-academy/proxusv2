@@ -5,6 +5,7 @@ import { HttpApiBuilder } from "effect/unstable/httpapi"
 import { PublicAuthHandlers, PublicSessionHandlers, SessionAuthorizationLive } from "./modules/auth/http.js"
 import { PublicFeatureFlagHandlers } from "./modules/feature-flags/http.js"
 import { PublicProductAnalyticsHandlers } from "./modules/product-analytics/http.js"
+import { PublicRealtimeHandlers } from "./modules/realtime/http.js"
 import { PublicStudyCatalogHandlers } from "./modules/study-catalog/http.js"
 
 export const makePublicApiRoutes = (openapiPath: `/${string}` = "/openapi.json") => HttpApiBuilder.layer(PublicApi, {
@@ -12,6 +13,7 @@ export const makePublicApiRoutes = (openapiPath: `/${string}` = "/openapi.json")
 }).pipe(
   Layer.provide(PublicAuthHandlers),
   Layer.provide(PublicSessionHandlers),
+  Layer.provide(PublicRealtimeHandlers),
   Layer.provide(SessionAuthorizationLive),
   Layer.provide(PublicStudyCatalogHandlers),
   Layer.provide(PublicFeatureFlagHandlers),

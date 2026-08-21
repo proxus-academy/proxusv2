@@ -11,6 +11,7 @@ import { makeGoogleFlowLive } from "@proxus/backend-domain/auth/google-live"
 import { FeatureFlagSnapshotReaderLive } from "@proxus/backend-domain/feature-flags"
 import { ProductAnalyticsLive } from "@proxus/backend-domain/product-analytics"
 import { StudyCatalogLive } from "@proxus/backend-domain/study-catalog"
+import { ApplicationRealtimeLive } from "@proxus/backend-domain/realtime"
 import { AdminSessionAuthorizationLive } from "@proxus/backend-admin-transport/session"
 import { RoleAssignmentsRepositoryPostgresLive } from "@proxus/backend-infra/access-control/postgres"
 import {
@@ -94,7 +95,7 @@ const auth = Layer.mergeAll(
   RegistrationAvailability.layer,
   makeAuthenticationLive(authenticationPolicy),
   makeGoogleFlowLive({ stateTtlMillis: 10 * 60_000, pendingTtlMillis: 30 * 60_000 }),
-).pipe(Layer.provideMerge(sessionServices), Layer.provide(authDependencies))
+).pipe(Layer.provideMerge(sessionServices), Layer.provide(authDependencies), Layer.provide(ApplicationRealtimeLive))
 const access = AccessControlServiceLive.pipe(Layer.provide(persistence))
 const catalog = StudyCatalogLive.pipe(Layer.provide(Layer.merge(persistence, access)))
 const studyPath = StudyPathValidator.layer.pipe(Layer.provide(catalog))
@@ -111,7 +112,7 @@ const migrationCheck = PostgresMigrationCheckLive.pipe(Layer.provide(database))
 
 const sharedServices = Layer.merge(
   Layer.mergeAll(persistence, authSurface, access, catalog, studyPath),
-  Layer.mergeAll(analytics, ProductAnalyticsHttpContextDevelopment, flags, adminUsers, migrationCheck),
+  Layer.mergeAll(analytics, ProductAnalyticsHttpContextDevelopment, flags, adminUsers, migrationCheck, ApplicationRealtimeLive),
 )
 const adminSession = AdminSessionAuthorizationLive.pipe(Layer.provide(sharedServices))
 
