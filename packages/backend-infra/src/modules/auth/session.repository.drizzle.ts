@@ -3,7 +3,7 @@ import { and, eq, gt, isNull, or } from "drizzle-orm"
 import type { EffectPgQueryEffectHKT, EffectPgQueryResultHKT } from "drizzle-orm/effect-pglite"
 import type { PgEffectDatabase } from "drizzle-orm/pg-core/effect"
 import { Effect, Option } from "effect"
-import { authSessions, type AuthSessionRow } from "../../database/schema.js"
+import { authSessions, type AuthSessionRow } from "../../database/schema/auth.js"
 
 type Database = PgEffectDatabase<EffectPgQueryEffectHKT, EffectPgQueryResultHKT>
 

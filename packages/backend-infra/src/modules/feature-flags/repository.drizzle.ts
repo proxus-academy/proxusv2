@@ -10,7 +10,7 @@ import { Data, Effect, Option, Schema } from "effect"
 import {
   featureFlagSnapshots,
   type FeatureFlagSnapshotRow,
-} from "../../database/schema.js"
+} from "../../database/schema/feature-flags.js"
 
 type Database = PgEffectDatabase<EffectPgQueryEffectHKT, EffectPgQueryResultHKT>
 

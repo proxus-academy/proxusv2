@@ -3,7 +3,7 @@ import { and, eq, or, sql } from "drizzle-orm"
 import type { EffectPgQueryEffectHKT, EffectPgQueryResultHKT } from "drizzle-orm/effect-pglite"
 import type { PgEffectDatabase } from "drizzle-orm/pg-core/effect"
 import { Effect } from "effect"
-import { roleAssignments } from "../../database/schema.js"
+import { roleAssignments } from "../../database/schema/access-control.js"
 
 type Database = PgEffectDatabase<EffectPgQueryEffectHKT, EffectPgQueryResultHKT>
 const failure = (operation: RoleAssignmentStoreError["operation"]) => (cause: unknown) => new RoleAssignmentStoreError({ operation, cause })

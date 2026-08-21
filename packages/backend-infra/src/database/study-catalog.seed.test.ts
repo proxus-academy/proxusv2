@@ -8,7 +8,7 @@ import {
   resetPgliteStudyCatalog,
   seedPgliteStudyCatalog,
 } from "./study-catalog.pglite.js"
-import { studyAssets, studyEdges, studyNodes } from "./schema.js"
+import { studyAssets, studyEdges, studyNodes } from "./schema/study-catalog.js"
 import { studyCatalogSeed } from "./study-catalog.seed.js"
 
 const migrationsFolder = "./drizzle"

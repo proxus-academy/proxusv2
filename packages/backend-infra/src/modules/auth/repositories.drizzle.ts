@@ -13,7 +13,12 @@ import { and, desc, eq, gt, isNotNull, isNull, lt, or, sql } from "drizzle-orm"
 import type { EffectPgQueryEffectHKT, EffectPgQueryResultHKT } from "drizzle-orm/effect-pglite"
 import type { PgEffectDatabase } from "drizzle-orm/pg-core/effect"
 import { Effect, Option, Semaphore } from "effect"
-import { authChallenges, users, type AuthChallengeRow, type UserRow } from "../../database/schema.js"
+import {
+  authChallenges,
+  users,
+  type AuthChallengeRow,
+  type UserRow,
+} from "../../database/schema/auth.js"
 
 type AuthDatabase = PgEffectDatabase<EffectPgQueryEffectHKT, EffectPgQueryResultHKT>
 

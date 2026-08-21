@@ -34,10 +34,10 @@ import { Data, DateTime, Effect, Option, Schema } from "effect"
 import {
   studyEdges,
   studyNodes,
-  users,
   type StudyEdgeRow,
   type StudyNodeRow,
-} from "../../database/schema.js"
+} from "../../database/schema/study-catalog.js"
+import { users } from "../../database/schema/auth.js"
 import {
   StudyCatalogRepository,
   StudyCatalogRepositoryError,

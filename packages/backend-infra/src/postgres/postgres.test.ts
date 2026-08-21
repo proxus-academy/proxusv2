@@ -53,7 +53,7 @@ import {
   studyEdges,
   studyNodes,
   users,
-} from "../database/schema.js"
+} from "../database/schema/index.js"
 import {
   FeatureFlagSnapshotRepositoryPostgresLive,
 } from "../modules/feature-flags/repository.postgres.layer.js"
