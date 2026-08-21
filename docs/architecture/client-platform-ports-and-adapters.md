@@ -1,7 +1,7 @@
 # Ports y adapters de plataforma cliente
 
 > **Estado:** normativa de arquitectura frontend  
-> **Alcance:** `apps/web`, `apps/admin` y futuros clientes React Native
+> **Alcance:** `apps/webapp`, `apps/admin` y futuros clientes React Native
 
 ## Regla central
 
@@ -53,7 +53,7 @@ packages/frontend-core/src/<module>/
   atoms.ts              # factory que recibe ports
   testing.ts            # adapters en memoria
 
-apps/web/src/platform/<module>/
+apps/webapp/src/platform/<module>/
   *.web.ts              # URL, browser storage, host APIs
 
 apps/<native>/src/platform/
@@ -72,7 +72,7 @@ Cuando hay ambas necesidades, el servicio ejecuta las operaciones y los atoms mo
 
 ### Router SPA
 
-TanStack Router es el único propietario de URL e History en `apps/web`. Sus
+TanStack Router es el único propietario de URL e History en `apps/webapp`. Sus
 rutas seleccionan layouts y páginas, pero no usan loaders, `beforeLoad`, caché
 de datos ni invalidación. TanStack mantiene la ubicación fuente y los matches;
 no se duplican en un atom. React usa `Link` o espera el `Exit` de una mutación y navega con TanStack Router; los

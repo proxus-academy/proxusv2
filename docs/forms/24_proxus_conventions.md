@@ -4,8 +4,8 @@
 
 ```text
 frontend-core  Field/FormBuilder: schemas y definición neutral
-apps/web       adapters Effect Form → @proxus/ui
-apps/web       FormReact.make(builder, options) y composición de pantallas
+apps/webapp       adapters Effect Form → @proxus/ui
+apps/webapp       FormReact.make(builder, options) y composición de pantallas
 ```
 
 `frontend-core` no exporta una instancia de formulario ni depende de React:
@@ -31,7 +31,7 @@ const reset = useAtomSet(LoginForm.reset)
 
 ## Campos UI
 
-Los adapters web están en `apps/web/src/platform/form` y usan primitives de `@proxus/ui`. Conectan `value`, `onChange`, `onBlur`, error, validación y disabled; proporcionan label, `FieldError`, `aria-invalid` y `aria-describedby`. Las props del control son directas, nunca `input={{ ... }}`.
+Los adapters web están en `apps/webapp/src/platform/form` y usan primitives de `@proxus/ui`. Conectan `value`, `onChange`, `onBlur`, error, validación y disabled; proporcionan label, `FieldError`, `aria-invalid` y `aria-describedby`. Las props del control son directas, nunca `input={{ ... }}`.
 
 Los schemas compartidos emiten claves de validación. Los adapters las resuelven con `MessagesCatalog` y conservan fallback para errores técnicos.
 

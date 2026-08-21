@@ -2,6 +2,8 @@ const origin = process.env.PREVIEW_ORIGIN ?? "http://localhost:8080"
 const checks = [
   ["health", "/healthz", 204],
   ["web", "/es", 200, { headers: { accept: "text/html" } }],
+  ["asset manifest", "/assets/manifest.json", 200],
+  ["typed public asset", "/assets/brand/logo.svg", 200],
   ["admin", "/admin/", 200, { headers: { accept: "text/html" } }],
   ["storybook redirect", "/ui", 308, { headers: { accept: "text/html" }, redirect: "manual" }],
   ["storybook", "/ui/", 200, { headers: { accept: "text/html" } }],

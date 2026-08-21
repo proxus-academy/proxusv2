@@ -8,8 +8,8 @@ Los workspaces se mantienen en un único nivel para que la ruta física coincida
 
 ```text
 apps/
-├── site                 sitio público estático Astro
-├── web                  producto público y adapters de navegador
+├── web                  sitio público estático Astro y origen de assets públicos
+├── webapp               producto público y adapters de navegador
 ├── admin                frontend administrativo
 ├── server               servidor público de producción
 ├── admin-server         servidor administrativo de producción
@@ -17,6 +17,7 @@ apps/
 └── storybook            entorno del sistema de diseño
 
 packages/
+├── assets               catálogo tipado de assets públicos
 ├── shared               contratos compartidos y APIs HTTP
 ├── backend-domain       modelo, casos de uso y repository ports
 ├── backend-infra        persistencia y adapters de infraestructura
@@ -28,7 +29,7 @@ packages/
 └── ui                   primitives y sistema de diseño
 ```
 
-Los prefijos agrupan conceptualmente los packages sin añadir directorios puramente taxonómicos. Los adapters específicos del navegador pertenecen a `apps/web/src/platform`.
+Los prefijos agrupan conceptualmente los packages sin añadir directorios puramente taxonómicos. Los adapters específicos del navegador pertenecen a `apps/webapp/src/platform`.
 
 ## Requisitos
 
@@ -108,8 +109,8 @@ git submodule update --init --recursive
 | --- | --- | --- |
 | API pública Effect | http://localhost:3000 | `pnpm dev:server` |
 | API administrativa Effect | http://localhost:3001 | `pnpm dev:admin-server` |
-| Site | http://localhost:4321 | `pnpm dev:site` |
-| Web | http://localhost:5173 | `pnpm dev:web-front` |
+| Web | http://localhost:4321 | `pnpm dev:web` |
+| Webapp | http://localhost:5173 | `pnpm dev:webapp-front` |
 | Admin | http://localhost:5175 | `pnpm dev:admin-front` |
 | Storybook | http://localhost:6006 | `pnpm dev:storybook` |
 | Motel | http://127.0.0.1:27686 | `pnpm dev:motel` |
@@ -125,12 +126,13 @@ pnpm --filter @proxus/backend-infra db:seed:pglite
 pnpm dev
 ```
 
-`pnpm dev` inicia ambas APIs, web y admin. También hay composiciones más pequeñas:
+`pnpm dev` inicia ambas APIs, Web, Webapp y Admin. También hay composiciones más pequeñas:
 
 | Composición | Comando |
 | --- | --- |
 | APIs pública y administrativa + admin | `pnpm dev:admin` |
-| API pública + web | `pnpm dev:web` |
+| Web público | `pnpm dev:web` |
+| API pública + Webapp | `pnpm dev:webapp` |
 | Todo | `pnpm dev` |
 
 Storybook y Motel son opcionales y se inician por separado.

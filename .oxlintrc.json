@@ -39,7 +39,7 @@
     "**/dist/**",
     "**/storybook-static/**",
     "**/coverage/**",
-    "apps/web/src/paraglide/**",
+    "apps/webapp/src/paraglide/**",
     "**/routeTree.gen.ts",
     ".repos/**"
   ],

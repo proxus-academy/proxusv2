@@ -45,7 +45,7 @@ packages/shared/src/modules/feature-flags/
 packages/frontend-core/src/feature-flags/
   atoms.ts
 
-apps/web/src/platform/feature-flags/
+apps/webapp/src/platform/feature-flags/
   local-storage.web.ts   # persistencia específica del navegador
 ```
 
@@ -119,7 +119,7 @@ snapshot distribuido + identidad de instalación
                     vista
 ```
 
-La decisión es estado derivado. No se copia a `useState` ni se sincroniza con `useEffect`. La composition root proporciona el bootstrap y habilita overrides únicamente en desarrollo. Si el override necesita persistencia, el atom depende de un port de plataforma pequeño y `apps/web/src/platform` implementa `localStorage`; si solo se necesita durante la sesión, un atom local evita crear ese seam.
+La decisión es estado derivado. No se copia a `useState` ni se sincroniza con `useEffect`. La composition root proporciona el bootstrap y habilita overrides únicamente en desarrollo. Si el override necesita persistencia, el atom depende de un port de plataforma pequeño y `apps/webapp/src/platform` implementa `localStorage`; si solo se necesita durante la sesión, un atom local evita crear ese seam.
 
 No se diseñará SSR antes de que una app del piloto lo use. En las apps CSR actuales, un query atom obtiene el bootstrap same-origin antes de mostrar la superficie flaggeada y conserva loading/error/default explícitos. Si más adelante existe SSR, el snapshot verificado del servidor será la entrada inicial de hydration y no se reevaluará con otra identidad durante hydration.
 
@@ -313,12 +313,12 @@ pnpm --filter @proxus/shared test
 pnpm --filter @proxus/shared typecheck
 pnpm --filter @proxus/frontend-core test
 pnpm --filter @proxus/frontend-core typecheck
-pnpm --filter @proxus/web test
-pnpm --filter @proxus/web typecheck
+pnpm --filter @proxus/webapp test
+pnpm --filter @proxus/webapp typecheck
 pnpm --filter @proxus/server test
 pnpm --filter @proxus/server typecheck
-pnpm --filter @proxus/web test
-pnpm --filter @proxus/web typecheck
+pnpm --filter @proxus/webapp test
+pnpm --filter @proxus/webapp typecheck
 ```
 
 Antes de ejecutar se comprobarán los scripts reales. No se presentarán `boundaries`, lint ni tests de browser como ejecutados si el workspace no los ofrece.

@@ -2,7 +2,7 @@
 
 ## Estado
 
-Normativa para `apps/web`, `apps/admin` y futuros clientes React de Proxus.
+Normativa para `apps/webapp`, `apps/admin` y futuros clientes React de Proxus.
 
 Este documento define cómo se organiza el frontend alrededor de Effect Atom. Debe leerse junto con:
 
@@ -248,7 +248,7 @@ packages/frontend-core/src/<feature>/
 ├── internal/
 └── index.ts
 
-apps/web/src/platform/<feature>/
+apps/webapp/src/platform/<feature>/
 ├── <browser-adapter>.web.ts
 ├── <react-web-binding>.tsx
 ├── internal/
@@ -304,7 +304,7 @@ Es el owner por defecto del estado y comportamiento frontend:
 
 No importa React, DOM ni adapters web. Sus atoms consumen clientes HTTP tipados o ports neutrales proporcionados por el runtime, de modo que web y React Native reutilizan exactamente las mismas definiciones.
 
-### `apps/web/src/platform`
+### `apps/webapp/src/platform`
 
 Posee:
 

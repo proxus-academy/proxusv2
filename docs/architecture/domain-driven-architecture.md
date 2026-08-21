@@ -152,7 +152,7 @@ Los clientes públicos se generan desde `PublicApi`. Admin compone un cliente `A
 view → atom → application client o platform port → adapter
 ```
 
-La lógica neutral vive en `frontend-core`; `apps/web` posee sus adapters de navegador y compone runtime, pantallas y rutas. El contrato de rutas del producto público vive en `@proxus/frontend-core/public-product`: web y futuros clientes nativos comparten destinos y flujo salvo una diferencia de producto explícita. Un futuro cliente nativo seleccionará adapters propios de navegación, almacenamiento y HTTP; no dependerá de internals de Web. Consulta `docs/webapp-architecture.md` y `docs/effect/90_react_and_effect_atom.md`.
+La lógica neutral vive en `frontend-core`; `apps/webapp` posee sus adapters de navegador y compone runtime, pantallas y rutas. El contrato de rutas del producto público vive en `@proxus/frontend-core/public-product`: web y futuros clientes nativos comparten destinos y flujo salvo una diferencia de producto explícita. Un futuro cliente nativo seleccionará adapters propios de navegación, almacenamiento y HTTP; no dependerá de internals de Web. Consulta `docs/webapp-architecture.md` y `docs/effect/90_react_and_effect_atom.md`.
 
 ## Testing
 

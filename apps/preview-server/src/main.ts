@@ -33,7 +33,7 @@ const healthRoute = HttpRouter.add("GET", "/healthz", HttpServerResponse.empty({
 const staticAssets = Layer.unwrap(Effect.gen(function*() {
   const adminRoot = yield* Config.string("ADMIN_ROOT").pipe(Config.withDefault("/app/admin"))
   const uiRoot = yield* Config.string("UI_ROOT").pipe(Config.withDefault("/app/ui"))
-  const webRoot = yield* Config.string("WEB_ROOT").pipe(Config.withDefault("/app/web"))
+  const webappRoot = yield* Config.string("WEBAPP_ROOT").pipe(Config.withDefault("/app/webapp"))
   return Layer.mergeAll(
     HttpStaticServer.layer({
       root: adminRoot,
@@ -54,7 +54,7 @@ const staticAssets = Layer.unwrap(Effect.gen(function*() {
       }))
     })),
     HttpStaticServer.layer({
-      root: webRoot,
+      root: webappRoot,
       index: "index.html",
       spa: true,
     }),

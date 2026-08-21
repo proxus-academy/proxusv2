@@ -2,7 +2,7 @@
 
 ## Status
 
-Required frontend architecture for `apps/web`, `apps/admin`, and future React Native clients.
+Required frontend architecture for `apps/webapp`, `apps/admin`, and future React Native clients.
 
 React owns rendering. Effect Atom owns application state, remote state, mutations,
 resource lifecycles, forms, and Effect runtime integration. Components must not

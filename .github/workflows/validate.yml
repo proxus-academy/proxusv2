@@ -49,6 +49,9 @@ jobs:
           - name: Workspace contracts
             command: pnpm workspace:contracts
             turbo_cache_key: ""
+          - name: Public asset contract
+            command: pnpm assets:validate
+            turbo_cache_key: ""
           - name: Vitest and PGlite
             command: pnpm test:ci
             turbo_cache_key: tests
@@ -63,6 +66,10 @@ jobs:
         with:
           turbo_cache_key: ${{ matrix.turbo_cache_key }}
       - name: Run ${{ matrix.name }}
+        env:
+          PUBLIC_WEBAPP_URL: https://app.proxus.test
+          VITE_ASSET_BASE_URL: https://proxus.test
+          VITE_WEB_URL: https://proxus.test
         run: ${{ matrix.command }}
 
   postgres:

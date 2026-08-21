@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-Eliminar la abstracción propia de navegación SPA de `apps/web` y hacer que TanStack Router sea el único propietario de URL, History, params, search params, enlaces y navegación interna.
+Eliminar la abstracción propia de navegación SPA de `apps/webapp` y hacer que TanStack Router sea el único propietario de URL, History, params, search params, enlaces y navegación interna.
 
 Effect y Effect Atom seguirán siendo responsables de peticiones remotas, mutaciones, `AsyncResult`, formularios, workflows de producto, analytics, persistencia y capacidades externas. La navegación completa del documento usada por OAuth seguirá modelada mediante `DocumentNavigation`.
 
@@ -108,7 +108,7 @@ Antes de eliminar código:
 Archivo principal:
 
 ```text
-apps/web/src/modules/auth/actions.ts
+apps/webapp/src/modules/auth/actions.ts
 ```
 
 ### Actions afectadas
@@ -144,11 +144,11 @@ Los nombres deben describir la transición de aplicación, no prometer navegaci�
 Archivos:
 
 ```text
-apps/web/src/routes/$locale/_public/login.tsx
-apps/web/src/routes/$locale/_public/password-recovery/index.tsx
-apps/web/src/routes/$locale/_public/password-recovery/code.tsx
-apps/web/src/routes/$locale/_public/password-recovery/new-password.tsx
-apps/web/src/routes/$locale/_public/password-recovery/done.tsx
+apps/webapp/src/routes/$locale/_public/login.tsx
+apps/webapp/src/routes/$locale/_public/password-recovery/index.tsx
+apps/webapp/src/routes/$locale/_public/password-recovery/code.tsx
+apps/webapp/src/routes/$locale/_public/password-recovery/new-password.tsx
+apps/webapp/src/routes/$locale/_public/password-recovery/done.tsx
 ```
 
 ### Patrón para mutaciones
@@ -194,19 +194,19 @@ Se mantendrán:
 
 ```text
 packages/frontend-core/src/navigation/document-navigation.ts
-apps/web/src/platform/routing/document-navigation.web.ts
+apps/webapp/src/platform/routing/document-navigation.web.ts
 ```
 
 El archivo ambiguo:
 
 ```text
-apps/web/src/routes/navigation-runtime.ts
+apps/webapp/src/routes/navigation-runtime.ts
 ```
 
 se moverá o renombrará a:
 
 ```text
-apps/web/src/platform/routing/document-navigation-runtime.ts
+apps/webapp/src/platform/routing/document-navigation-runtime.ts
 ```
 
 Se actualizarán los imports desde auth, registro y tests.
@@ -218,7 +218,7 @@ Se evaluará proporcionar `DocumentNavigation` mediante el runtime canónico de 
 Archivo actual:
 
 ```text
-apps/web/src/modules/registration/steps/choosing-method.tsx
+apps/webapp/src/modules/registration/steps/choosing-method.tsx
 ```
 
 Se eliminará el uso de `navigateAction`.
@@ -290,7 +290,7 @@ Si el lifecycle actual no permite devolver el resultado a la ruta de forma limpi
 Archivo:
 
 ```text
-apps/web/src/platform/registration/wizard-url.ts
+apps/webapp/src/platform/registration/wizard-url.ts
 ```
 
 Se separarán codecs puros de escritura de URL.
@@ -329,7 +329,7 @@ No se moverá estado de producto al router ni se usarán loaders, `beforeLoad`, 
 Cuando todos los consumidores estén migrados, eliminar:
 
 ```text
-apps/web/src/routes/navigation.ts
+apps/webapp/src/routes/navigation.ts
 ```
 
 Con ello desaparecerán:
@@ -346,7 +346,7 @@ Con ello desaparecerán:
 También se eliminará o reemplazará:
 
 ```text
-apps/web/src/routes/navigation.types.test.ts
+apps/webapp/src/routes/navigation.types.test.ts
 ```
 
 Los tests sustitutos validarán directamente rutas y navegación tipada de TanStack.
@@ -354,7 +354,7 @@ Los tests sustitutos validarán directamente rutas y navegación tipada de TanSt
 Comprobación final:
 
 ```bash
-rg "navigation\.js|navigateAction|currentSearch|setSearch|replaceSearch|NavigationDestination|WebNavigationError" apps/web/src
+rg "navigation\.js|navigateAction|currentSearch|setSearch|replaceSearch|NavigationDestination|WebNavigationError" apps/webapp/src
 ```
 
 No deberán quedar consumidores de la abstracción eliminada.
@@ -392,7 +392,7 @@ Cubrir:
 
 ### Arquitectura
 
-Actualizar `apps/web/src/architecture.test.ts` para comprobar:
+Actualizar `apps/webapp/src/architecture.test.ts` para comprobar:
 
 - TanStack es el único escritor de History SPA;
 - `frontend-core` no importa TanStack Router;
@@ -411,7 +411,7 @@ docs/effect/90_react_and_effect_atom.md
 docs/architecture/atom-first-frontend.md
 ```
 
-Eliminar las reglas que actualmente obligan a usar `apps/web/src/routes/navigation.ts` o describen toda navegación como servicio Effect.
+Eliminar las reglas que actualmente obligan a usar `apps/webapp/src/routes/navigation.ts` o describen toda navegación como servicio Effect.
 
 Documentar:
 
@@ -467,7 +467,7 @@ Los enlaces deben conservar semántica de enlace, apertura en nueva pestaña cua
 
 ## 14. Criterios de aceptación
 
-- No existe `apps/web/src/routes/navigation.ts`.
+- No existe `apps/webapp/src/routes/navigation.ts`.
 - No existe `navigateAction` ni un union paralelo de destinos SPA.
 - La navegación interna usa APIs tipadas de TanStack Router.
 - Las mutaciones navegables se esperan con `mode: "promiseExit"`.
@@ -486,9 +486,9 @@ Validación enfocada:
 ```bash
 pnpm --filter @proxus/frontend-core typecheck
 pnpm --filter @proxus/frontend-core test
-pnpm --filter @proxus/web typecheck
-pnpm --filter @proxus/web test
-pnpm --filter @proxus/web build
+pnpm --filter @proxus/webapp typecheck
+pnpm --filter @proxus/webapp test
+pnpm --filter @proxus/webapp build
 ```
 
 Validación Effect y global:

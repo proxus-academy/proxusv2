@@ -1,0 +1,12 @@
+---
+import { internalWebRoutes as routes } from "../web-config"
+---
+<footer class="site-footer">
+  <div class="container footer-grid">
+    <div><a class="brand brand-light" href="/"><span aria-hidden="true">P</span> PROXUS</a><p>Convierte tus apuntes en una forma mejor de estudiar.</p></div>
+    <nav aria-label="Producto"><strong>Producto</strong><a href="/#herramientas">Herramientas</a><a href={routes.pricing}>Precios</a><a href={routes.blog}>Blog</a></nav>
+    <nav aria-label="Compañía"><strong>Compañía</strong><a href={routes.careers}>Trabaja con nosotros</a><a href={routes.contact}>Contacto</a><a href={routes.support}>Soporte</a></nav>
+    <nav aria-label="Legal"><strong>Legal</strong><a href="https://proxus.es/legal">Aviso legal</a><a href="https://proxus.es/privacy">Privacidad</a><a href="https://proxus.es/cookies">Cookies</a><a href="https://proxus.es/terms">Términos</a></nav>
+  </div>
+  <div class="container footer-bottom"><small>© {new Date().getFullYear()} Proxus</small></div>
+</footer>

@@ -1,0 +1,90 @@
+{
+  "brand.favicon": {
+    "path": "/assets/brand/favicon.svg",
+    "width": 64,
+    "height": 64,
+    "mimeType": "image/svg+xml",
+    "bytes": 227,
+    "sha256": "dc621d41c5c65a378d669b9d73b47d0a74a30d097d68e75677775d2fd3c082ed"
+  },
+  "brand.logo": {
+    "path": "/assets/brand/logo.svg",
+    "width": 1080,
+    "height": 729,
+    "mimeType": "image/svg+xml",
+    "bytes": 2805,
+    "sha256": "8f5abca322f39f957db1a53eb7944adeae228096b0dbf0c87b4f51cfaeae1287"
+  },
+  "product.tool.exercises": {
+    "path": "/assets/product/tools/exercises.webp",
+    "width": 2496,
+    "height": 2664,
+    "mimeType": "image/webp",
+    "bytes": 137826,
+    "sha256": "1cdd51d4291a780a14a4546a30e94f598d28f712817d4b81964d5b123bbdc7f8"
+  },
+  "product.tool.flashcards": {
+    "path": "/assets/product/tools/flashcards.webp",
+    "width": 740,
+    "height": 718,
+    "mimeType": "image/webp",
+    "bytes": 9504,
+    "sha256": "29df8329838aa99e090118ccc34772bed2df8bd815b3844685e576a39e5501b1"
+  },
+  "product.tool.magic": {
+    "path": "/assets/product/tools/magic.webp",
+    "width": 2672,
+    "height": 2716,
+    "mimeType": "image/webp",
+    "bytes": 43724,
+    "sha256": "afa88149de9819e9b9dac42a3f44b25b6d395185f4930a4656be5d3ca9aef0a1"
+  },
+  "product.tool.mindMap": {
+    "path": "/assets/product/tools/mind-map.webp",
+    "width": 3544,
+    "height": 2732,
+    "mimeType": "image/webp",
+    "bytes": 109450,
+    "sha256": "34084e5b38f3e81ce2661f53f491b1b13624f9cd4daa4e7704a44bd8f8527297"
+  },
+  "product.tool.notes": {
+    "path": "/assets/product/tools/notes.png",
+    "width": 703,
+    "height": 636,
+    "mimeType": "image/png",
+    "bytes": 50946,
+    "sha256": "45147c86a152493b842f06be62467f3b80275ea1c75bca7e837807e1c2062547"
+  },
+  "product.tool.podcast": {
+    "path": "/assets/product/tools/podcast.webp",
+    "width": 1591,
+    "height": 1436,
+    "mimeType": "image/webp",
+    "bytes": 39540,
+    "sha256": "0334c71d7b034d577c941fda9a645e3bc715ca519ca1bafdd1f4fdc701c1e7f9"
+  },
+  "product.tool.supermagic": {
+    "path": "/assets/product/tools/supermagic.webp",
+    "width": 1603,
+    "height": 1629,
+    "mimeType": "image/webp",
+    "bytes": 30494,
+    "sha256": "d3bc04d787ed2a318f40159ef2fea214e38140be028a3f891df6927f893e85f7"
+  },
+  "product.tool.tests": {
+    "path": "/assets/product/tools/tests.webp",
+    "width": 1239,
+    "height": 1341,
+    "mimeType": "image/webp",
+    "bytes": 57906,
+    "sha256": "98947d42400267f3713d11fa2c58f43ba8cd1f5405d122eb640720fe954c58bb"
+  },
+  "social.defaultCard": {
+    "path": "/assets/social/default-card.svg",
+    "width": 1200,
+    "height": 630,
+    "mimeType": "image/svg+xml",
+    "bytes": 664,
+    "sha256": "307b434a20e203f76322d963d572dcdfe756a0c91c562a74eb34df6a9ff1b4ec"
+  }
+}
