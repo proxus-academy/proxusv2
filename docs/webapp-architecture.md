@@ -2,7 +2,7 @@
 
 ## Status
 
-Required React architecture for `apps/web`, `apps/admin`, and future React Native clients.
+Required React architecture for `apps/webapp`, `apps/admin`, and future React Native clients.
 
 This document defines React rendering and synchronization rules. Frontend module
 organization and state ownership follow
@@ -125,7 +125,7 @@ state.
 
 ## Routing
 
-`apps/web` and `apps/admin` are client-only SPAs and use TanStack Router as the single owner of
+`apps/webapp` and `apps/admin` are client-only SPAs and use TanStack Router as the single owner of
 URL matching, browser history, nested layouts, parameters, search parameters and
 React rendering. Their typed, file-based route definitions live in `apps/<app>/src/routes/`; the
 TanStack Router Vite plugin generates `apps/<app>/src/routeTree.gen.ts`, while each
@@ -159,7 +159,7 @@ transport; feature atoms do not depend directly on `HttpClient` or assume a
 browser-relative `/api` origin.
 
 URL-specific codecs, such as registration wizard search parameters, belong to
-`apps/web`. Domain concepts such as `RegistrationStep` and transition rules
+`apps/webapp`. Domain concepts such as `RegistrationStep` and transition rules
 remain in `packages/frontend-core`. Full-document navigation used by OAuth is a
 separate platform capability because it leaves the SPA.
 
@@ -168,8 +168,8 @@ hooks use Paraglide `deLocalizeUrl` and `localizeUrl`, so file routes stay
 locale-free while localized URLs, query parameters, and SPA navigation remain
 correct. Views import generated message functions directly; no React translation
 context or string-key lookup is allowed. The root synchronizes `lang` and `dir`
-after render. Message catalogs live in `apps/web/messages` and compile to ignored
-generated modules in `apps/web/src/paraglide`; package scripts compile them before
+after render. Message catalogs live in `apps/webapp/messages` and compile to ignored
+generated modules in `apps/webapp/src/paraglide`; package scripts compile them before
 typechecking and testing, while the Vite plugin compiles them during development
 and builds.
 
@@ -226,7 +226,7 @@ come from:
 - Local Effect Atom rules: [`effect/90_react_and_effect_atom.md`](effect/90_react_and_effect_atom.md)
 
 Upstream React material last reviewed on 2026-07-15.
-`apps/web` aplica un gate reactivo de viewport antes de montar sus rutas de
+`apps/webapp` aplica un gate reactivo de viewport antes de montar sus rutas de
 producto. El adapter de navegador se suscribe a `matchMedia("(min-width:
 1024px)")`; por debajo de ese ancho solo monta la pantalla de descarga. Esto
 evita que pantallas ocultas emitan lifecycles, exposiciones de feature flags o

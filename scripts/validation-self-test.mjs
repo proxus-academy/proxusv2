@@ -52,15 +52,15 @@ const expectAbsent = (label, output, unexpected) => {
 
 try {
   const effectProbe = resolve(temporaryRoot, "effect")
-  mkdirSync(resolve(effectProbe, "apps/web"), { recursive: true })
+  mkdirSync(resolve(effectProbe, "apps/webapp"), { recursive: true })
   linkNodeModules(effectProbe)
   cpSync(resolve(root, "tsconfig.base.json"), resolve(effectProbe, "tsconfig.base.json"))
-  cpSync(resolve(root, "apps/web/tsconfig.json"), resolve(effectProbe, "apps/web/tsconfig.json"))
-  writeToolManifest(resolve(effectProbe, "apps/web"), { typecheck: "tsc --noEmit" })
-  writeJson(effectProbe, "effect-inventory.json", [{ path: "apps/web" }])
+  cpSync(resolve(root, "apps/webapp/tsconfig.json"), resolve(effectProbe, "apps/webapp/tsconfig.json"))
+  writeToolManifest(resolve(effectProbe, "apps/webapp"), { typecheck: "tsc --noEmit" })
+  writeJson(effectProbe, "effect-inventory.json", [{ path: "apps/webapp" }])
   write(
     effectProbe,
-    "apps/web/vite.config.ts",
+    "apps/webapp/vite.config.ts",
     'console.log("diagnostics config probe")\n\nconst invalidPort: number = "not a port"\nvoid invalidPort\n'
   )
   expectFailure(
@@ -70,11 +70,11 @@ try {
       [resolve(root, "scripts/run-effect-diagnostics.mjs"), "--root", effectProbe, "--inventory", "effect-inventory.json"],
       root
     ),
-    ["globalConsole", "apps/web/tsconfig.json"]
+    ["globalConsole", "apps/webapp/tsconfig.json"]
   )
   expectFailure(
     "TypeScript config include",
-    runPnpmScript("typecheck", resolve(effectProbe, "apps/web")),
+    runPnpmScript("typecheck", resolve(effectProbe, "apps/webapp")),
     ["vite.config.ts", "TS2322"]
   )
 

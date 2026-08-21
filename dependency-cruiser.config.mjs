@@ -116,14 +116,14 @@ export default {
     errorRule(
       "frontend-does-not-depend-on-backend",
       "Frontend layers and clients cannot import backend implementation packages.",
-      { path: "^(apps/(admin|storybook|web)(?:/|$)|packages/(frontend-core|product-messages|ui)(?:/|$))" },
+      { path: "^(apps/(admin|storybook|web|webapp)(?:/|$)|packages/(assets|frontend-core|product-messages|ui)(?:/|$))" },
       { path: "^(apps/(admin-server|server)(?:/|$)|packages/backend-)" }
     ),
     errorRule(
       "backend-does-not-depend-on-frontend",
       "Backend layers and servers cannot import frontend implementation packages.",
       { path: "^(apps/(admin-server|server)(?:/|$)|packages/backend-)" },
-      { path: "^(apps/(admin|storybook|web)(?:/|$)|packages/(frontend-core|product-messages|ui)(?:/|$))" }
+      { path: "^(apps/(admin|storybook|web|webapp)(?:/|$)|packages/(assets|frontend-core|product-messages|ui)(?:/|$))" }
     ),
     errorRule(
       "frontend-core-is-platform-neutral",

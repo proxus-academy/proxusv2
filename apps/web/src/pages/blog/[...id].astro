@@ -1,0 +1,11 @@
+---
+import { getCollection, render } from "astro:content"
+import SiteLayout from "../../layouts/SiteLayout.astro"
+export async function getStaticPaths() {
+  const posts = await getCollection("blog", ({ data }) => !data.draft)
+  return posts.map(post => ({ params: { id: post.id }, props: { post } }))
+}
+const { post } = Astro.props
+const { Content } = await render(post)
+---
+<SiteLayout title={`${post.data.title} — Proxus`} description={post.data.description} image={post.data.image ?? "/assets/social/default-card.svg"}><article><header class="page-hero"><div class="container"><span class="eyebrow">Guía de estudio</span><h1>{post.data.title}</h1><p>{post.data.description}</p></div></header><div class="prose"><Content /></div></article></SiteLayout>

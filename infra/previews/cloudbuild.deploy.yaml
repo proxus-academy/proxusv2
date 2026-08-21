@@ -120,6 +120,8 @@ steps:
         check /ui 308 text/html &
         check /ui/ 200 text/html &
         check /ui/index.json 200 application/json &
+        check /assets/manifest.json 200 application/json &
+        check /assets/brand/logo.svg 200 image/svg+xml &
         check /api/openapi.public.json 200 application/json &
         check /admin-api/openapi.admin.json 200 application/json &
         wait

@@ -16,7 +16,7 @@
       // Tailwind is resolved indirectly by Storybook's Vite plugin and shared theme CSS.
       "ignoreDependencies": ["@effect/atom-react", "effect", "tailwindcss"]
     },
-    "apps/web": {
+    "apps/webapp": {
       // Tailwind is resolved indirectly by Vite/shared theme CSS. Paraglide's
       // generated module surface intentionally exports framework-neutral helpers.
       "ignoreDependencies": ["tailwindcss"],

@@ -2,7 +2,7 @@
 
 ## Estado
 
-Implementada para las superficies de producto de `apps/web`.
+Implementada para las superficies de producto de `apps/webapp`.
 
 Este documento reemplaza la decisión de usar catálogos TypeScript ejecutables
 adoptada inicialmente para la internacionalización del producto. Conserva las
@@ -20,7 +20,7 @@ Adoptar `i18next` como motor compartido de mensajes y `react-i18next` como
 integración React, sin delegar en la librería el routing, la persistencia ni el
 estado de aplicación.
 
-La primera migración real cubre `apps/web`. La arquitectura resultante debe
+La primera migración real cubre `apps/webapp`. La arquitectura resultante debe
 permitir añadir posteriormente:
 
 - una aplicación Astro con aislamiento de locale por request;
@@ -249,7 +249,7 @@ packages/frontend-core/src/product-locale/
 ├── index.ts
 └── atoms.test.ts
 
-apps/web/src/platform/product-locale/
+apps/webapp/src/platform/product-locale/
 ├── locale-store.ts
 ├── product-i18n.web.ts
 └── *.test.ts
@@ -348,10 +348,10 @@ El package puede resolver mensajes sin React y sin globals de plataforma.
 ### Archivos principales
 
 ```text
-apps/web/src/main.tsx
-apps/web/src/routes/router.tsx
-apps/web/src/routes/navigation.ts
-apps/web/src/platform/product-locale/*
+apps/webapp/src/main.tsx
+apps/webapp/src/routes/router.tsx
+apps/webapp/src/routes/navigation.ts
+apps/webapp/src/platform/product-locale/*
 packages/frontend-core/src/product-locale/*
 ```
 
@@ -411,10 +411,10 @@ de migrar el wizard.
 ### Archivos principales
 
 ```text
-apps/web/src/pages/auth/*
-apps/web/src/modules/auth/*
-apps/web/src/platform/form/context.ts
-apps/web/src/platform/form/fields.tsx
+apps/webapp/src/pages/auth/*
+apps/webapp/src/modules/auth/*
+apps/webapp/src/platform/form/context.ts
+apps/webapp/src/platform/form/fields.tsx
 ```
 
 ### Trabajo
@@ -579,9 +579,9 @@ pnpm --filter @proxus/product-messages typecheck
 pnpm --filter @proxus/product-messages test
 pnpm --filter @proxus/frontend-core typecheck
 pnpm --filter @proxus/frontend-core test
-pnpm --filter @proxus/web typecheck
-pnpm --filter @proxus/web test
-pnpm --filter @proxus/web build
+pnpm --filter @proxus/webapp typecheck
+pnpm --filter @proxus/webapp test
+pnpm --filter @proxus/webapp build
 ```
 
 Antes de retirar el sistema anterior:
@@ -670,7 +670,7 @@ de añadir polyfills.
 
 ## Definición de terminado
 
-- `apps/web` usa i18next para todo el copy de auth y registro.
+- `apps/webapp` usa i18next para todo el copy de auth y registro.
 - `Locale` sigue validado en `/:locale`.
 - Effect Atom y router conservan ownership de estado y navegación.
 - no existen `MessagesCatalog`, `catalogFor()` ni `messagesCatalogAtom`.

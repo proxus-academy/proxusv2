@@ -17,12 +17,12 @@
       "env": ["PUBLIC_*", "VITE_*"],
       "outputs": ["storybook-static/**"]
     },
-    "@proxus/site#build": {
+    "@proxus/web#build": {
       "dependsOn": ["^build"],
       "env": ["PUBLIC_*"],
       "outputs": ["dist/**"]
     },
-    "@proxus/web#build": {
+    "@proxus/webapp#build": {
       "dependsOn": ["^build"],
       "env": ["PUBLIC_*", "VITE_*"],
       "outputs": ["dist/**"]

@@ -9,16 +9,17 @@ RUN pnpm fetch
 COPY . .
 # The Effect TypeScript language-service patch is required by diagnostics, not by Vite/esbuild bundling.
 RUN pnpm install --offline --frozen-lockfile --ignore-scripts
-RUN pnpm --filter @proxus/web build & web_pid=$!; \
+RUN PUBLIC_WEBAPP_URL=https://app.proxus.app pnpm --filter @proxus/web build & public_web_pid=$!; \
+    VITE_WEB_URL=https://proxus.app VITE_ASSET_BASE_URL=/ pnpm --filter @proxus/webapp build & webapp_pid=$!; \
     VITE_PREVIEW_ADMIN_AUTO_LOGIN=true VITE_PREVIEW_ADMIN_EMAIL=admin.qa@proxus.dev VITE_PREVIEW_ADMIN_PASSWORD='Proxus-QA-dev-2026!' pnpm --filter @proxus/admin exec vite build --base=/admin/ & admin_pid=$!; \
     pnpm --filter @proxus/storybook build & storybook_pid=$!; \
-    wait "$web_pid" && wait "$admin_pid" && wait "$storybook_pid" \
+    wait "$public_web_pid" && wait "$webapp_pid" && wait "$admin_pid" && wait "$storybook_pid" \
  && node scripts/build-preview-artifact.mjs
 
 FROM node:22.22.2-bookworm-slim AS runtime
 ENV NODE_ENV=production
 ENV DATABASE_MIGRATIONS_DIR=/app/drizzle
-ENV WEB_ROOT=/app/web
+ENV WEBAPP_ROOT=/app/webapp
 ENV ADMIN_ROOT=/app/admin
 ENV UI_ROOT=/app/ui
 WORKDIR /app

@@ -33,6 +33,7 @@ for (const [name, entry] of Object.entries(entries)) {
 }
 
 cpSync(new URL("../packages/backend-infra/drizzle", import.meta.url), new URL("drizzle", output), { recursive: true })
-cpSync(new URL("../apps/web/dist", import.meta.url), new URL("web", output), { recursive: true })
+cpSync(new URL("../apps/webapp/dist", import.meta.url), new URL("webapp", output), { recursive: true })
+cpSync(new URL("../apps/web/dist/assets", import.meta.url), new URL("webapp/assets", output), { recursive: true })
 cpSync(new URL("../apps/admin/dist", import.meta.url), new URL("admin", output), { recursive: true })
 cpSync(new URL("../apps/storybook/storybook-static", import.meta.url), new URL("ui", output), { recursive: true })

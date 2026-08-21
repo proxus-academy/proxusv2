@@ -1,0 +1,19 @@
+{
+  "name": "@proxus/assets",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./manifest": "./manifest.json"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "validate": "node ../../scripts/validate-assets.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3",
+    "vitest": "3.2.7"
+  }
+}
