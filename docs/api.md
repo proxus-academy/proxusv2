@@ -61,6 +61,36 @@ releer estado autoritativo mediante los endpoints HTTP existentes. La respuesta
 usa `text/event-stream`, deshabilita caché y solicita no buffering a proxies
 compatibles.
 
+## Conversaciones y agent runs
+
+Prefijo autenticado: `/conversations`.
+
+| Method | Path | Operation |
+| --- | --- | --- |
+| GET | `/threads` | Listar los threads de la cuenta |
+| POST | `/threads` | Crear un thread |
+| GET | `/threads/:threadId` | Leer un thread propio |
+| PATCH | `/threads/:threadId` | Renombrar un thread propio |
+| DELETE | `/threads/:threadId` | Borrado lógico de un thread propio |
+| GET | `/threads/:threadId/messages` | Leer mensajes en orden estable |
+| POST | `/threads/:threadId/runs` | Confirmar mensaje y comenzar un agent run (`202`) |
+| GET | `/runs/:runId` | Consultar el estado autoritativo de un run |
+| POST | `/runs/:runId/interrupt` | Interrumpir un run activo |
+
+El backend impide más de un run `queued` o `running` por thread. Un run contiene
+turns y cada llamada al proveedor es una model generation independiente. La
+generación se ejecuta mediante un port de dominio: producción usa Effect AI con
+OpenAI (`OPENAI_API_KEY`, `AI_MODEL`) y las composiciones locales usan un adapter
+determinista. Los spans `ai.agent.run` correlacionan `runId`, `threadId`, provider
+y modelo; PostgreSQL conserva el estado consultable, tokens, coste cuando esté
+disponible, latencia, errores y los identificadores de trace.
+
+El admin expone `GET /admin/ai/operations` solo a administradores globales. El
+listado está limitado a las 200 operaciones más recientes y no materializa
+inputs ni outputs completos. La política de payloads y attachments en object
+storage, incluida retención y descarga autorizada, se detalla en
+`docs/plans/chat-observability-backend-admin.md`.
+
 Registro recibe el onboarding completo, incluida la fuente de adquisición, y el identificador de la asignatura elegida. La fuente usa una clasificación cerrada; `other` exige un detalle de hasta 200 caracteres. El navegador recorre dinámicamente los hijos publicados del grafo y conserva la ruta solo como estado transitorio, pero no la envía como autoridad. El servidor comprueba que la asignatura sea publicada y terminal, deriva su único padre publicado como estudio y persiste ambos identificadores (`studyId` y `subjectId`). No confía en nombres, relaciones de catálogo ni perfiles Google enviados por el navegador. Verificación y reset usan challenges hasheados, con propósito, expiración, intentos y uso único. Login devuelve errores genéricos; reset y reenvío no revelan si existe una cuenta. Google usa authorization-code/callback: una identidad existente entra directamente, un email activo y verificado puede auto-vincularse de forma transaccional y una identidad nueva recibe un draft pendiente antes del alta.
 
 `GoogleAuthorization.authorizationUrl` admite una URL HTTP(S) absoluta para el

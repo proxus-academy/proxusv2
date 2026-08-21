@@ -4,6 +4,7 @@
     ".": {
       "entry": ["scripts/*.mjs", "*.config.mjs"],
       "project": ["scripts/*.mjs", "*.config.mjs"],
+      "ignore": [".repos/**"],
       // Installed by the trusted GitHub workflow and developer Google Cloud SDK, not pnpm.
       "ignoreBinaries": ["gcloud"]
     },

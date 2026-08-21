@@ -13,7 +13,8 @@
     "./registration/testing": "./src/registration/testing.ts",
     "./feature-flags": "./src/feature-flags/index.ts",
     "./study-catalog": "./src/study-catalog/index.ts",
-    "./realtime": "./src/realtime/index.ts"
+    "./realtime": "./src/realtime/index.ts",
+    "./conversations": "./src/conversations/index.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",

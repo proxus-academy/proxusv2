@@ -14,6 +14,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AdminAuthenticatedRouteImport } from './routes/admin/_authenticated'
 import { Route as AdminPublicRouteImport } from './routes/admin/_public'
 import { Route as AdminAuthenticatedIndexRouteImport } from './routes/admin/_authenticated/index'
+import { Route as AdminAuthenticatedAiOperationsRouteImport } from './routes/admin/_authenticated/ai-operations'
 import { Route as AdminAuthenticatedNodesRouteImport } from './routes/admin/_authenticated/nodes'
 import { Route as AdminAuthenticatedUsersRouteImport } from './routes/admin/_authenticated/users'
 import { Route as AdminPublicLoginRouteImport } from './routes/admin/_public/login'
@@ -41,6 +42,12 @@ const AdminAuthenticatedIndexRoute = AdminAuthenticatedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminAuthenticatedRoute,
 } as any)
+const AdminAuthenticatedAiOperationsRoute =
+  AdminAuthenticatedAiOperationsRouteImport.update({
+    id: '/ai-operations',
+    path: '/ai-operations',
+    getParentRoute: () => AdminAuthenticatedRoute,
+  } as any)
 const AdminAuthenticatedNodesRoute = AdminAuthenticatedNodesRouteImport.update({
   id: '/nodes',
   path: '/nodes',
@@ -60,6 +67,7 @@ const AdminPublicLoginRoute = AdminPublicLoginRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/admin/ai-operations': typeof AdminAuthenticatedAiOperationsRoute
   '/admin/nodes': typeof AdminAuthenticatedNodesRoute
   '/admin/users': typeof AdminAuthenticatedUsersRoute
   '/admin/login': typeof AdminPublicLoginRoute
@@ -68,6 +76,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminAuthenticatedIndexRoute
+  '/admin/ai-operations': typeof AdminAuthenticatedAiOperationsRoute
   '/admin/nodes': typeof AdminAuthenticatedNodesRoute
   '/admin/users': typeof AdminAuthenticatedUsersRoute
   '/admin/login': typeof AdminPublicLoginRoute
@@ -78,6 +87,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/admin/_authenticated': typeof AdminAuthenticatedRouteWithChildren
   '/admin/_public': typeof AdminPublicRouteWithChildren
+  '/admin/_authenticated/ai-operations': typeof AdminAuthenticatedAiOperationsRoute
   '/admin/_authenticated/nodes': typeof AdminAuthenticatedNodesRoute
   '/admin/_authenticated/users': typeof AdminAuthenticatedUsersRoute
   '/admin/_public/login': typeof AdminPublicLoginRoute
@@ -88,18 +98,26 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/admin/ai-operations'
     | '/admin/nodes'
     | '/admin/users'
     | '/admin/login'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/admin/nodes' | '/admin/users' | '/admin/login'
+  to:
+    | '/'
+    | '/admin'
+    | '/admin/ai-operations'
+    | '/admin/nodes'
+    | '/admin/users'
+    | '/admin/login'
   id:
     | '__root__'
     | '/'
     | '/admin'
     | '/admin/_authenticated'
     | '/admin/_public'
+    | '/admin/_authenticated/ai-operations'
     | '/admin/_authenticated/nodes'
     | '/admin/_authenticated/users'
     | '/admin/_public/login'
@@ -148,6 +166,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAuthenticatedIndexRouteImport
       parentRoute: typeof AdminAuthenticatedRoute
     }
+    '/admin/_authenticated/ai-operations': {
+      id: '/admin/_authenticated/ai-operations'
+      path: '/ai-operations'
+      fullPath: '/admin/ai-operations'
+      preLoaderRoute: typeof AdminAuthenticatedAiOperationsRouteImport
+      parentRoute: typeof AdminAuthenticatedRoute
+    }
     '/admin/_authenticated/nodes': {
       id: '/admin/_authenticated/nodes'
       path: '/nodes'
@@ -173,12 +198,14 @@ declare module '@tanstack/react-router' {
 }
 
 interface AdminAuthenticatedRouteChildren {
+  AdminAuthenticatedAiOperationsRoute: typeof AdminAuthenticatedAiOperationsRoute
   AdminAuthenticatedNodesRoute: typeof AdminAuthenticatedNodesRoute
   AdminAuthenticatedUsersRoute: typeof AdminAuthenticatedUsersRoute
   AdminAuthenticatedIndexRoute: typeof AdminAuthenticatedIndexRoute
 }
 
 const AdminAuthenticatedRouteChildren: AdminAuthenticatedRouteChildren = {
+  AdminAuthenticatedAiOperationsRoute: AdminAuthenticatedAiOperationsRoute,
   AdminAuthenticatedNodesRoute: AdminAuthenticatedNodesRoute,
   AdminAuthenticatedUsersRoute: AdminAuthenticatedUsersRoute,
   AdminAuthenticatedIndexRoute: AdminAuthenticatedIndexRoute,

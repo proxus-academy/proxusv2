@@ -8,7 +8,8 @@
     "./feature-flags": "./src/modules/feature-flags/http.ts",
     "./product-analytics": "./src/modules/product-analytics/http.ts",
     "./auth": "./src/modules/auth/http.ts",
-    "./realtime": "./src/modules/realtime/http.ts"
+    "./realtime": "./src/modules/realtime/http.ts",
+    "./conversations": "./src/modules/conversations/http.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",

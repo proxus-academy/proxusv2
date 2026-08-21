@@ -21,7 +21,10 @@
     "./study-catalog/postgres": "./src/modules/study-catalog/repository.postgres.layer.ts",
     "./product-analytics/memory": "./src/modules/product-analytics/repository.memory.ts",
     "./product-analytics/pglite": "./src/modules/product-analytics/repository.pglite.layer.ts",
-    "./product-analytics/bigquery": "./src/modules/product-analytics/repository.bigquery.ts"
+    "./product-analytics/bigquery": "./src/modules/product-analytics/repository.bigquery.ts",
+    "./conversations/pglite": "./src/modules/conversations/repository.pglite.layer.ts",
+    "./conversations/postgres": "./src/modules/conversations/repository.postgres.layer.ts",
+    "./conversations/openai": "./src/modules/conversations/generation.openai.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
@@ -41,6 +44,7 @@
     "auth:qa:list": "tsx src/auth-qa/command.ts list"
   },
   "dependencies": {
+    "@effect/ai-openai": "4.0.0-beta.98",
     "@effect/platform-node": "4.0.0-beta.98",
     "@effect/sql-pg": "4.0.0-beta.98",
     "@effect/sql-pglite": "4.0.0-beta.98",

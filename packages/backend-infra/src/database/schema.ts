@@ -123,6 +123,180 @@ export const users = pgTable(
   ],
 )
 
+export const conversationThreads = pgTable(
+  "conversation_threads",
+  {
+    id: uuid("id").primaryKey(),
+    ownerId: uuid("owner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    nextMessageSequence: bigint("next_message_sequence", { mode: "bigint" }).notNull().default(1n),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).notNull(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true, mode: "date" }),
+  },
+  (table) => [
+    index("conversation_threads_owner_updated_idx").on(table.ownerId, table.updatedAt, table.id),
+    check("conversation_threads_title_check", sql`length(${table.title}) between 1 and 200`),
+    check("conversation_threads_next_sequence_check", sql`${table.nextMessageSequence} > 0`),
+  ],
+)
+
+export const conversationAgentRuns = pgTable(
+  "conversation_agent_runs",
+  {
+    id: uuid("id").primaryKey(),
+    threadId: uuid("thread_id").notNull().references(() => conversationThreads.id, { onDelete: "cascade" }),
+    status: text("status", { enum: ["queued", "running", "completed", "interrupted", "failed"] }).notNull(),
+    agentVersion: text("agent_version").notNull(),
+    maximumTurns: integer("maximum_turns").notNull(),
+    maximumToolCalls: integer("maximum_tool_calls").notNull(),
+    stopReason: text("stop_reason"),
+    errorCode: text("error_code"),
+    interruptedBy: text("interrupted_by", { enum: ["user", "admin", "system"] }),
+    leaseOwner: text("lease_owner"),
+    leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true, mode: "date" }),
+    traceId: text("trace_id"),
+    spanId: text("span_id"),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true, mode: "date" }),
+    finishedAt: timestamp("finished_at", { withTimezone: true, mode: "date" }),
+  },
+  (table) => [
+    index("conversation_agent_runs_thread_created_idx").on(table.threadId, table.createdAt),
+    index("conversation_agent_runs_status_created_idx").on(table.status, table.createdAt),
+    uniqueIndex("conversation_agent_runs_one_active_uidx")
+      .on(table.threadId)
+      .where(sql`${table.status} in ('queued', 'running')`),
+    check("conversation_agent_runs_status_check", sql`${table.status} in ('queued', 'running', 'completed', 'interrupted', 'failed')`),
+    check("conversation_agent_runs_limits_check", sql`${table.maximumTurns} > 0 and ${table.maximumToolCalls} >= 0`),
+  ],
+)
+
+export const conversationMessages = pgTable(
+  "conversation_messages",
+  {
+    id: uuid("id").primaryKey(),
+    threadId: uuid("thread_id").notNull().references(() => conversationThreads.id, { onDelete: "cascade" }),
+    runId: uuid("run_id").references(() => conversationAgentRuns.id, { onDelete: "set null" }),
+    role: text("role", { enum: ["user", "assistant", "tool"] }).notNull(),
+    sequence: bigint("sequence", { mode: "bigint" }).notNull(),
+    status: text("status", { enum: ["committed", "streaming", "completed", "interrupted", "failed"] }).notNull(),
+    text: text("text"),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull(),
+    completedAt: timestamp("completed_at", { withTimezone: true, mode: "date" }),
+  },
+  (table) => [
+    uniqueIndex("conversation_messages_thread_sequence_uidx").on(table.threadId, table.sequence),
+    index("conversation_messages_thread_created_idx").on(table.threadId, table.createdAt),
+    index("conversation_messages_run_idx").on(table.runId),
+    check("conversation_messages_role_check", sql`${table.role} in ('user', 'assistant', 'tool')`),
+    check("conversation_messages_status_check", sql`${table.status} in ('committed', 'streaming', 'completed', 'interrupted', 'failed')`),
+    check("conversation_messages_sequence_check", sql`${table.sequence} > 0`),
+  ],
+)
+
+export const agentTurns = pgTable(
+  "agent_turns",
+  {
+    id: uuid("id").primaryKey(),
+    runId: uuid("run_id").notNull().references(() => conversationAgentRuns.id, { onDelete: "cascade" }),
+    ordinal: integer("ordinal").notNull(),
+    status: text("status", { enum: ["running", "completed", "failed", "interrupted"] }).notNull(),
+    decision: text("decision", { enum: ["respond", "tools", "stop"] }),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true, mode: "date" }).notNull(),
+    finishedAt: timestamp("finished_at", { withTimezone: true, mode: "date" }),
+  },
+  (table) => [
+    uniqueIndex("agent_turns_run_ordinal_uidx").on(table.runId, table.ordinal),
+    check("agent_turns_ordinal_check", sql`${table.ordinal} > 0`),
+    check("agent_turns_status_check", sql`${table.status} in ('running', 'completed', 'failed', 'interrupted')`),
+  ],
+)
+
+export const modelGenerations = pgTable(
+  "model_generations",
+  {
+    id: uuid("id").primaryKey(),
+    runId: uuid("run_id").notNull().references(() => conversationAgentRuns.id, { onDelete: "cascade" }),
+    turnId: uuid("turn_id").notNull().references(() => agentTurns.id, { onDelete: "cascade" }),
+    attempt: integer("attempt").notNull(),
+    retryOfGenerationId: uuid("retry_of_generation_id"),
+    provider: text("provider").notNull(),
+    model: text("model").notNull(),
+    providerRequestId: text("provider_request_id"),
+    status: text("status", { enum: ["running", "completed", "failed", "interrupted"] }).notNull(),
+    inputTokens: integer("input_tokens"),
+    outputTokens: integer("output_tokens"),
+    cachedInputTokens: integer("cached_input_tokens"),
+    costMicrosUsd: bigint("cost_micros_usd", { mode: "bigint" }),
+    usageSource: text("usage_source", { enum: ["provider", "estimated"] }),
+    finishReason: text("finish_reason"),
+    errorCode: text("error_code"),
+    traceId: text("trace_id"),
+    spanId: text("span_id"),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true, mode: "date" }).notNull(),
+    firstTokenAt: timestamp("first_token_at", { withTimezone: true, mode: "date" }),
+    finishedAt: timestamp("finished_at", { withTimezone: true, mode: "date" }),
+  },
+  (table) => [
+    uniqueIndex("model_generations_turn_attempt_uidx").on(table.turnId, table.attempt),
+    index("model_generations_run_idx").on(table.runId),
+    index("model_generations_provider_model_created_idx").on(table.provider, table.model, table.createdAt),
+    check("model_generations_attempt_check", sql`${table.attempt} > 0`),
+    check("model_generations_status_check", sql`${table.status} in ('running', 'completed', 'failed', 'interrupted')`),
+    check("model_generations_usage_check", sql`coalesce(${table.inputTokens}, 0) >= 0 and coalesce(${table.outputTokens}, 0) >= 0 and coalesce(${table.cachedInputTokens}, 0) >= 0 and coalesce(${table.costMicrosUsd}, 0) >= 0`),
+  ],
+)
+
+export const toolExecutions = pgTable(
+  "tool_executions",
+  {
+    id: uuid("id").primaryKey(),
+    runId: uuid("run_id").notNull().references(() => conversationAgentRuns.id, { onDelete: "cascade" }),
+    turnId: uuid("turn_id").notNull().references(() => agentTurns.id, { onDelete: "cascade" }),
+    toolCallId: text("tool_call_id").notNull(),
+    toolName: text("tool_name").notNull(),
+    status: text("status", { enum: ["running", "completed", "failed", "interrupted"] }).notNull(),
+    errorCode: text("error_code"),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true, mode: "date" }).notNull(),
+    finishedAt: timestamp("finished_at", { withTimezone: true, mode: "date" }),
+  },
+  (table) => [
+    uniqueIndex("tool_executions_run_call_uidx").on(table.runId, table.toolCallId),
+    index("tool_executions_turn_idx").on(table.turnId),
+    check("tool_executions_status_check", sql`${table.status} in ('running', 'completed', 'failed', 'interrupted')`),
+  ],
+)
+
+export const aiObservationPayloads = pgTable(
+  "ai_observation_payloads",
+  {
+    id: uuid("id").primaryKey(),
+    generationId: uuid("generation_id").references(() => modelGenerations.id, { onDelete: "cascade" }),
+    toolExecutionId: uuid("tool_execution_id").references(() => toolExecutions.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: ["generation-input", "generation-output", "tool-input", "tool-output"] }).notNull(),
+    storageKey: text("storage_key").notNull(),
+    status: text("status", { enum: ["pending", "available", "failed", "expired"] }).notNull(),
+    schemaVersion: integer("schema_version").notNull(),
+    redactionVersion: integer("redaction_version").notNull(),
+    contentLength: bigint("content_length", { mode: "bigint" }),
+    sha256: text("sha256"),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true, mode: "date" }),
+  },
+  (table) => [
+    uniqueIndex("ai_observation_payloads_storage_key_uidx").on(table.storageKey),
+    index("ai_observation_payloads_generation_idx").on(table.generationId),
+    index("ai_observation_payloads_tool_idx").on(table.toolExecutionId),
+    check("ai_observation_payloads_owner_check", sql`(${table.generationId} is not null)::int + (${table.toolExecutionId} is not null)::int = 1`),
+    check("ai_observation_payloads_status_check", sql`${table.status} in ('pending', 'available', 'failed', 'expired')`),
+    check("ai_observation_payloads_version_check", sql`${table.schemaVersion} > 0 and ${table.redactionVersion} > 0`),
+  ],
+)
+
 export const authSessions = pgTable(
   "auth_sessions",
   {
@@ -234,3 +408,10 @@ export type StudyAssetRow = typeof studyAssets.$inferSelect
 export type StudyNodeRow = typeof studyNodes.$inferSelect
 export type StudyEdgeRow = typeof studyEdges.$inferSelect
 export type ProductAnalyticsEventRow = typeof productAnalyticsEvents.$inferSelect
+export type ConversationThreadRow = typeof conversationThreads.$inferSelect
+export type ConversationMessageRow = typeof conversationMessages.$inferSelect
+export type ConversationAgentRunRow = typeof conversationAgentRuns.$inferSelect
+export type AgentTurnRow = typeof agentTurns.$inferSelect
+export type ModelGenerationRow = typeof modelGenerations.$inferSelect
+export type ToolExecutionRow = typeof toolExecutions.$inferSelect
+export type AiObservationPayloadRow = typeof aiObservationPayloads.$inferSelect

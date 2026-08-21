@@ -12,6 +12,7 @@ import { FeatureFlagSnapshotReaderLive } from "@proxus/backend-domain/feature-fl
 import { ProductAnalyticsLive } from "@proxus/backend-domain/product-analytics"
 import { StudyCatalogLive } from "@proxus/backend-domain/study-catalog"
 import { ApplicationRealtimeLive } from "@proxus/backend-domain/realtime"
+import { AiOperationsLive, ConversationGenerationDeterministic, ConversationsLive } from "@proxus/backend-domain/conversations"
 import { AdminSessionAuthorizationLive } from "@proxus/backend-admin-transport/session"
 import { RoleAssignmentsRepositoryPostgresLive } from "@proxus/backend-infra/access-control/postgres"
 import {
@@ -31,6 +32,7 @@ import { PostgresMigrationCheckLive, makePostgresProductionLive } from "@proxus/
 import { FeatureFlagSnapshotRepositoryPostgresLive } from "@proxus/backend-infra/feature-flags/postgres"
 import { ProductAnalyticsRepositoryMemory } from "@proxus/backend-infra/product-analytics/memory"
 import { StudyCatalogRepositoryPostgresLive } from "@proxus/backend-infra/study-catalog/postgres"
+import { ConversationsRepositoryPostgresLive } from "@proxus/backend-infra/conversations/postgres"
 import { AuthSessionView, makeAuthSessionCookies } from "@proxus/backend-transport/auth"
 import { ProductAnalyticsHttpContextDevelopment } from "@proxus/backend-transport/product-analytics"
 import { AccountSummary, CurrentSession } from "@proxus/shared/auth"
@@ -47,6 +49,7 @@ const persistence = Layer.mergeAll(
   RoleAssignmentsRepositoryPostgresLive,
   StudyCatalogRepositoryPostgresLive,
   FeatureFlagSnapshotRepositoryPostgresLive,
+  ConversationsRepositoryPostgresLive,
   makeAuthPersistencePostgresLive(sessionPolicy.ttlMillis),
 ).pipe(Layer.provide(database))
 
@@ -107,12 +110,14 @@ const authSurface = Layer.mergeAll(
 const analytics = ProductAnalyticsLive.pipe(Layer.provide(ProductAnalyticsRepositoryMemory))
 const flags = FeatureFlagSnapshotReaderLive.pipe(Layer.provide(persistence))
 const adminUsers = AdminUsersServiceLive.pipe(Layer.provide(Layer.merge(persistence, access)))
+const conversations = ConversationsLive.pipe(Layer.provide(persistence), Layer.provide(ConversationGenerationDeterministic))
+const aiOperations = AiOperationsLive.pipe(Layer.provide(Layer.merge(persistence, access)))
 
 const migrationCheck = PostgresMigrationCheckLive.pipe(Layer.provide(database))
 
 const sharedServices = Layer.merge(
   Layer.mergeAll(persistence, authSurface, access, catalog, studyPath),
-  Layer.mergeAll(analytics, ProductAnalyticsHttpContextDevelopment, flags, adminUsers, migrationCheck, ApplicationRealtimeLive),
+  Layer.mergeAll(analytics, ProductAnalyticsHttpContextDevelopment, flags, adminUsers, conversations, aiOperations, migrationCheck, ApplicationRealtimeLive),
 )
 const adminSession = AdminSessionAuthorizationLive.pipe(Layer.provide(sharedServices))
 
