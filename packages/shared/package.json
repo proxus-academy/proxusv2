@@ -7,13 +7,15 @@
     "./public-api": "./src/public-api.ts",
     "./admin-api": "./src/admin-api.ts",
     "./admin-users": "./src/modules/admin-users/index.ts",
+    "./ai-operations": "./src/modules/ai-operations/index.ts",
     "./study-catalog": "./src/modules/study-catalog/index.ts",
     "./lesson-plugins": "./src/modules/lesson-plugins/index.ts",
     "./feature-flags": "./src/modules/feature-flags/index.ts",
     "./product-analytics": "./src/modules/product-analytics/index.ts",
     "./realtime": "./src/modules/realtime/index.ts",
     "./auth": "./src/modules/auth/index.ts",
-    "./access-control": "./src/modules/access-control/index.ts"
+    "./access-control": "./src/modules/access-control/index.ts",
+    "./conversations": "./src/modules/conversations/index.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",

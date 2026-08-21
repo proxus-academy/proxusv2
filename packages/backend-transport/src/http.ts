@@ -7,6 +7,7 @@ import { PublicFeatureFlagHandlers } from "./modules/feature-flags/http.js"
 import { PublicProductAnalyticsHandlers } from "./modules/product-analytics/http.js"
 import { PublicRealtimeHandlers } from "./modules/realtime/http.js"
 import { PublicStudyCatalogHandlers } from "./modules/study-catalog/http.js"
+import { PublicConversationsHandlers } from "./modules/conversations/http.js"
 
 export const makePublicApiRoutes = (openapiPath: `/${string}` = "/openapi.json") => HttpApiBuilder.layer(PublicApi, {
   openapiPath,
@@ -14,10 +15,11 @@ export const makePublicApiRoutes = (openapiPath: `/${string}` = "/openapi.json")
   Layer.provide(PublicAuthHandlers),
   Layer.provide(PublicSessionHandlers),
   Layer.provide(PublicRealtimeHandlers),
-  Layer.provide(SessionAuthorizationLive),
   Layer.provide(PublicStudyCatalogHandlers),
   Layer.provide(PublicFeatureFlagHandlers),
   Layer.provide(PublicProductAnalyticsHandlers),
+  Layer.provide(PublicConversationsHandlers),
+  Layer.provide(SessionAuthorizationLive),
 )
 export const PublicApiRoutes = makePublicApiRoutes()
 

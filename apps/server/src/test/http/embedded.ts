@@ -4,11 +4,13 @@ import { AccessControlServiceLive, makeMemoryRoleAssignmentsRepository } from "@
 import { StudyPathValidator } from "@proxus/backend-domain/auth"
 import { StudyCatalogLive } from "@proxus/backend-domain/study-catalog"
 import { ApplicationRealtimeLive } from "@proxus/backend-domain/realtime"
+import { ConversationGenerationDeterministic, ConversationsLive } from "@proxus/backend-domain/conversations"
 import { PgliteLive, PgliteMigrationLive } from "@proxus/backend-infra/database/pglite"
 import { FeatureFlagSnapshotRepositoryPgliteLive } from "@proxus/backend-infra/feature-flags/pglite"
 import { makeAuthPersistencePgliteLive } from "@proxus/backend-infra/auth"
 import { ProductAnalyticsRepositoryMemory } from "@proxus/backend-infra/product-analytics/memory"
 import { StudyCatalogRepositoryPgliteLive } from "@proxus/backend-infra/study-catalog/pglite"
+import { ConversationsRepositoryPgliteLive } from "@proxus/backend-infra/conversations/pglite"
 import { ProductAnalyticsHttpContextFailClosed } from "@proxus/backend-transport/product-analytics"
 import { PublicApi } from "@proxus/shared/public-api"
 import { Effect, Layer } from "effect"
@@ -22,9 +24,14 @@ const EmbeddedPersistenceLive = Layer.mergeAll(
   PgliteMigrationLive,
   StudyCatalogRepositoryPgliteLive,
   FeatureFlagSnapshotRepositoryPgliteLive,
+  ConversationsRepositoryPgliteLive,
 ).pipe(Layer.provide(EmbeddedDatabaseLive))
 
 const EmbeddedFeatureFlagsLive = FeatureFlagSnapshotReaderLive.pipe(Layer.provide(EmbeddedPersistenceLive))
+const EmbeddedConversationsLive = ConversationsLive.pipe(
+  Layer.provide(EmbeddedPersistenceLive),
+  Layer.provide(ConversationGenerationDeterministic),
+)
 
 const AccessLive = AccessControlServiceLive.pipe(Layer.provide(makeMemoryRoleAssignmentsRepository([])))
 const EmbeddedStudyCatalogLive = StudyCatalogLive.pipe(Layer.provide(EmbeddedPersistenceLive), Layer.provide(AccessLive))
@@ -38,6 +45,7 @@ const EmbeddedRoutesLive = makePublicApiRoutes(Layer.merge(EmbeddedAuthLive, Emb
     ProductAnalyticsLive.pipe(Layer.provide(ProductAnalyticsRepositoryMemory)),
     ProductAnalyticsHttpContextFailClosed,
     ApplicationRealtimeLive,
+    EmbeddedConversationsLive,
   )),
   Layer.provide(HttpServer.layerServices),
   Layer.provide(EmbeddedAuthLive),

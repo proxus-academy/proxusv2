@@ -11,7 +11,8 @@
     "./product-analytics": "./src/modules/product-analytics/index.ts",
     "./access-control": "./src/modules/access-control/index.ts",
     "./application-events": "./src/modules/application-events/index.ts",
-    "./realtime": "./src/modules/realtime/index.ts"
+    "./realtime": "./src/modules/realtime/index.ts",
+    "./conversations": "./src/modules/conversations/index.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",

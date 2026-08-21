@@ -7,14 +7,17 @@ import { PostgresMigrationCheckLive, makePostgresProductionLive } from "@proxus/
 import { StudyCatalogRepositoryPostgresLive } from "@proxus/backend-infra/study-catalog/postgres"
 import { Layer } from "effect"
 import { ApplicationEventHubLive } from "@proxus/backend-domain/application-events"
+import { AiOperationsLive } from "@proxus/backend-domain/conversations"
+import { ConversationsRepositoryPostgresLive } from "@proxus/backend-infra/conversations/postgres"
 
 const ttl = 30 * 24 * 60 * 60 * 1000
 const Database = makePostgresProductionLive("proxus-admin-server")
-const Persistence = Layer.mergeAll(PostgresMigrationCheckLive, StudyCatalogRepositoryPostgresLive, RoleAssignmentsRepositoryPostgresLive, makeAuthPersistencePostgresLive(ttl)).pipe(Layer.provide(Database))
+const Persistence = Layer.mergeAll(PostgresMigrationCheckLive, StudyCatalogRepositoryPostgresLive, ConversationsRepositoryPostgresLive, RoleAssignmentsRepositoryPostgresLive, makeAuthPersistencePostgresLive(ttl)).pipe(Layer.provide(Database))
 const Opaque = makeOpaqueSessionsLive({ ttlMillis: ttl, renewalWindowMillis: 7 * 24 * 60 * 60 * 1000, rotationGraceMillis: 30_000 }).pipe(Layer.provide(Persistence))
 const Authentication = makeAuthenticationLive({ passwordResetTtlMillis: 15 * 60_000, passwordResetMaximumAttempts: 5 }).pipe(
   Layer.provide(Layer.mergeAll(Persistence, Opaque, PasswordsLive, SecureVerificationCodeGeneratorLive, ProductionEmailDeliveryUnavailable, ApplicationEventHubLive)),
 )
 const AccessControl = AccessControlServiceLive.pipe(Layer.provide(Persistence))
 const AdminUsers = AdminUsersServiceLive.pipe(Layer.provide(Layer.merge(Persistence, AccessControl)))
-export const AdminProdLive = Layer.mergeAll(Persistence, Authentication, AccessControl, AdminUsers, StudyCatalogLive.pipe(Layer.provide(Layer.merge(Persistence, AccessControl))))
+const AiOperations = AiOperationsLive.pipe(Layer.provide(Layer.merge(Persistence, AccessControl)))
+export const AdminProdLive = Layer.mergeAll(Persistence, Authentication, AccessControl, AdminUsers, AiOperations, StudyCatalogLive.pipe(Layer.provide(Layer.merge(Persistence, AccessControl))))

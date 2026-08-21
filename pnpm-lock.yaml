@@ -59,6 +59,9 @@ importers:
       '@proxus/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@proxus/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       '@tanstack/react-router':
         specifier: ^1.170.27
         version: 1.170.30(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -359,6 +362,9 @@ importers:
       effect:
         specifier: 4.0.0-beta.98
         version: 4.0.0-beta.98
+      lucide-react:
+        specifier: ^1.24.0
+        version: 1.24.0(react@19.2.7)
       react:
         specifier: ^19.2.3
         version: 19.2.7
@@ -437,6 +443,9 @@ importers:
 
   packages/backend-infra:
     dependencies:
+      '@effect/ai-openai':
+        specifier: 4.0.0-beta.98
+        version: 4.0.0-beta.98(effect@4.0.0-beta.98)
       '@effect/platform-node':
         specifier: 4.0.0-beta.98
         version: 4.0.0-beta.98(effect@4.0.0-beta.98)(ioredis@5.11.1)
@@ -946,6 +955,11 @@ packages:
 
   '@drizzle-team/brocli@0.12.0':
     resolution: {integrity: sha512-mlUE+rZ8CatQekLhnaiN91Iemdd+e2gFKooGlnRB3oPTL3VghLfX24dx7HrzMNeC1JrIB/0kpsfyty3f5HNfxQ==}
+
+  '@effect/ai-openai@4.0.0-beta.98':
+    resolution: {integrity: sha512-ZkzkULfOwpe0367QMipBXnCTrWjonQP4MSdP8t3zvKLPWNQaNs8BNya7/wowZAlDo/eX9fRR5tjSZOGVnEKFrA==}
+    peerDependencies:
+      effect: ^4.0.0-beta.98
 
   '@effect/atom-react@4.0.0-beta.90':
     resolution: {integrity: sha512-E1GFtNT+ZeIA3//g+IcbaAfjVAn5VZ08q4/MTEEV/862AlCfia8nRETJqpvVcTEK4X6EnebjTXdWu7tTV9wggg==}
@@ -8563,6 +8577,10 @@ snapshots:
   '@dotenvx/primitives@0.8.0': {}
 
   '@drizzle-team/brocli@0.12.0': {}
+
+  '@effect/ai-openai@4.0.0-beta.98(effect@4.0.0-beta.98)':
+    dependencies:
+      effect: 4.0.0-beta.98
 
   '@effect/atom-react@4.0.0-beta.90(effect@4.0.0-beta.90)(react@19.2.7)(scheduler@0.27.0)':
     dependencies:

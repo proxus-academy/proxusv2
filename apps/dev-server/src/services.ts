@@ -12,6 +12,7 @@ import { FeatureFlagSnapshotReaderLive } from "@proxus/backend-domain/feature-fl
 import { ProductAnalyticsLive } from "@proxus/backend-domain/product-analytics"
 import { StudyCatalogLive } from "@proxus/backend-domain/study-catalog"
 import { ApplicationRealtimeLive } from "@proxus/backend-domain/realtime"
+import { AiOperationsLive, ConversationGenerationDeterministic, ConversationsLive } from "@proxus/backend-domain/conversations"
 import { AdminSessionAuthorizationLive } from "@proxus/backend-admin-transport/session"
 import { RoleAssignmentsRepositoryPgliteLive } from "@proxus/backend-infra/access-control/pglite"
 import {
@@ -31,6 +32,7 @@ import { seedAuthQa } from "@proxus/backend-infra/auth-qa"
 import { PgliteDevelopmentLive, defaultMigrationsFolder, migratePglite, seedPgliteStudyCatalog } from "@proxus/backend-infra/database/pglite"
 import { FeatureFlagSnapshotRepositoryPgliteLive } from "@proxus/backend-infra/feature-flags/pglite"
 import { ProductAnalyticsRepositoryPgliteLive } from "@proxus/backend-infra/product-analytics/pglite"
+import { ConversationsRepositoryPgliteLive } from "@proxus/backend-infra/conversations/pglite"
 import { StudyCatalogRepositoryPgliteLive } from "@proxus/backend-infra/study-catalog/pglite"
 import { AuthSessionView, makeAuthSessionCookies } from "@proxus/backend-transport/auth"
 import { ProductAnalyticsHttpContextDevelopment } from "@proxus/backend-transport/product-analytics"
@@ -49,6 +51,7 @@ const persistence = Layer.mergeAll(
   StudyCatalogRepositoryPgliteLive,
   FeatureFlagSnapshotRepositoryPgliteLive,
   ProductAnalyticsRepositoryPgliteLive,
+  ConversationsRepositoryPgliteLive,
   makeAuthPersistencePgliteLive(sessionPolicy.ttlMillis),
 ).pipe(Layer.provide(database))
 
@@ -115,7 +118,12 @@ const authSurface = Layer.mergeAll(
 )
 const analytics = ProductAnalyticsLive.pipe(Layer.provide(persistence))
 const flags = FeatureFlagSnapshotReaderLive.pipe(Layer.provide(persistence))
+const conversations = ConversationsLive.pipe(
+  Layer.provide(persistence),
+  Layer.provide(ConversationGenerationDeterministic),
+)
 const adminUsers = AdminUsersServiceLive.pipe(Layer.provide(Layer.merge(persistence, access)))
+const aiOperations = AiOperationsLive.pipe(Layer.provide(Layer.merge(persistence, access)))
 
 const seed = Layer.effectDiscard(Effect.gen(function*() {
   const migrations = yield* Config.string("DATABASE_MIGRATIONS_DIR").pipe(Config.withDefault(defaultMigrationsFolder))
@@ -126,7 +134,7 @@ const seed = Layer.effectDiscard(Effect.gen(function*() {
 
 const sharedServices = Layer.merge(
   Layer.mergeAll(persistence, authSurface, access, catalog, studyPath),
-  Layer.mergeAll(analytics, ProductAnalyticsHttpContextDevelopment, flags, adminUsers, seed, ApplicationRealtimeLive),
+  Layer.mergeAll(analytics, ProductAnalyticsHttpContextDevelopment, flags, conversations, adminUsers, aiOperations, seed, ApplicationRealtimeLive),
 )
 
 const adminSession = AdminSessionAuthorizationLive.pipe(Layer.provide(sharedServices))
