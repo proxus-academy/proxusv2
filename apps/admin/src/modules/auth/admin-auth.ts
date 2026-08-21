@@ -54,6 +54,8 @@ const publicApiLayer = makePublicApiClientLayer("/api").pipe(
 const makeAdminAuthComposition = (layer: Layer.Layer<PublicApiClient | AdminAccessClient>) => {
   const runtime = Atom.runtime(layer)
   const auth = makeAuthAtoms(runtime)
+  // Effect service accessors use `.use`; this is not React's `use` hook.
+  // react-doctor-disable-next-line react-doctor/rules-of-hooks
   const capabilitiesAtom = runtime.atom(AdminAccessClient.use((client) => client.capabilities()))
   const accessAtom = Atom.make((get): AsyncResult.AsyncResult<Capabilities, AdminAccessError> => get(capabilitiesAtom))
   return { runtime, auth, capabilitiesAtom: accessAtom }

@@ -38,10 +38,11 @@
     "effect:diagnostics": "node scripts/run-effect-diagnostics.mjs",
     "lint": "oxlint --type-aware --deny-warnings --report-unused-disable-directives apps packages && pnpm lint:anti-slop",
     "lint:anti-slop": "oxlint --config oxlint.anti-slop.config.ts --deny-warnings apps packages",
+    "react:doctor": "react-doctor --project apps/web,apps/admin,apps/storybook --blocking warning --no-score --no-supply-chain",
     "boundaries": "depcruise --config dependency-cruiser.config.mjs apps packages",
     "knip": "pnpm --filter @proxus/web --if-present paraglide && knip --config knip.json --no-progress",
     "workspace:contracts": "node scripts/check-workspace-contracts.mjs",
-    "static": "pnpm effect:diagnostics && pnpm typecheck && pnpm lint && pnpm boundaries && pnpm knip && pnpm workspace:contracts",
+    "static": "pnpm effect:diagnostics && pnpm typecheck && pnpm lint && pnpm react:doctor && pnpm boundaries && pnpm knip && pnpm workspace:contracts",
     "validate:self-test": "node scripts/validation-self-test.mjs",
     "validate:pr": "pnpm validate:self-test && pnpm static && pnpm test:anti-slop && pnpm test:ci && pnpm build",
     "postinstall": "effect-language-service patch"
@@ -56,6 +57,7 @@
     "knip": "6.27.0",
     "oxlint": "1.79.0",
     "oxlint-tsgolint": "7.0.2001",
+    "react-doctor": "^0.9.12",
     "turbo": "^2.10.5",
     "typescript": "^5.8.3"
   }

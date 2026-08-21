@@ -6,7 +6,7 @@ import {
   type StudyEdge,
   type StudyNode,
 } from "@proxus/shared/study-catalog"
-import { AnimatePresence, motion } from "framer-motion"
+import { AnimatePresence, domAnimation, LazyMotion, m, useReducedMotion } from "framer-motion"
 import {
   ArrowDown,
   ArrowUp,
@@ -456,6 +456,7 @@ function RelationList({
   const filter = useAtomValue(filterAtom)
   const setFilter = useAtomSet(filterAtom)
   const selectNode = useAtomSet(selectNodeAtom)
+  const reduceMotion = useReducedMotion() === true
 
   if (result._tag === "Failure") {
     return <ErrorAlert title="No se han podido cargar las relaciones" />
@@ -503,17 +504,18 @@ function RelationList({
             <EmptyDescription>No hay relaciones de este tipo.</EmptyDescription>
           </EmptyHeader>
         </Empty>
-      ) : (
+      ) : null}
+      <LazyMotion features={domAnimation}>
         <div className="space-y-2">
           <AnimatePresence initial={false}>
             {visible.map((relation) => (
-              <motion.div
+              <m.div
                 key={relation.edge.id}
                 layout="position"
-                initial={{ opacity: 0, scale: 0.98 }}
+                initial={reduceMotion ? false : { opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.98 }}
-                transition={{
+                exit={reduceMotion ? undefined : { opacity: 0, scale: 0.98 }}
+                transition={reduceMotion ? { duration: 0 } : {
                   layout: { duration: 0.3, ease: [0.22, 1, 0.36, 1] },
                   opacity: { duration: 0.15 },
                   scale: { duration: 0.15 },
@@ -548,11 +550,11 @@ function RelationList({
                     <PermissionControl permission="studyEdge:disconnect"><DisconnectButton relation={relation} /></PermissionControl>
                   </div>
                 </Item>
-              </motion.div>
+              </m.div>
             ))}
           </AnimatePresence>
         </div>
-      )}
+      </LazyMotion>
     </div>
   )
 }
@@ -573,6 +575,8 @@ function NodeDetail({
   const mutation = useAtomValue(renameMutationAtom)
   const updateStatus = useAtomSet(statusMutationAtom)
   const statusMutation = useAtomValue(statusMutationAtom)
+  const mayRename = usePermission("studyNode:rename")
+  const mayArchive = usePermission("studyNode:archive")
 
   if (detail._tag === "Failure") {
     return <ErrorAlert title="No se ha podido cargar el detalle" />
@@ -582,8 +586,6 @@ function NodeDetail({
   }
 
   const node = detail.value
-  const mayRename = usePermission("studyNode:rename")
-  const mayArchive = usePermission("studyNode:archive")
   const selectStatus = (value: string) => {
     if (isStudyNodeStatus(value)) {
       updateStatus({

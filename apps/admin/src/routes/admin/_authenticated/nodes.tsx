@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { StudyCatalogScreen } from "../../../modules/study-catalog/index.js"
+import { StudyCatalogScreen } from "../../../modules/study-catalog/study-catalog-screen.js"
 import { useAdminPermissions } from "../../../modules/auth/layouts.js"
 
 function NodesRoute() {
