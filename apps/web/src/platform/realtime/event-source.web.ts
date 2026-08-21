@@ -1,16 +1,21 @@
 import { RealtimeClient } from "@proxus/frontend-core/realtime"
-import { RealtimeEventFromJsonString } from "@proxus/shared/realtime"
+import {
+  RealtimeHeartbeat,
+  type RealtimeEventName,
+  SessionRefreshRequired,
+} from "@proxus/shared/realtime"
 import { Effect, Exit, Layer, Queue, Schema, Stream } from "effect"
 
 export interface BrowserEventSource {
-  addEventListener(type: "realtime", listener: (event: MessageEvent<string>) => void): void
-  removeEventListener(type: "realtime", listener: (event: MessageEvent<string>) => void): void
+  addEventListener(type: RealtimeEventName, listener: (event: MessageEvent<string>) => void): void
+  removeEventListener(type: RealtimeEventName, listener: (event: MessageEvent<string>) => void): void
   close(): void
 }
 
 export type BrowserEventSourceFactory = (url: string) => BrowserEventSource
 
-const decodeEvent = Schema.decodeUnknownExit(RealtimeEventFromJsonString)
+const decodeHeartbeat = Schema.decodeUnknownExit(Schema.fromJsonString(RealtimeHeartbeat))
+const decodeSessionRefreshRequired = Schema.decodeUnknownExit(Schema.fromJsonString(SessionRefreshRequired))
 
 export const makeRealtimeClientWeb = (
   makeEventSource: BrowserEventSourceFactory = (url) => new EventSource(url),
@@ -18,15 +23,21 @@ export const makeRealtimeClientWeb = (
   events: Stream.callback((queue) => Effect.acquireRelease(
     Effect.sync(() => {
       const source = makeEventSource("/api/events")
-      const onRealtime = (message: MessageEvent<string>) => {
-        const decoded = decodeEvent(message.data)
+      const onHeartbeat = (message: MessageEvent<string>) => {
+        const decoded = decodeHeartbeat(message.data)
         if (Exit.isSuccess(decoded)) Queue.offerUnsafe(queue, decoded.value)
       }
-      source.addEventListener("realtime", onRealtime)
-      return { source, onRealtime }
+      const onSessionRefreshRequired = (message: MessageEvent<string>) => {
+        const decoded = decodeSessionRefreshRequired(message.data)
+        if (Exit.isSuccess(decoded)) Queue.offerUnsafe(queue, decoded.value)
+      }
+      source.addEventListener("realtime.heartbeat", onHeartbeat)
+      source.addEventListener("session.refresh-required", onSessionRefreshRequired)
+      return { source, onHeartbeat, onSessionRefreshRequired }
     }),
-    ({ source, onRealtime }) => Effect.sync(() => {
-      source.removeEventListener("realtime", onRealtime)
+    ({ source, onHeartbeat, onSessionRefreshRequired }) => Effect.sync(() => {
+      source.removeEventListener("realtime.heartbeat", onHeartbeat)
+      source.removeEventListener("session.refresh-required", onSessionRefreshRequired)
       source.close()
     }),
   ), { bufferSize: 128, strategy: "sliding" }),

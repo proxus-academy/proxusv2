@@ -9,7 +9,7 @@ import { HttpApiBuilder } from "effect/unstable/httpapi"
 const heartbeat = Stream.fromEffect(
   Effect.sleep(Duration.seconds(15)).pipe(Effect.as({
     id: "heartbeat",
-    event: "realtime" as const,
+    event: "realtime.heartbeat" as const,
     data: new RealtimeHeartbeat({ version: 1 }),
   })),
 ).pipe(Stream.repeat(Schedule.forever))
@@ -25,11 +25,15 @@ export const PublicRealtimeHandlers = HttpApiBuilder.group(PublicApi, "realtime"
       }),
     ))
     const events = realtime.forAccount(current.account.id).pipe(
-      Stream.map((delivery) => ({
-        id: delivery.eventId,
-        event: "realtime" as const,
-        data: delivery.event,
-      })),
+      Stream.map((delivery) => {
+        const event = delivery.event
+        switch (event._tag) {
+          case "realtime.heartbeat":
+            return { id: delivery.eventId, event: event._tag, data: event }
+          case "session.refresh-required":
+            return { id: delivery.eventId, event: event._tag, data: event }
+        }
+      }),
     )
     return Stream.merge(events, heartbeat)
   }))

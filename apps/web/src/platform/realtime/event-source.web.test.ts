@@ -1,5 +1,5 @@
 import { RealtimeClient } from "@proxus/frontend-core/realtime"
-import { RealtimeEventFromJsonString, SessionRefreshRequired } from "@proxus/shared/realtime"
+import { RealtimeHeartbeat, SessionRefreshRequired } from "@proxus/shared/realtime"
 import { Deferred, Effect, Fiber, Layer, Option, Schema, Stream } from "effect"
 import { describe, expect, it } from "vitest"
 import { makeRealtimeClientWeb, type BrowserEventSource } from "./event-source.web.js"
@@ -7,16 +7,19 @@ import { makeRealtimeClientWeb, type BrowserEventSource } from "./event-source.w
 class FakeEventSource implements BrowserEventSource {
   constructor(private readonly onSubscribed: () => void) {}
   closed = false
-  private listener: ((event: MessageEvent<string>) => void) | undefined
-  addEventListener(_type: "realtime", listener: (event: MessageEvent<string>) => void): void {
-    this.listener = listener
-    this.onSubscribed()
+  private readonly listeners = new Map<string, (event: MessageEvent<string>) => void>()
+  get listenerCount() { return this.listeners.size }
+  addEventListener(type: "realtime.heartbeat" | "session.refresh-required", listener: (event: MessageEvent<string>) => void): void {
+    this.listeners.set(type, listener)
+    if (this.listeners.size === 2) this.onSubscribed()
   }
-  removeEventListener(_type: "realtime", listener: (event: MessageEvent<string>) => void): void {
-    if (this.listener === listener) this.listener = undefined
+  removeEventListener(type: "realtime.heartbeat" | "session.refresh-required", listener: (event: MessageEvent<string>) => void): void {
+    if (this.listeners.get(type) === listener) this.listeners.delete(type)
   }
   close() { this.closed = true }
-  emit(data: string) { this.listener?.(new MessageEvent("realtime", { data })) }
+  emit(type: "realtime.heartbeat" | "session.refresh-required", data: string) {
+    this.listeners.get(type)?.(new MessageEvent(type, { data }))
+  }
 }
 
 describe("web realtime client", () => {
@@ -34,11 +37,23 @@ describe("web realtime client", () => {
         Effect.forkChild,
       )
       yield* Deferred.await(subscribed)
-      source.emit(Schema.encodeSync(RealtimeEventFromJsonString)(new SessionRefreshRequired({ version: 1 })))
+      source.emit(
+        "session.refresh-required",
+        Schema.encodeSync(Schema.fromJsonString(RealtimeHeartbeat))(
+          new RealtimeHeartbeat({ version: 1 }),
+        ),
+      )
+      source.emit(
+        "session.refresh-required",
+        Schema.encodeSync(Schema.fromJsonString(SessionRefreshRequired))(
+          new SessionRefreshRequired({ version: 1 }),
+        ),
+      )
       const event = yield* Fiber.join(fiber)
       expect(Option.getOrThrow(event)._tag).toBe("session.refresh-required")
       expect(urls).toEqual(["/api/events"])
       expect(source.closed).toBe(true)
+      expect(source.listenerCount).toBe(0)
     })),
   ))
 })

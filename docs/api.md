@@ -47,8 +47,10 @@ Prefijo: `/auth`. Las respuestas de sesión instalan una cookie opaca `HttpOnly`
 | GET | `/events` | Stream SSE de señales realtime para la cuenta autenticada |
 
 `GET /events` requiere la misma cookie opaca que `/auth/session`; el cliente no
-elige el account ID. Cada frame usa `event: realtime`, un `id` generado por el
-servidor y un `data` validado por la unión `RealtimeEvent`. El stream incluye
+elige el account ID. Cada frame usa el `_tag` del payload como nombre nativo SSE,
+un `id` generado por el servidor y un `data` validado por el schema correlacionado
+con ese nombre. La unión `RealtimeSseEvent` rechaza envelopes que combinen el
+nombre de un evento con el payload de otro. El stream incluye
 `realtime.heartbeat` para mantener activa la conexión y actualmente puede
 entregar `session.refresh-required` cuando una operación autoritativa revoca
 todas las sesiones de la cuenta.

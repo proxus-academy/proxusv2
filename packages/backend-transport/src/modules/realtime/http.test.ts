@@ -62,7 +62,7 @@ describe("public realtime transport", () => {
     expect(response.headers.get("x-accel-buffering")).toBe("no")
     const reader = response.body?.getReader()
     const first = await reader?.read()
-    expect(new TextDecoder().decode(first?.value)).toContain("event: realtime")
+    expect(new TextDecoder().decode(first?.value)).toContain("event: session.refresh-required")
     expect(new TextDecoder().decode(first?.value)).toContain("session.refresh-required")
     await reader?.cancel()
     await web.dispose()
