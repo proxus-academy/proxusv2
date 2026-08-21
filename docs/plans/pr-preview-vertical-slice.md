@@ -25,18 +25,19 @@ This packaging is preview-only. Production retains separately deployable public/
 ## Runtime shape
 
 ```text
-Cloud Run :8080
-└── preview gateway
-    ├── /api/*       → combined Effect HTTP runtime, public routes
-    ├── /admin-api/* → combined Effect HTTP runtime, admin routes
-    ├── /admin/*     → compiled Admin SPA
-    ├── /ui/*        → compiled Storybook
-    └── /*           → compiled Web SPA
-             │
-             └── dedicated preview database in shared Cloud SQL
+preview environment
+├── Cloud Run :8080
+│   └── preview gateway
+│       ├── /api/*       → combined Effect HTTP runtime, public routes
+│       ├── /admin-api/* → combined Effect HTTP runtime, admin routes
+│       ├── /admin/*     → compiled Admin SPA
+│       ├── /ui/*        → compiled Storybook
+│       ├── /app/*       → compiled Web SPA
+│       └── /*           → compiled Astro Site
+└── dedicated preview database in shared Cloud SQL
 ```
 
-A single Effect HTTP runtime serves both API surfaces and the compiled frontends. Public and administrative routes are mounted under `/api` and `/admin-api`; Effect's static server serves the Web and Admin SPAs under `/` and `/admin`, plus the compiled Storybook under `/ui`. Cloud Run receives traffic on port 8080, and `NodeRuntime` owns interruption and graceful server shutdown. There is no internal proxy, second listener or child-process supervisor.
+A single Effect HTTP runtime serves both API surfaces and the compiled frontends. Public and administrative routes are mounted under `/api` and `/admin-api`; Effect's static server serves the Astro Site under `/`, the Web and Admin SPAs under `/app` and `/admin`, and the compiled Storybook under `/ui`. Cloud Run receives traffic on port 8080, and `NodeRuntime` owns interruption and graceful server shutdown. There is no internal proxy, second listener or child-process supervisor.
 
 The preview runtime uses real PostgreSQL repositories. Startup only checks the Drizzle ledger and fails when migrations are pending; it never changes the schema. A one-shot Cloud Run Job applies migrations and installs deterministic synthetic catalog/auth fixtures when the preview database is first created. It deliberately uses fake Google identity, console email and in-memory analytics; no production data or provider credentials are used.
 

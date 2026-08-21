@@ -48,4 +48,14 @@ describe("web route tree", () => {
     yield* Effect.promise(() => router.navigate({ to: "/login" }))
     expect(router.history.location.href).toBe("/app/login")
   })))
+
+  it("keeps English routes below a deployment base path", () => Effect.runPromise(Effect.gen(function*() {
+    overwriteGetLocale(() => "en")
+    const router = makeWebRouter(createMemoryHistory({ initialEntries: ["/app/en"] }), "/app")
+    yield* Effect.promise(() => router.load())
+
+    expect(router.state.matches.at(-1)?.fullPath).toBe("/")
+    yield* Effect.promise(() => router.navigate({ to: "/login" }))
+    expect(router.history.location.href).toBe("/app/en/login")
+  })))
 })
