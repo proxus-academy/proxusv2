@@ -129,6 +129,32 @@ Restricciones:
 
 Los handlers adaptan transporte, invocan servicios y convierten errores internos a respuestas públicas seguras. El transporte resuelve la cookie opaca a una identidad verificada; la autorización de producto permanece en el servicio. Identity, onboarding y Access Control ya son casos reales: sus wire contracts viven en Shared, sus policies/ports en Domain y sus adapters Drizzle/crypto/proveedor en Infra.
 
+## Eventos de aplicación y realtime
+
+Los bounded contexts definen sus eventos autoritativos en archivos hoja y exportan
+una unión local. `ApplicationEvent` compone esas uniones en un catálogo central
+cerrado y tipa la interface write-only `ApplicationEventPublisher`; las
+proyecciones consumen la interface separada `ApplicationEventSource`. La
+implementación actual usa `PubSub` en proceso, es deliberadamente best-effort y
+no promete persistencia, replay ni entrega después de terminar el proceso. Una
+publicación fallida no revierte el caso de uso ya completado.
+
+Realtime es una proyección, no el catálogo interno expuesto por HTTP. Convierte
+hechos internos en el contrato mínimo `RealtimeEvent`, deriva el destinatario
+desde datos confiables y los distribuye mediante SSE autenticado. Los contratos
+enviados por el navegador permanecen separados como
+`PublicProductAnalyticsEvent`: son señales no autoritativas sujetas a contexto
+de consentimiento e identidad resuelto por el transporte. Los comandos del
+cliente siguen usando endpoints HTTP tipados y nunca se aceptan como eventos de
+dominio arbitrarios.
+
+La primera vertical emite `identity.account-sessions-revoked` después de un
+reset de password y lo proyecta a `session.refresh-required`. Las pestañas
+autenticadas invalidan su lectura autoritativa de sesión. El hub in-process es
+adecuado para la composición actual de un proceso; un despliegue con varias
+instancias necesitará un adapter de fanout entre procesos antes de depender de
+esta señal para latencia realtime.
+
 ## Infraestructura y persistencia
 
 `backend-infra` es el propietario único de database, schema Drizzle, migraciones, checks y seeds. Los adapters implementan ports de Domain sin introducir decisiones de producto. PGlite cubre desarrollo y tests rápidos dentro de un único proceso; PostgreSQL cubre producción y cualquier desarrollo con dos procesos que deban compartir datos. No se ejecutan servidor y publisher simultáneamente contra un mismo `PGLITE_DATA_DIR`.

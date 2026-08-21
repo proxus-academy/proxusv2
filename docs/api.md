@@ -40,6 +40,27 @@ Prefijo: `/auth`. Las respuestas de sesión instalan una cookie opaca `HttpOnly`
 | GET | `/session` | Leer sesión activa; requiere cookie |
 | POST | `/logout` | Revocar sesión activa; requiere cookie |
 
+## Realtime autenticado
+
+| Method | Path | Operation |
+| --- | --- | --- |
+| GET | `/events` | Stream SSE de señales realtime para la cuenta autenticada |
+
+`GET /events` requiere la misma cookie opaca que `/auth/session`; el cliente no
+elige el account ID. Cada frame usa el `_tag` del payload como nombre nativo SSE,
+un `id` generado por el servidor y un `data` validado por el schema correlacionado
+con ese nombre. La unión `RealtimeSseEvent` rechaza envelopes que combinen el
+nombre de un evento con el payload de otro. El stream incluye
+`realtime.heartbeat` para mantener activa la conexión y actualmente puede
+entregar `session.refresh-required` cuando una operación autoritativa revoca
+todas las sesiones de la cuenta.
+
+La entrega es best-effort e in-process: no existe replay por `Last-Event-ID` ni
+garantía de recepción durante una desconexión. Los eventos son señales para
+releer estado autoritativo mediante los endpoints HTTP existentes. La respuesta
+usa `text/event-stream`, deshabilita caché y solicita no buffering a proxies
+compatibles.
+
 Registro recibe el onboarding completo, incluida la fuente de adquisición, y el identificador de la asignatura elegida. La fuente usa una clasificación cerrada; `other` exige un detalle de hasta 200 caracteres. El navegador recorre dinámicamente los hijos publicados del grafo y conserva la ruta solo como estado transitorio, pero no la envía como autoridad. El servidor comprueba que la asignatura sea publicada y terminal, deriva su único padre publicado como estudio y persiste ambos identificadores (`studyId` y `subjectId`). No confía en nombres, relaciones de catálogo ni perfiles Google enviados por el navegador. Verificación y reset usan challenges hasheados, con propósito, expiración, intentos y uso único. Login devuelve errores genéricos; reset y reenvío no revelan si existe una cuenta. Google usa authorization-code/callback: una identidad existente entra directamente, un email activo y verificado puede auto-vincularse de forma transaccional y una identidad nueva recibe un draft pendiente antes del alta.
 
 `GoogleAuthorization.authorizationUrl` admite una URL HTTP(S) absoluta para el

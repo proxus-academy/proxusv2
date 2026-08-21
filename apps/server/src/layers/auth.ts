@@ -1,4 +1,5 @@
 import { GoogleIdentityProvider, GoogleIdentityRejected, RegistrationAvailability, UserRepository, type User } from "@proxus/backend-domain/auth"
+import { ApplicationRealtimeLive } from "@proxus/backend-domain/realtime"
 import { makeGoogleFlowLive } from "@proxus/backend-domain/auth/google-live"
 import {
   ConsoleEmailDelivery,
@@ -63,7 +64,7 @@ const services = Layer.mergeAll(
   RegistrationAvailability.layer,
   makeAuthenticationLive(authenticationPolicy),
   makeGoogleFlowLive({ stateTtlMillis: 10 * 60_000, pendingTtlMillis: 30 * 60_000 }),
-).pipe(Layer.provideMerge(sessionServices))
+).pipe(Layer.provideMerge(sessionServices), Layer.provide(ApplicationRealtimeLive))
 
 const developmentCookies = makeAuthSessionCookies({ secure: false, sameSite: "lax" })
 const productionCookies = makeAuthSessionCookies({ secure: true, sameSite: "lax" })

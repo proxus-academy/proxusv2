@@ -3,6 +3,7 @@ import { useAtomValue } from "@effect/atom-react"
 import { currentSessionQuery } from "@proxus/frontend-core/auth"
 import { Heading, Text } from "@proxus/ui"
 import { Navigate, Outlet } from "@tanstack/react-router"
+import { realtimeLifecycleAtom } from "../realtime.js"
 
 export function PublicOnlyLayout() {
   const session = useAtomValue(currentSessionQuery)
@@ -27,5 +28,10 @@ export function AuthenticatedLayout() {
   }
   return session.value === null
     ? <Navigate to="/login" replace />
-    : <Outlet />
+    : <AuthenticatedRealtimeOutlet />
+}
+
+function AuthenticatedRealtimeOutlet() {
+  useAtomValue(realtimeLifecycleAtom)
+  return <Outlet />
 }

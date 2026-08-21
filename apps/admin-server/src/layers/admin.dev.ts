@@ -6,6 +6,7 @@ import { ConsoleEmailDelivery, PasswordsLive, DevelopmentVerificationCodeGenerat
 import { PgliteDevelopmentLive, PgliteMigrationLive } from "@proxus/backend-infra/database/pglite"
 import { StudyCatalogRepositoryPgliteLive } from "@proxus/backend-infra/study-catalog/pglite"
 import { Layer } from "effect"
+import { ApplicationEventHubLive } from "@proxus/backend-domain/application-events"
 
 const ttl = 30 * 24 * 60 * 60 * 1000
 
@@ -13,7 +14,7 @@ export const makeAdminDevLive = (database: typeof PgliteDevelopmentLive) => {
   const persistence = Layer.mergeAll(PgliteMigrationLive, StudyCatalogRepositoryPgliteLive, RoleAssignmentsRepositoryPgliteLive, makeAuthPersistencePgliteLive(ttl)).pipe(Layer.provide(database))
   const opaque = makeOpaqueSessionsLive({ ttlMillis: ttl, renewalWindowMillis: 7 * 24 * 60 * 60 * 1000, rotationGraceMillis: 30_000 }).pipe(Layer.provide(persistence))
   const authentication = makeAuthenticationLive({ passwordResetTtlMillis: 15 * 60_000, passwordResetMaximumAttempts: 5 }).pipe(
-    Layer.provide(Layer.mergeAll(persistence, opaque, PasswordsLive, DevelopmentVerificationCodeGeneratorLive, ConsoleEmailDelivery)),
+    Layer.provide(Layer.mergeAll(persistence, opaque, PasswordsLive, DevelopmentVerificationCodeGeneratorLive, ConsoleEmailDelivery, ApplicationEventHubLive)),
   )
   const accessControl = AccessControlServiceLive.pipe(Layer.provide(persistence))
   const adminUsers = AdminUsersServiceLive.pipe(Layer.provide(Layer.merge(persistence, accessControl)))

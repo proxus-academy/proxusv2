@@ -18,6 +18,7 @@ import {
 } from "@proxus/backend-domain/auth"
 import { makeAuthenticationLive } from "./authentication.live.js"
 import { makeOpaqueSessionsLive } from "./sessions.js"
+import { ApplicationEventPublisher, type ApplicationEvent } from "@proxus/backend-domain/application-events"
 
 const now = new Date()
 const user = (status: User["status"] = "active"): User => makeUser({
@@ -34,7 +35,12 @@ const passwordLayer = Layer.succeed(Passwords, Passwords.of({
 }))
 const codeLayer = Layer.succeed(VerificationCodeGenerator, VerificationCodeGenerator.of({ generate: () => Effect.succeed("654321") }))
 
-const testLayer = (users: ReadonlyArray<User>, delivered: Array<AuthEmailMessage>, initialChallenges: ReadonlyArray<AuthChallenge> = []) => {
+const testLayer = (
+  users: ReadonlyArray<User>,
+  delivered: Array<AuthEmailMessage>,
+  initialChallenges: ReadonlyArray<AuthChallenge> = [],
+  published: Array<ApplicationEvent> = [],
+) => {
   const userRepository = makeMemoryUserRepository(users)
   const sessionRepository = makeMemorySessionRepository()
   const challengeRepository = makeMemoryAuthChallengeRepository(initialChallenges)
@@ -45,7 +51,10 @@ const testLayer = (users: ReadonlyArray<User>, delivered: Array<AuthEmailMessage
   const opaque = makeOpaqueSessionsLive({ ttlMillis: 60_000, renewalWindowMillis: 1_000, rotationGraceMillis: 100 }).pipe(
     Layer.provide(sessionRepository),
   )
-  const dependencies = Layer.mergeAll(userRepository, sessionRepository, challengeRepository, passwordLayer, codeLayer, emailLayer, opaque)
+  const eventLayer = Layer.succeed(ApplicationEventPublisher, ApplicationEventPublisher.of({
+    publish: (event) => Effect.sync(() => { published.push(event) }),
+  }))
+  const dependencies = Layer.mergeAll(userRepository, sessionRepository, challengeRepository, passwordLayer, codeLayer, emailLayer, opaque, eventLayer)
   return makeAuthenticationLive({ passwordResetTtlMillis: 60_000, passwordResetMaximumAttempts: 3 }).pipe(Layer.provide(dependencies))
 }
 
@@ -109,7 +118,8 @@ describe("AuthenticationService live", () => {
   it("changes the password and globally invalidates prior sessions", async () => {
     const account = user()
     const delivered: Array<AuthEmailMessage> = []
-    const layer = testLayer([account], delivered)
+    const published: Array<ApplicationEvent> = []
+    const layer = testLayer([account], delivered, [], published)
     const auth = await run(Effect.gen(function*() {
       const service = yield* AuthenticationService
       const first = yield* service.loginWithPassword({ email: account.email, password: "secret" })
@@ -120,6 +130,7 @@ describe("AuthenticationService live", () => {
     }), layer)
     expect(await failureTag(auth.service.currentSession(auth.first.token), layer)).toBe("UnauthorizedSession")
     expect(await failureTag(auth.service.currentSession(auth.second.token), layer)).toBe("UnauthorizedSession")
+    expect(published).toEqual([{ _tag: "identity.account-sessions-revoked", version: 1, accountId: account.id }])
     await Effect.runPromise(auth.service.loginWithPassword({ email: account.email, password: "new-secret" }))
   })
 })
