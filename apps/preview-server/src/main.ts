@@ -32,6 +32,7 @@ const adminRoutes = prefixed(
 const healthRoute = HttpRouter.add("GET", "/healthz", HttpServerResponse.empty({ status: 204 }))
 const staticAssets = Layer.unwrap(Effect.gen(function*() {
   const adminRoot = yield* Config.string("ADMIN_ROOT").pipe(Config.withDefault("/app/admin"))
+  const siteRoot = yield* Config.string("SITE_ROOT").pipe(Config.withDefault("/app/site"))
   const uiRoot = yield* Config.string("UI_ROOT").pipe(Config.withDefault("/app/ui"))
   const webRoot = yield* Config.string("WEB_ROOT").pipe(Config.withDefault("/app/web"))
   return Layer.mergeAll(
@@ -53,11 +54,20 @@ const staticAssets = Layer.unwrap(Effect.gen(function*() {
           : yield* handler
       }))
     })),
-    HttpStaticServer.layer({
-      root: webRoot,
-      index: "index.html",
-      spa: true,
-    }),
+    Layer.effectDiscard(Effect.gen(function*() {
+      const router = yield* HttpRouter.HttpRouter
+      const webHandler = (yield* HttpStaticServer.make({ root: webRoot, index: "index.html", spa: true })).pipe(
+        Effect.catch(HttpServerRespondable.toResponse),
+      )
+      const siteHandler = (yield* HttpStaticServer.make({ root: siteRoot, index: "index.html" })).pipe(
+        Effect.catch(HttpServerRespondable.toResponse),
+      )
+      yield* router.add("GET", "/es", HttpServerResponse.html(
+        '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=/app"><title>Proxus</title></head><body><a href="/app">Abrir Proxus</a></body></html>',
+      ))
+      yield* router.prefixed("/app").add("GET", "/*", webHandler)
+      yield* router.add("GET", "/*", siteHandler)
+    })),
   )
 }))
 const routes = Layer.mergeAll(publicRoutes, adminRoutes, healthRoute, staticAssets)

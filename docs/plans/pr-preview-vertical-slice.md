@@ -4,7 +4,7 @@
 
 ## Goal
 
-Prove one complete, disposable preview before automating PR lifecycle or selecting an IaC writer. The preview packages the two compiled frontends and both HTTP surfaces in one Cloud Run image, backed by a dedicated database on the existing shared Cloud SQL PostgreSQL 17 instance.
+Prove one complete, disposable preview before automating PR lifecycle or selecting an IaC writer. The preview packages the Astro public site, the two compiled product frontends and both HTTP surfaces in one Cloud Run image, backed by a dedicated database on the existing shared Cloud SQL PostgreSQL 17 instance.
 
 This packaging is preview-only. Production retains separately deployable public/admin APIs and CDN-hosted frontends.
 
@@ -25,22 +25,23 @@ This packaging is preview-only. Production retains separately deployable public/
 ## Runtime shape
 
 ```text
-Cloud Run :8080
-└── preview gateway
-    ├── /api/*       → combined Effect HTTP runtime, public routes
-    ├── /admin-api/* → combined Effect HTTP runtime, admin routes
-    ├── /admin/*     → compiled Admin SPA
-    ├── /ui/*        → compiled Storybook
-    └── /*           → compiled Web SPA
-             │
-             └── dedicated preview database in shared Cloud SQL
+preview environment
+├── Cloud Run :8080
+│   └── preview gateway
+│       ├── /api/*       → combined Effect HTTP runtime, public routes
+│       ├── /admin-api/* → combined Effect HTTP runtime, admin routes
+│       ├── /admin/*     → compiled Admin SPA
+│       ├── /ui/*        → compiled Storybook
+│       ├── /app/*       → compiled Web SPA
+│       └── /*           → compiled Astro Site
+└── dedicated preview database in shared Cloud SQL
 ```
 
-A single Effect HTTP runtime serves both API surfaces and the compiled frontends. Public and administrative routes are mounted under `/api` and `/admin-api`; Effect's static server serves the Web and Admin SPAs under `/` and `/admin`, plus the compiled Storybook under `/ui`. Cloud Run receives traffic on port 8080, and `NodeRuntime` owns interruption and graceful server shutdown. There is no internal proxy, second listener or child-process supervisor.
+A single Effect HTTP runtime serves both API surfaces and the compiled frontends. Public and administrative routes are mounted under `/api` and `/admin-api`; Effect's static server serves the Astro Site under `/`, the Web and Admin SPAs under `/app` and `/admin`, and the compiled Storybook under `/ui`. Cloud Run receives traffic on port 8080, and `NodeRuntime` owns interruption and graceful server shutdown. There is no internal proxy, second listener or child-process supervisor.
 
 The preview runtime uses real PostgreSQL repositories. Startup only checks the Drizzle ledger and fails when migrations are pending; it never changes the schema. A one-shot Cloud Run Job applies migrations and installs deterministic synthetic catalog/auth fixtures when the preview database is first created. It deliberately uses fake Google identity, console email and in-memory analytics; no production data or provider credentials are used.
 
-The multi-stage image bundles the complete preview HTTP runtime into a standalone Node ESM artifact. Its final stage contains only that bundle, the database initializer, Drizzle migrations and compiled frontend assets. Build-time checks reject PGlite, `tsx` and TypeScript runtime content. The final image runs as the unprivileged Node user.
+The multi-stage image bundles the complete preview HTTP runtime into a standalone Node ESM artifact. Its final stage contains only that bundle, the database initializer, Drizzle migrations and the compiled Site, Web, Admin and Storybook assets. Site owns public routes such as `/`, `/pricing` and `/blog`; the preview gateway mounts Web below `/app`, including the Spanish product at `/app`, other localized routes such as `/app/en` and its assets below `/app/assets`. The former `/es` preview entry remains as a transitional HTML redirect so lifecycle triggers created before this routing change can complete their trusted smoke. This preview-only base path represents the application boundary that production expresses with a separate subdomain. Build-time checks reject PGlite, `tsx` and TypeScript runtime content. The final image runs as the unprivileged Node user.
 
 ## Local proof
 
@@ -50,7 +51,7 @@ pnpm preview:smoke
 pnpm preview:down
 ```
 
-Local Compose uses PostgreSQL 17.7. The smoke command waits for migration/seed completion and verifies Web, Admin, Storybook, Public OpenAPI and Admin OpenAPI through the same preview URL.
+Local Compose uses PostgreSQL 17.7. The smoke command waits for migration/seed completion and verifies Site, Web, Admin, Storybook, Public OpenAPI and Admin OpenAPI through the same preview URL.
 
 ## GCP spike
 
