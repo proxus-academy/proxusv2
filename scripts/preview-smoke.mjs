@@ -3,6 +3,7 @@ const checks = [
   ["health", "/healthz", 204],
   ["site", "/", 200, { headers: { accept: "text/html" } }, "Convierte tus apuntes"],
   ["site page", "/pricing", 200, { headers: { accept: "text/html" } }, "Empieza gratis. Mejora cuando lo necesites."],
+  ["legacy web entry", "/es", 200, { headers: { accept: "text/html" } }, "url=/app"],
   ["web", "/app", 200, { headers: { accept: "text/html" } }, "/app/assets/"],
   ["admin", "/admin/", 200, { headers: { accept: "text/html" } }],
   ["storybook redirect", "/ui", 308, { headers: { accept: "text/html" }, redirect: "manual" }],

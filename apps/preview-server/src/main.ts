@@ -62,6 +62,9 @@ const staticAssets = Layer.unwrap(Effect.gen(function*() {
       const siteHandler = (yield* HttpStaticServer.make({ root: siteRoot, index: "index.html" })).pipe(
         Effect.catch(HttpServerRespondable.toResponse),
       )
+      yield* router.add("GET", "/es", HttpServerResponse.html(
+        '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=/app"><title>Proxus</title></head><body><a href="/app">Abrir Proxus</a></body></html>',
+      ))
       yield* router.prefixed("/app").add("GET", "/*", webHandler)
       yield* router.add("GET", "/*", siteHandler)
     })),
