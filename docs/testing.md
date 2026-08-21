@@ -177,9 +177,9 @@ un proceso vacío.
 
 ## Current CI gates and pending suites
 
-The current `.github/workflows/validate.yml` exposes every authoritative gate independently and starts them in parallel: validator self-test, Effect diagnostics, typecheck, type-aware lint, dependency-cruiser architecture, Knip, workspace contracts, Vitest/PGlite, build and PostgreSQL 17. There is no duplicate monolithic CI job and no validator uses `continue-on-error`. A failure or warning in any strict validator remains a failed check.
+The current `.github/workflows/validate.yml` exposes every authoritative gate independently and starts them in parallel: validator self-test, Effect diagnostics, typecheck, type-aware lint, anti-slop rule regressions, dependency-cruiser architecture, Knip, workspace contracts, Vitest/PGlite, build and PostgreSQL 17. There is no duplicate monolithic CI job and no validator uses `continue-on-error`. A failure or warning in any strict validator remains a failed check.
 
-The root `pnpm validate:pr` command retains the same complete sequential validation for local use: validator self-tests, static validation, normal Vitest/PGlite suites and every workspace build including Storybook. CI changes scheduling, not coverage. Knip generates Paraglide before analysis because its fresh runner must resolve those generated imports without relying on another job's filesystem.
+The root `pnpm validate:pr` command retains the same complete sequential validation for local use: validator self-tests, static validation, vendored anti-slop rule regressions, normal Vitest/PGlite suites and every workspace build including Storybook. CI changes scheduling, not coverage. Knip generates Paraglide before analysis because its fresh runner must resolve those generated imports without relying on another job's filesystem.
 
 Turborepo schedules `build`, `typecheck` and `test` from the dependencies declared
 in workspace manifests and caches deterministic task results locally. Builds run
@@ -241,6 +241,10 @@ The checks have no generated allowlist or accepted-violation baseline:
   `SAFETY:` invariant for every necessary non-const assertion. Rules that would
   reject Proxus's documented boundary parsing, exact optional-property spreads,
   or composition-root Layer assembly remain explicitly disabled in that config.
+  `test:anti-slop` exercises the vendored rule regressions with Node's native
+  test runner and TypeScript stripping; `validate:pr` runs it independently of
+  lint so a broken rule implementation cannot pass merely because the current
+  workspace happens not to trigger it.
 - `boundaries` ignores generated `dist`, `coverage` and `storybook-static`
   trees and enforces the documented DDD direction: shared is runtime-neutral;
   Domain cannot reach adapters/transports/apps; Infra cannot reach
