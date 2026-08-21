@@ -20,11 +20,11 @@ export const scope = <const Type extends string, const Id extends string>(type: 
   return { type, id }
 }
 
-export const resource = <const Type extends string, const Id extends string>(
+export const resource = <const Type extends ScopeType, const Id extends string, const ScopeType extends string = Type>(
   type: Type,
   id: Id,
-  options?: { readonly scopes?: readonly Scope[] }
-): Resource<Type, Id> => {
+  options?: { readonly scopes?: readonly Scope<ScopeType>[] }
+): Resource<Type, Id, ScopeType> => {
   assertPart("Resource type", type)
   assertPart("Resource id", id)
   const scopes = options?.scopes ?? []
@@ -59,7 +59,7 @@ export const dedupeRefs = <A extends ObjectRef>(refs: Iterable<A>): readonly A[]
   return result
 }
 
-const resourceScope = (resource: Resource): Scope => ({ type: resource.type, id: resource.id })
+const resourceScope = <Type extends ScopeType, ScopeType extends string>(resource: Resource<Type, string, ScopeType>): Scope<ScopeType> => ({ type: resource.type, id: resource.id })
 
-export const effectiveScopes = (resource: Resource): readonly Scope[] =>
+export const effectiveScopes = <Type extends ScopeType, ScopeType extends string>(resource: Resource<Type, string, ScopeType>): readonly Scope<ScopeType>[] =>
   dedupeRefs([resourceScope(resource), ...resource.scopes])

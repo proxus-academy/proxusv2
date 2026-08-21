@@ -78,11 +78,19 @@ export const updateNodeStatusMutationFamily = Atom.family((nodeId: StudyNodeId) 
   ),
 )
 
-export interface ConnectNodesInput { readonly edge: unknown }
+export interface ConnectNodesInput {
+  readonly tag: StudyEdge["_tag"]
+  readonly from: StudyNodeId
+  readonly to: StudyNodeId
+}
 export const connectNodesMutationFamily = Atom.family((nodeId: StudyNodeId) =>
   studyCatalogRuntime.fn(
     Effect.fnUntraced(function*(input: ConnectNodesInput, get) {
-      const payload = yield* Schema.decodeUnknownEffect(CreateStudyEdgePayload)(input.edge)
+      const payload = yield* Schema.decodeUnknownEffect(CreateStudyEdgePayload)({
+        _tag: input.tag,
+        from: input.from,
+        to: input.to,
+      })
       const catalog = yield* AdminStudyCatalogClient
       let edge: StudyEdge
       switch (payload._tag) {

@@ -3,6 +3,7 @@ import { defineRule } from "@oxlint/plugins";
 import type { ESTree } from "@oxlint/plugins";
 
 import { lexicalTypeParameterNames } from "../shared/lexical-type-parameters.ts";
+import { hasExplicitBoundary } from "../shared/explicit-boundary.ts";
 
 type FunctionWithReturnType =
   | ESTree.ArrowFunctionExpression
@@ -76,6 +77,7 @@ export const noUnknownReturnsRule = defineRule({
     };
 
     const checkReturnType = (node: FunctionWithReturnType) => {
+      if (hasExplicitBoundary(context.sourceCode, node)) return;
       const annotation = node.returnType;
       if (annotation === null || annotation === undefined) return;
       if (

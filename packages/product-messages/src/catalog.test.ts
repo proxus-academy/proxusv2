@@ -21,7 +21,8 @@ describe("product i18n resources", () => {
   })
 
   it("provides the same namespaces in both resources", () => {
-    const paths = (value: unknown, prefix = ""): ReadonlyArray<string> =>
+    type CatalogNode = string | { readonly [key: string]: CatalogNode }
+    const paths = (value: CatalogNode, prefix = ""): ReadonlyArray<string> =>
       typeof value === "object" && value !== null
         ? Object.entries(value).flatMap(([key, child]) => paths(child, prefix === "" ? key : `${prefix}.${key}`))
         : [prefix]

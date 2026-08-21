@@ -12,7 +12,7 @@ import {
 import { and, desc, eq, gt, isNotNull, isNull, lt, or, sql } from "drizzle-orm"
 import type { EffectPgQueryEffectHKT, EffectPgQueryResultHKT } from "drizzle-orm/effect-pglite"
 import type { PgEffectDatabase } from "drizzle-orm/pg-core/effect"
-import { Effect, Option, Semaphore } from "effect"
+import { Effect, Option, Schema, Semaphore } from "effect"
 import {
   authChallenges,
   users,
@@ -41,18 +41,26 @@ const challengeFromRow = (row: AuthChallengeRow): AuthChallenge => ({
 })
 const first = <A>(rows: ReadonlyArray<A>) => Option.fromIterable(rows)
 
+const DriverErrorEvidence = Schema.Struct({
+  constraint: Schema.optional(Schema.String),
+  message: Schema.optional(Schema.String),
+  cause: Schema.optional(Schema.Unknown),
+})
+const decodeDriverErrorEvidence = Schema.decodeUnknownOption(DriverErrorEvidence)
+
 const constraintName = (error: unknown): string => {
   const pending: Array<unknown> = [error]
-  const seen = new Set<object>()
+  const seen = new Set<unknown>()
   const text: Array<string> = []
   while (pending.length > 0) {
     const current = pending.shift()
-    if (typeof current !== "object" || current === null || seen.has(current)) continue
+    if (seen.has(current)) continue
     seen.add(current)
-    const record: Record<string, unknown> = Object.fromEntries(Object.entries(current))
-    if (typeof record.constraint === "string") text.push(record.constraint)
-    if (typeof record.message === "string") text.push(record.message)
-    pending.push(...Object.values(record))
+    const evidence = decodeDriverErrorEvidence(current)
+    if (Option.isNone(evidence)) continue
+    if (evidence.value.constraint !== undefined) text.push(evidence.value.constraint)
+    if (evidence.value.message !== undefined) text.push(evidence.value.message)
+    if (evidence.value.cause !== undefined) pending.push(evidence.value.cause)
   }
   return text.join(" ")
 }

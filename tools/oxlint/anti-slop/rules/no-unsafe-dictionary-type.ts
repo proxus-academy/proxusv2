@@ -6,6 +6,7 @@ import {
 	createTypeEnvironment,
 	type TypeEnvironment,
 } from "../shared/dictionary-types.ts";
+import { hasExplicitBoundary } from "../shared/explicit-boundary.ts";
 
 import type { ESTree } from "@oxlint/plugins";
 
@@ -103,6 +104,7 @@ export const noUnsafeDictionaryTypeRule = defineRule({
 			context.report({ node, messageId: "unsafeDictionary", data: { value } });
 		};
 		const reportIfUnsafe = (node: ESTree.TSType) => {
+			if (hasExplicitBoundary(context.sourceCode, node)) return;
 			if (environment === null || !shouldReportType(node, environment)) return;
 			const unsafe = classifyUnsafeDictionary(node, environment);
 			if (unsafe === null) return;

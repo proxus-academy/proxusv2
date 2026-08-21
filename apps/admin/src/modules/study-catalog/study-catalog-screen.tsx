@@ -194,7 +194,7 @@ function ConnectDialog({ node }: { readonly node: StudyNode }) {
     if (tag === null || targetId === null) {
       return
     }
-    connect({ edge: { _tag: tag, from: node.id, to: targetId } })
+    connect({ tag, from: node.id, to: targetId })
   }
 
   return (

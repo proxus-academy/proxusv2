@@ -18,6 +18,7 @@ tester.run("anti-slop/no-unknown-returns", noUnknownReturnsRule, {
     "function cause(): { cause: unknown } { return { cause: input }; }",
     "type Result = { value: unknown }; function load(): Result { return result; }",
     "function load(): Promise<User> { return promise; }",
+    "// ANTI-SLOP-BOUNDARY: framework requires an opaque return.\nfunction load(): unknown { return input; }",
   ],
   invalid: [
     { code: "function load(): unknown { return input; }", errors: [error] },

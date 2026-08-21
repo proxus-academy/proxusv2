@@ -15,7 +15,7 @@ const seenKey = (assignment: RegistrationLandingAssignment) =>
 
 export const makeRegistrationLandingAnalyticsWeb = (
   storage: Pick<Storage, "getItem" | "setItem">,
-  request: (input: string, init: RequestInit) => Promise<unknown>,
+  request: (input: string, init: RequestInit) => Promise<Response | void>,
   baseUrl = "/api",
 ) => RegistrationLandingAnalytics.of({
   record: (assignment, tag, step) => Effect.gen(function*() {

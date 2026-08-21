@@ -1,4 +1,4 @@
-import { DuplicateRoleAssignment, RoleAssignmentNotFound, RoleAssignmentStoreError, type AccessRole, type RoleAssignmentsRepository, type RoleAssignment } from "@proxus/backend-domain/access-control"
+import { DuplicateRoleAssignment, RoleAssignmentNotFound, RoleAssignmentStoreError, type RoleAssignmentsRepository, type RoleAssignment } from "@proxus/backend-domain/access-control"
 import { and, eq, or, sql } from "drizzle-orm"
 import type { EffectPgQueryEffectHKT, EffectPgQueryResultHKT } from "drizzle-orm/effect-pglite"
 import type { PgEffectDatabase } from "drizzle-orm/pg-core/effect"
@@ -21,8 +21,7 @@ export const makeRoleAssignmentsRepositoryDrizzle = (db: Database): typeof RoleA
       eq(roleAssignments.userId, subject.id),
       or(...scopes.map((scope) => and(eq(roleAssignments.scopeType, scope.type), eq(roleAssignments.scopeId, scope.id)))),
     )).pipe(
-      // SAFETY: the database column is constrained to the AccessRole values persisted by this repository.
-      Effect.map((rows) => [...new Set(rows.map(({ role }) => role as AccessRole))]),
+      Effect.map((rows) => [...new Set(rows.map(({ role }) => role))]),
       Effect.mapError(failure("getRoles")),
     )
   },
