@@ -4,8 +4,7 @@ import { useNavigate } from "@tanstack/react-router"
 import { Effect, Exit, Schema } from "effect"
 import * as AsyncResult from "effect/unstable/reactivity/AsyncResult"
 import { type FormEvent, useState } from "react"
-import { Button } from "../../components/ui/button.js"
-import { Input } from "../../components/ui/input.js"
+import { Button, Center, Form, Heading, Input, Stack, Text } from "@proxus/ui"
 import { adminAuthComposition } from "./admin-auth.js"
 
 export function LoginScreen() {
@@ -24,13 +23,15 @@ export function LoginScreen() {
       }
     }))
   }
-  return <main className="mx-auto grid min-h-screen max-w-sm place-content-center gap-5 p-6">
-    <div><h1 className="text-2xl font-semibold">Acceso administrativo</h1><p className="text-sm text-muted-foreground">Usa tu cuenta común. Se requieren permisos de administración.</p></div>
-    <form className="space-y-3" onSubmit={submit}>
+  return <Center as="main" minHeight="screen" maxWidth="sm" padding="xl">
+    <Stack gap="xl">
+    <Stack gap="sm"><Heading level={1}>Acceso administrativo</Heading><Text size="sm" tone="muted">Usa tu cuenta común. Se requieren permisos de administración.</Text></Stack>
+    <Form gap="md" onSubmit={submit}>
       <Input aria-label="Correo" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
       <Input aria-label="Contraseña" type="password" value={password} onChange={(event) => setPassword(event.target.value)} required />
-      {result._tag === "Failure" ? <p role="alert">No se pudo iniciar sesión.</p> : null}
-      <Button className="w-full" type="submit" disabled={AsyncResult.isWaiting(result)}>Entrar</Button>
-    </form>
-  </main>
+      {result._tag === "Failure" ? <Text role="alert">No se pudo iniciar sesión.</Text> : null}
+      <Button width="full" type="submit" disabled={AsyncResult.isWaiting(result)}>Entrar</Button>
+    </Form>
+    </Stack>
+  </Center>
 }

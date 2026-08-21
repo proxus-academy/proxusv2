@@ -6,7 +6,6 @@ import {
   type StudyEdge,
   type StudyNode,
 } from "@proxus/shared/study-catalog"
-import { AnimatePresence, domAnimation, LazyMotion, m, useReducedMotion } from "framer-motion"
 import {
   ArrowDown,
   ArrowUp,
@@ -20,7 +19,7 @@ import { createContext, type ReactNode, useContext, useState } from "react"
 import { Schema } from "effect"
 import * as AsyncResult from "effect/unstable/reactivity/AsyncResult"
 
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Alert, AlertDescription, AlertTitle, AnimatedList } from "@proxus/ui/admin"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,16 +30,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+} from "@proxus/ui/admin"
+import { Badge } from "@proxus/ui/admin"
+import { Button } from "@proxus/ui/admin"
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@proxus/ui/admin"
 import {
   Dialog,
   DialogClose,
@@ -50,35 +49,38 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
+} from "@proxus/ui/admin"
 import {
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-} from "@/components/ui/empty"
-import { Field, FieldError, FieldLabel } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
+} from "@proxus/ui/admin"
+import { Field, FieldError, FieldLabel } from "@proxus/ui/admin"
+import { Input } from "@proxus/ui/admin"
 import {
   Item,
   ItemContent,
+  ItemButton,
   ItemDescription,
   ItemMedia,
   ItemTitle,
-} from "@/components/ui/item"
-import { ScrollArea } from "@/components/ui/scroll-area"
+} from "@proxus/ui/admin"
+import { ScrollArea } from "@proxus/ui/admin"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Separator } from "@/components/ui/separator"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Spinner } from "@/components/ui/spinner"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+} from "@proxus/ui/admin"
+import { Separator } from "@proxus/ui/admin"
+import { Skeleton } from "@proxus/ui/admin"
+import { Spinner } from "@proxus/ui/admin"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@proxus/ui/admin"
+import { Box, Form, Grid, Heading, Inline, Stack, Text } from "@proxus/ui"
+import { AdminPage, AdminSplitView } from "@proxus/ui/admin"
 import {
   connectNodesMutationFamily,
   createNodeMutation,
@@ -143,11 +145,11 @@ function PermissionControl({ permission, children }: { readonly permission: stri
 
 function LoadingRows({ count = 4 }: { readonly count?: number }) {
   return (
-    <div aria-busy="true" aria-label="Cargando" className="space-y-2">
+    <Stack busy label="Cargando" gap="sm">
       {Array.from({ length: count }, (_, index) => (
-        <Skeleton key={index} className="h-16 w-full" />
+        <Skeleton key={index} />
       ))}
-    </div>
+    </Stack>
   )
 }
 
@@ -212,7 +214,7 @@ function ConnectDialog({ node }: { readonly node: StudyNode }) {
         <Field>
           <FieldLabel>Tipo de relación</FieldLabel>
           <Select value={tag ?? undefined} onValueChange={selectTag}>
-            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+            <SelectTrigger width="full"><SelectValue /></SelectTrigger>
             <SelectContent>
               {tags.map((value) => (
                 <SelectItem key={value} value={value}>
@@ -225,7 +227,7 @@ function ConnectDialog({ node }: { readonly node: StudyNode }) {
         <Field>
           <FieldLabel>Nodo hijo</FieldLabel>
           <Select value={targetId ?? undefined} onValueChange={selectTarget}>
-            <SelectTrigger className="w-full">
+            <SelectTrigger width="full">
               <SelectValue placeholder="Selecciona un nodo" />
             </SelectTrigger>
             <SelectContent>
@@ -304,7 +306,7 @@ function EditRelationDialog({ relation }: { readonly relation: NodeRelation }) {
         <Field>
           <FieldLabel>Padre</FieldLabel>
           <Select value={parentId} onValueChange={selectParent}>
-            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+            <SelectTrigger width="full"><SelectValue /></SelectTrigger>
             <SelectContent>
               {candidates.map((candidate) => (
                 <SelectItem key={candidate.id} value={candidate.id}>
@@ -456,7 +458,6 @@ function RelationList({
   const filter = useAtomValue(filterAtom)
   const setFilter = useAtomSet(filterAtom)
   const selectNode = useAtomSet(selectNodeAtom)
-  const reduceMotion = useReducedMotion() === true
 
   if (result._tag === "Failure") {
     return <ErrorAlert title="No se han podido cargar las relaciones" />
@@ -481,10 +482,10 @@ function RelationList({
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex gap-2">
+    <Stack gap="md">
+      <Inline align="stretch" gap="sm">
         <Select value={filter} onValueChange={selectFilter}>
-          <SelectTrigger aria-label="Filtrar relaciones" className="w-full">
+          <SelectTrigger aria-label="Filtrar relaciones" width="full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -495,9 +496,9 @@ function RelationList({
           </SelectContent>
         </Select>
         {direction === "outgoing" ? <ConnectDialog node={node} /> : null}
-      </div>
+      </Inline>
       {visible.length === 0 ? (
-        <Empty className="min-h-36 border">
+        <Empty minHeight="md" border>
           <EmptyHeader>
             <EmptyMedia variant="icon"><Network /></EmptyMedia>
             <EmptyTitle>Sin relaciones</EmptyTitle>
@@ -505,39 +506,25 @@ function RelationList({
           </EmptyHeader>
         </Empty>
       ) : null}
-      <LazyMotion features={domAnimation}>
-        <div className="space-y-2">
-          <AnimatePresence initial={false}>
+      <AnimatedList>
             {visible.map((relation) => (
-              <m.div
-                key={relation.edge.id}
-                layout="position"
-                initial={reduceMotion ? false : { opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={reduceMotion ? undefined : { opacity: 0, scale: 0.98 }}
-                transition={reduceMotion ? { duration: 0 } : {
-                  layout: { duration: 0.3, ease: [0.22, 1, 0.36, 1] },
-                  opacity: { duration: 0.15 },
-                  scale: { duration: 0.15 },
-                }}
-              >
-                <Item variant="outline">
+                <Item key={relation.edge.id} variant="outline">
                   <ItemMedia variant="icon">
                     {direction === "incoming" ? <ArrowDown /> : <ArrowUp />}
                   </ItemMedia>
                   <ItemContent>
-                    <button
+                    <Button
                       type="button"
-                      className="text-left hover:underline"
+                      variant="link"
                       onClick={() => selectNode(relation.node)}
                     >
                       <ItemTitle>{relation.node.name}</ItemTitle>
-                    </button>
+                    </Button>
                     <ItemDescription>
                       {relationLabel[relation.edge._tag]} · posición {relation.edge.position}
                     </ItemDescription>
                   </ItemContent>
-                  <div className="flex gap-1">
+                  <Inline gap="xs">
                     {direction === "outgoing" ? (
                       <PermissionControl permission="studyCatalog:connect"><ReorderButtons
                         edge={relation.edge}
@@ -548,14 +535,11 @@ function RelationList({
                     ) : null}
                     <PermissionControl permission="studyCatalog:connect"><EditRelationDialog relation={relation} /></PermissionControl>
                     <PermissionControl permission="studyEdge:disconnect"><DisconnectButton relation={relation} /></PermissionControl>
-                  </div>
+                  </Inline>
                 </Item>
-              </m.div>
             ))}
-          </AnimatePresence>
-        </div>
-      </LazyMotion>
-    </div>
+      </AnimatedList>
+    </Stack>
   )
 }
 
@@ -598,23 +582,23 @@ function NodeDetail({
   const trimmedName = name.trim()
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <div className="flex gap-2">
+    <Stack gap="xl">
+      <Stack gap="sm">
+        <Inline gap="sm">
           <Badge variant="secondary">{kindLabel[node.kind]}</Badge>
           <Badge variant="outline">{node.status}</Badge>
-        </div>
-        <h2 className="text-2xl font-semibold">{node.name}</h2>
-        <p className="break-all text-xs text-muted-foreground">{node.id}</p>
+        </Inline>
+        <Heading level={2}>{node.name}</Heading>
+        <Text size="xs" tone="muted" wrap="anywhere">{node.id}</Text>
         <Field>
           <FieldLabel>Estado</FieldLabel>
-          <div className="flex items-center gap-2">
+          <Inline gap="sm">
             <Select
               value={node.status}
               disabled={!mayArchive || waiting(statusMutation)}
               onValueChange={selectStatus}
             >
-              <SelectTrigger aria-label="Estado del nodo" className="w-full">
+              <SelectTrigger aria-label="Estado del nodo" width="full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -624,14 +608,14 @@ function NodeDetail({
               </SelectContent>
             </Select>
             {waiting(statusMutation) ? <Spinner /> : null}
-          </div>
+          </Inline>
           {statusMutation._tag === "Failure"
             ? <FieldError>No se ha podido cambiar el estado.</FieldError>
             : null}
         </Field>
-      </div>
-      {mayRename ? <form
-        className="space-y-3"
+      </Stack>
+      {mayRename ? <Form
+        gap="md"
         onSubmit={(event) => {
           event.preventDefault()
           rename({ name, filterKey })
@@ -659,29 +643,29 @@ function NodeDetail({
           {waiting(mutation) ? <Spinner /> : null}
           Guardar nombre
         </Button>
-      </form> : null}
+      </Form> : null}
       <Separator />
-      <section className="space-y-4">
-        <div>
-          <h3 className="font-semibold">Relaciones</h3>
-          <p className="text-sm text-muted-foreground">
+      <Stack as="section" gap="lg">
+        <Stack gap="xs">
+          <Heading level={3}>Relaciones</Heading>
+          <Text size="sm" tone="muted">
             Gestiona padres e hijos compatibles.
-          </p>
-        </div>
+          </Text>
+        </Stack>
         <Tabs defaultValue="outgoing">
           <TabsList>
             <TabsTrigger value="incoming">Padres</TabsTrigger>
             <TabsTrigger value="outgoing">Hijos</TabsTrigger>
           </TabsList>
-          <TabsContent value="incoming" className="pt-3">
+          <TabsContent value="incoming" paddingTop>
             <RelationList node={node} direction="incoming" />
           </TabsContent>
-          <TabsContent value="outgoing" className="pt-3">
+          <TabsContent value="outgoing" paddingTop>
             <RelationList node={node} direction="outgoing" />
           </TabsContent>
         </Tabs>
-      </section>
-    </div>
+      </Stack>
+    </Stack>
   )
 }
 
@@ -715,21 +699,7 @@ export function StudyCatalogScreen({ permissions }: { readonly permissions: Read
 
   return (
     <PermissionContext.Provider value={permissions}>
-    <main id="nodes" className="flex min-h-0 flex-1 p-4 md:p-6">
-      <div className="mx-auto flex min-h-0 w-full max-w-[90rem] flex-1 flex-col gap-6">
-        <header className="flex items-center gap-3">
-          <span className="grid size-10 place-items-center rounded-lg bg-primary/10 text-primary">
-            <Network className="size-5" />
-          </span>
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight md:text-2xl">
-              Nodos de estudio
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Gestiona el catálogo y sus relaciones.
-            </p>
-          </div>
-          <div className="ml-auto">
+    <AdminPage id="nodes" title="Nodos de estudio" description="Gestiona el catálogo y sus relaciones." icon={<Network />} actions={
             <PermissionControl permission="studyCatalog:createNode">
               <Dialog open={createOpen} onOpenChange={setCreateOpen}>
                 <DialogTrigger asChild><Button><Plus />Crear nodo</Button></DialogTrigger>
@@ -752,16 +722,15 @@ export function StudyCatalogScreen({ permissions }: { readonly permissions: Read
                 </DialogContent>
               </Dialog>
             </PermissionControl>
-          </div>
-        </header>
-        <div className="grid min-h-0 flex-1 gap-6 lg:grid-cols-[22rem_minmax(0,1fr)] lg:grid-rows-1">
-          <Card className="min-h-0 rounded-lg border border-border bg-card/60 shadow-sm">
-            <CardHeader className="border-b">
+    }>
+        <AdminSplitView sidebar={
+          <Card fill surface="muted">
+            <CardHeader divider>
               <CardTitle>Nodos</CardTitle>
               <CardDescription>Filtra por tipo y estado.</CardDescription>
             </CardHeader>
-            <CardContent className="flex min-h-0 flex-1 flex-col gap-4">
-              <div className="grid grid-cols-2 gap-2">
+            <CardContent layout="flow">
+              <Grid columns="two" gap="sm">
                 <Select value={kind} onValueChange={selectKind}>
                   <SelectTrigger aria-label="Tipo de nodo"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -778,50 +747,47 @@ export function StudyCatalogScreen({ permissions }: { readonly permissions: Read
                     <SelectItem value="archived">Archivado</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
+              </Grid>
               <Input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre…" aria-label="Buscar nodos" />
               {nodes._tag === "Failure" ? (
                 <ErrorAlert title="No se ha podido cargar el catálogo" />
               ) : nodes._tag !== "Success" ? (
                 <LoadingRows />
               ) : visibleNodes.length === 0 ? (
-                <Empty className="border">
+                <Empty border>
                   <EmptyHeader>
                     <EmptyMedia variant="icon"><SearchX /></EmptyMedia>
                     <EmptyTitle>Sin resultados</EmptyTitle>
                   </EmptyHeader>
                 </Empty>
               ) : (
-                <ScrollArea className="min-h-0 flex-1">
-                  <div className="space-y-2 pr-3">
+                <ScrollArea fill>
+                  <Stack gap="sm">
                     {visibleNodes.map((node) => (
-                      <Item
+                      <ItemButton
                         key={node.id}
-                        asChild
-                        variant={selectedNodeId === node.id ? "muted" : "outline"}
-                        className={selectedNodeId === node.id
-                          ? "border-primary/25 bg-primary/10"
-                          : "hover:border-primary/20 hover:bg-accent/50"}
+                        selected={selectedNodeId === node.id}
+                        type="button"
+                        onClick={() => selectNode(node)}
                       >
-                        <button type="button" onClick={() => selectNode(node)}>
                           <ItemContent>
                             <ItemTitle>{node.name}</ItemTitle>
                             <ItemDescription>{kindLabel[node.kind]}</ItemDescription>
                           </ItemContent>
                           <Badge variant="outline">{node.status}</Badge>
-                        </button>
-                      </Item>
+                      </ItemButton>
                     ))}
-                  </div>
+                  </Stack>
                 </ScrollArea>
               )}
             </CardContent>
           </Card>
-          <Card className="min-h-0 rounded-lg border border-border bg-card/60 shadow-sm">
-            <CardHeader className="border-b"><CardTitle>Detalle</CardTitle></CardHeader>
-            <CardContent className="min-h-0 flex-1 overflow-auto">
+        } detail={
+          <Card fill surface="muted">
+            <CardHeader divider><CardTitle>Detalle</CardTitle></CardHeader>
+            <CardContent layout="scroll">
               {selectedNodeId === null ? (
-                <Empty className="min-h-80 border">
+                <Empty minHeight="lg" border>
                   <EmptyHeader>
                     <EmptyMedia variant="icon"><Network /></EmptyMedia>
                     <EmptyTitle>Selecciona un nodo</EmptyTitle>
@@ -839,9 +805,8 @@ export function StudyCatalogScreen({ permissions }: { readonly permissions: Read
               )}
             </CardContent>
           </Card>
-        </div>
-      </div>
-    </main>
+        } />
+    </AdminPage>
     </PermissionContext.Provider>
   )
 }

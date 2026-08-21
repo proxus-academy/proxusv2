@@ -12,8 +12,10 @@ route → identidad estable → módulo de feature → atoms → UI
 
 - `frontend-core` posee schemas, transitions, forms y atoms React-neutral.
 - `apps/web/src/platform` posee adapters de browser y bindings React web.
-- `packages/ui` posee primitives y patterns sin conocimiento del producto.
-- `apps/*` poseen routes, pages y composición específica del cliente.
+- `packages/ui` posee toda implementación visual: primitives, layouts y patterns conectables mediante modelos de vista planos.
+- `apps/*` poseen routes, estado y composición específica del cliente; no poseen CSS, Tailwind ni markup host visual.
+
+El gate permite únicamente un `div` sin props como contenedor estructural neutro. Si necesita una prop, una clase, un estilo o una semántica visual, debe convertirse en una primitive o pattern de `@proxus/ui`.
 
 ## React y atoms
 

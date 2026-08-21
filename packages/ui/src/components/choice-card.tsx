@@ -9,6 +9,7 @@ export interface ChoiceCardProps
   readonly leadingVariant?: "default" | "plain"
   readonly meta?: React.ReactNode
   readonly selected?: boolean
+  readonly density?: "default" | "compact"
 }
 
 export function ChoiceCard({
@@ -18,6 +19,7 @@ export function ChoiceCard({
   leadingVariant = "default",
   meta,
   selected = false,
+  density = "default",
   className,
   ref,
   ...props
@@ -29,7 +31,8 @@ export function ChoiceCard({
       aria-pressed={selected}
       data-selected={selected ? "true" : "false"}
       className={cn(
-        "group flex w-full items-center gap-4 rounded-2xl border-2 border-black/10 bg-card p-5 text-left",
+        "group flex w-full items-center gap-4 rounded-2xl border-2 border-black/10 bg-card text-left",
+        density === "compact" ? "p-4" : "p-5",
         "transition-[transform,box-shadow,border-color] duration-200",
         "hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-sticker",
         "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/30",

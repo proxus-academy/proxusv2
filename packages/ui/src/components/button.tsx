@@ -56,6 +56,8 @@ export interface ButtonProps
   icon?: React.ReactNode
   iconPosition?: "left" | "right"
   loading?: boolean
+  width?: "auto" | "full"
+  grow?: boolean
 }
 
 export function Button({
@@ -66,6 +68,8 @@ export function Button({
   icon,
   iconPosition = "left",
   loading = false,
+  width = "auto",
+  grow = false,
   children,
   disabled,
   ref,
@@ -76,7 +80,7 @@ export function Button({
   return (
     <Comp
       ref={ref}
-      className={cn(buttonVariants({ variant, size }), className)}
+      className={cn(buttonVariants({ variant, size }), width === "full" && "w-full", grow && "flex-1", className)}
       disabled={disabled === true || loading}
       {...props}
     >

@@ -8,6 +8,7 @@ export interface PaginationProps {
   onPageChange: (page: number) => void
   className?: string
   siblingCount?: number
+  align?: "start" | "center" | "end"
 }
 
 function buildRange(page: number, pageCount: number, siblingCount: number): ReadonlyArray<number | "ellipsis"> {
@@ -27,11 +28,11 @@ function buildRange(page: number, pageCount: number, siblingCount: number): Read
   return range
 }
 
-export function Pagination({ page, pageCount, onPageChange, className, siblingCount = 1 }: PaginationProps) {
+export function Pagination({ page, pageCount, onPageChange, align = "start", className, siblingCount = 1 }: PaginationProps) {
   const range = buildRange(page, pageCount, siblingCount)
 
   return (
-    <nav aria-label="Paginación" className={cn("flex items-center gap-1", className)}>
+    <nav aria-label="Paginación" className={cn("flex items-center gap-1", align === "center" && "justify-center", align === "end" && "justify-end", className)}>
       <button
         type="button"
         aria-label="Página anterior"

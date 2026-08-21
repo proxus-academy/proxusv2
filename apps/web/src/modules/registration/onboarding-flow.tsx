@@ -2,7 +2,7 @@ import { registration_chooseMethod_connectingGoogle, registration_completed_acti
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { RegistrationState, RegistrationStep } from "@proxus/frontend-core/registration"
 import type { RegistrationUrlState } from "../../platform/registration/wizard-url.js"
-import { Heading, Text } from "@proxus/ui"
+import { Box, Heading, Text } from "@proxus/ui"
 import { registrationStateAtom } from "./state.js"
 import { AccountStep } from "./steps/account-step.js"
 import { ChoosingMethod } from "./steps/choosing-method.js"
@@ -132,12 +132,12 @@ export function RegistrationOnboarding({ url = { step: "start", nodeIds: [], val
 
   switch (state._tag) {
     case "ChoosingMethod": return <RegistrationPageShell><ChoosingMethod onOpenLogin={onOpenLogin ?? (() => undefined)} /></RegistrationPageShell>
-    case "ResolvingGoogle": return <RegistrationPageShell><main aria-busy="true">
+    case "ResolvingGoogle": return <RegistrationPageShell><Box as="main" busy>
       <Heading level={1}>{registration_chooseMethod_connectingGoogle()}</Heading>
       <RegistrationFailure />
-    </main></RegistrationPageShell>
+    </Box></RegistrationPageShell>
     case "EmailVerificationPending": return <RegistrationPageShell step={6} totalSteps={6} provider="email"><EmailVerification state={state} onComplete={onComplete} /></RegistrationPageShell>
-    case "Completed": return <RegistrationPageShell><main><Heading level={1}>{registration_completed_title()}</Heading><Text>{registration_completed_active()}</Text></main></RegistrationPageShell>
+    case "Completed": return <RegistrationPageShell><Box as="main"><Heading level={1}>{registration_completed_title()}</Heading><Text>{registration_completed_active()}</Text></Box></RegistrationPageShell>
     case "CollectingOnboarding":
     case "ConfirmingGoogle":
       return <OnboardingSteps state={state} onComplete={onComplete} {...(requestedStep === undefined ? {} : { requestedStep })} />

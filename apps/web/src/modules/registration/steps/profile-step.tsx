@@ -1,7 +1,7 @@
 import { registration_profile_available, registration_profile_birthYear, registration_profile_checking, registration_profile_continue, registration_profile_description, registration_profile_invalidUsername, registration_profile_title, registration_profile_unavailable, registration_profile_username } from "../../../paraglide/messages.js"
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { RegistrationDraft } from "@proxus/frontend-core/registration"
-import { Button, Heading, Input, Text } from "@proxus/ui"
+import { Button, Field, FieldLabel, Form, Heading, Input, Stack, Text } from "@proxus/ui"
 import { DateTime } from "effect"
 import { useEffect, useState, type FormEvent } from "react"
 import {
@@ -40,14 +40,14 @@ export function ProfileStep({ draft }: { readonly draft: RegistrationDraft }) {
   }
 
   return (
-    <main className="space-y-6">
-      <div>
+    <Stack as="main" gap="xl">
+      <Stack gap="sm">
         <Heading level={1}>{registration_profile_title()}</Heading>
-        <Text className="mt-2" tone="muted">{registration_profile_description()}</Text>
-      </div>
-      <form className="space-y-5" onSubmit={submit}>
-        <label className="block space-y-2 font-medium">
-          <span>{registration_profile_username()}</span>
+        <Text tone="muted">{registration_profile_description()}</Text>
+      </Stack>
+      <Form gap="xl" onSubmit={submit}>
+        <Field>
+          <FieldLabel>{registration_profile_username()}</FieldLabel>
           <Input
             aria-busy={availability.checking || undefined}
             aria-invalid={username.length > 0 && (!usernameValid || availability.available === false)}
@@ -55,18 +55,18 @@ export function ProfileStep({ draft }: { readonly draft: RegistrationDraft }) {
             value={username}
             onChange={(event) => setUsername(event.currentTarget.value)}
           />
-        </label>
+        </Field>
         {username.length > 0 && !usernameValid
-          ? <Text className="text-sm" tone="destructive">{registration_profile_invalidUsername()}</Text>
+          ? <Text size="sm" tone="destructive">{registration_profile_invalidUsername()}</Text>
           : availability.username === username && availability.checking
-          ? <Text className="text-sm" tone="muted">{registration_profile_checking()}</Text>
+          ? <Text size="sm" tone="muted">{registration_profile_checking()}</Text>
           : availability.username === username && availability.available !== undefined
-          ? <Text className="text-sm" tone={availability.available ? "muted" : "destructive"}>
+          ? <Text size="sm" tone={availability.available ? "muted" : "destructive"}>
             {availability.available ? registration_profile_available() : registration_profile_unavailable()}
           </Text>
           : null}
-        <label className="block space-y-2 font-medium">
-          <span>{registration_profile_birthYear()}</span>
+        <Field>
+          <FieldLabel>{registration_profile_birthYear()}</FieldLabel>
           <Input
             aria-invalid={birthYear.length > 0 && !birthYearValid}
             inputMode="numeric"
@@ -76,9 +76,9 @@ export function ProfileStep({ draft }: { readonly draft: RegistrationDraft }) {
             value={birthYear}
             onChange={(event) => setBirthYear(event.currentTarget.value)}
           />
-        </label>
+        </Field>
         <Button disabled={!canContinue} type="submit">{registration_profile_continue()}</Button>
-      </form>
-    </main>
+      </Form>
+    </Stack>
   )
 }

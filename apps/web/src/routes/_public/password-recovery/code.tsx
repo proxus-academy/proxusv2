@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router"
 import { Exit } from "effect"
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { recoveryStateAtom } from "@proxus/frontend-core/auth"
-import { Button, OtpInput, Text } from "@proxus/ui"
+import { Button, Form, OtpInput, Text } from "@proxus/ui"
 import { useState } from "react"
 import { AuthError, BackToLoginButton } from "../../../modules/auth/auth-controls.js"
 import {
@@ -30,7 +30,7 @@ export function RecoveryCodePage() {
   return (
     <AuthPage title={auth_recoveryCode_title()}>
       <Text tone="muted">{recovery.email}</Text>
-        <form className="space-y-4" onSubmit={(event) => {
+        <Form gap="lg" onSubmit={(event) => {
           event.preventDefault()
           void submit({ code })
             .then((exit) => {
@@ -43,7 +43,7 @@ export function RecoveryCodePage() {
           <OtpInput value={code} onChange={setCode} label={auth_recoveryCode_code()} loading={busy} />
           <AuthError visible={submitResult._tag === "Failure" || resendResult._tag === "Failure"} />
           <Button type="submit" loading={busy} disabled={code.length !== 6}>{auth_recoveryCode_continue()}</Button>
-        </form>
+        </Form>
       <Button
         variant="secondary"
         disabled={busy || cooldownSeconds > 0}

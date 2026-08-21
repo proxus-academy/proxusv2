@@ -2,7 +2,7 @@ import { registration_account_accept, registration_account_confirmation, registr
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { RegistrationDraft } from "@proxus/frontend-core/registration"
 import { PASSWORD_MIN_LENGTH } from "@proxus/shared/auth"
-import { Button, Heading, Text } from "@proxus/ui"
+import { Button, Center, Form, Heading, Inline, LinkButton, Stack, Text } from "@proxus/ui"
 import { Option } from "effect"
 import { RegistrationAccountForm } from "../forms.js"
 import { RegistrationFailure } from "../registration-summary.js"
@@ -41,13 +41,14 @@ function AccountFormContent({ draft: _draft }: { readonly draft: RegistrationDra
     ),
   })
   return (
-    <main className="mx-auto max-w-2xl space-y-6">
-      <div className="space-y-2">
+    <Center as="main" maxWidth="content">
+      <Stack gap="xl">
+      <Stack gap="sm">
         <Heading level={1}>{registration_account_title()}</Heading>
         <Text tone="muted">{registration_account_description()}</Text>
-      </div>
+      </Stack>
       <RegistrationFailure />
-      <form className="space-y-5" onSubmit={(event) => {
+      <Form gap="xl" onSubmit={(event) => {
           event.preventDefault()
           submitForm({
             submit: ({ email, password }) => submitAccount({ email, password }),
@@ -57,19 +58,20 @@ function AccountFormContent({ draft: _draft }: { readonly draft: RegistrationDra
           <RegistrationAccountForm.password label={registration_account_password()} type="password" />
           <RegistrationAccountForm.confirmation label={registration_account_confirmation()} type="password" />
           <RegistrationAccountForm.terms label={registration_account_accept()} />
-          <Text className="text-sm leading-relaxed" tone="muted">
+          <Text size="sm" tone="muted">
             <RichText
               message={registration_account_legal()}
               components={{
-                terms: (children) => <a className="text-primary underline" href="https://proxus.es/terms" target="_blank" rel="noreferrer">{children}</a>,
-                privacy: (children) => <a className="text-primary underline" href="https://proxus.es/privacy" target="_blank" rel="noreferrer">{children}</a>,
+                terms: (children) => <LinkButton href="https://proxus.es/terms" target="_blank" rel="noreferrer">{children}</LinkButton>,
+                privacy: (children) => <LinkButton href="https://proxus.es/privacy" target="_blank" rel="noreferrer">{children}</LinkButton>,
               }}
             />
           </Text>
-        <div className="flex justify-end pt-1">
+        <Inline justify="end">
           <Button type="submit" loading={busy} disabled={!canSubmit}>{registration_account_submit()}</Button>
-        </div>
-      </form>
-    </main>
+        </Inline>
+      </Form>
+      </Stack>
+    </Center>
   )
 }

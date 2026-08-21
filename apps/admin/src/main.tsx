@@ -1,9 +1,9 @@
 import { RegistryProvider } from "@effect/atom-react"
 import { StrictMode } from "react"
 import { createRoot } from "react-dom/client"
+import "@proxus/ui/theme.css"
 
 import { RouterProvider } from "./routes/router.js"
-import "./app.css"
 
 const root = document.getElementById("root")
 

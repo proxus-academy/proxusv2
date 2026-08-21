@@ -47,7 +47,7 @@ const EmailAvailabilityField: EffectFormReact.FieldComponent<string, TextFieldPr
   }, [check, field.value])
   return <>
     <TextField field={field} props={{ ...props, "aria-busy": result.waiting || undefined }} />
-    {result._tag === "Success" ? <Text className="text-sm" tone={result.value.available ? "muted" : "destructive"}>
+    {result._tag === "Success" ? <Text size="sm" tone={result.value.available ? "muted" : "destructive"}>
       {result.value.available ? registration_account_emailAvailable() : registration_account_emailUnavailable()}
     </Text> : null}
   </>

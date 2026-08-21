@@ -10,6 +10,7 @@ Este documento define cómo se organiza el frontend alrededor de Effect Atom. De
 - [`../webapp-architecture.md`](../webapp-architecture.md), para render, eventos y sincronización React;
 - [`client-platform-ports-and-adapters.md`](client-platform-ports-and-adapters.md), para capacidades de plataforma;
 - [`../forms/24_proxus_conventions.md`](../forms/24_proxus_conventions.md), para formularios.
+- [`design-system.md`](design-system.md), para la frontera visual ejecutable.
 
 ## Principio central
 
@@ -71,7 +72,16 @@ function RelationRow(props: {
 }
 ```
 
-Los primitives de `@proxus/ui`, shells visuales de feature y módulos que deban reutilizarse en Storybook pertenecen a esta categoría.
+Todo módulo visual pertenece a `packages/ui`, incluidos los shells y patrones específicos de producto. Puede recibir modelos de vista planos y callbacks, pero no atoms, services ni adapters de aplicación. Storybook es su entorno de desarrollo aislado.
+
+Las aplicaciones React son una capa de conexión y composición, no una segunda capa visual. En producción:
+
+- no usan `className`, `style`, CSS local, Tailwind ni dependencias de styling;
+- no renderizan elementos host en minúscula, salvo un `div` sin props que sea estrictamente estructural y no produzca apariencia;
+- componen `@proxus/ui` y mejoran el sistema de diseño cuando falta una primitive o un patrón;
+- no copian componentes generados por Radix o shadcn dentro de `apps/*`.
+
+Estas restricciones son gates estáticos. Una necesidad visual nueva se resuelve en `packages/ui`; no se crea una excepción local para evitar modelarla.
 
 ### Composition root
 
@@ -317,7 +327,9 @@ No se extrae a un package mientras no tenga dos consumidores reales.
 
 ### `packages/ui`
 
-Posee primitives visuales sin conocimiento del dominio de producto. No importa atoms de auth, registration, catálogo o administración.
+Es el único owner de implementación visual React: tokens, CSS, primitives, layouts, componentes generados/adaptados y patrones de pantalla. Puede conocer vocabulario de presentación del producto mediante view models planos, pero no importa atoms de auth, registration, catálogo o administración ni ejecuta casos de uso.
+
+`apps/web` y `apps/admin` pueden decidir qué estado mostrar y conectar eventos. La geometría, tipografía, color, interacción visual y markup host de ese estado se implementan en `packages/ui`.
 
 ### `apps/*`
 
@@ -410,7 +422,7 @@ No se copia:
 
 - colocación de toda la implementación de chat bajo `routes/chat/-lib`;
 - un archivo de atoms monolítico al crecer la feature;
-- markup visual sin el sistema `@proxus/ui`;
+- markup host visual, `className`, `style`, CSS o Tailwind fuera de `@proxus/ui`;
 - peculiaridades RPC/streaming que no correspondan al dominio Proxus.
 
 ### `.repos/effect-monorepo-template`

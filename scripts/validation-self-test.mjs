@@ -98,6 +98,19 @@ try {
     ["typescript(no-floating-promises)", "typescript(no-unsafe-type-assertion)", "vite.config.ts"]
   )
 
+  const uiProbe = resolve(temporaryRoot, "ui-architecture")
+  mkdirSync(resolve(uiProbe, "apps/admin/src/components/ui"), { recursive: true })
+  writeToolManifest(uiProbe, { "ui:architecture": rootManifest.scripts["ui:architecture"] })
+  writeJson(uiProbe, "apps/admin/package.json", { name: "@fixture/admin", dependencies: {} })
+  writeJson(uiProbe, "apps/web/package.json", { name: "@fixture/web", dependencies: {} })
+  mkdirSync(resolve(uiProbe, "scripts"), { recursive: true })
+  cpSync(resolve(root, "scripts/validate-ui-architecture.mjs"), resolve(uiProbe, "scripts/validate-ui-architecture.mjs"))
+  expectFailure(
+    "UI architecture ownership",
+    runPnpmScript("ui:architecture", uiProbe),
+    ["forbidden visual owner: apps/admin/src/components/ui"]
+  )
+
   const boundariesProbe = resolve(temporaryRoot, "boundaries")
   mkdirSync(resolve(boundariesProbe, "apps"), { recursive: true })
   linkNodeModules(boundariesProbe)
@@ -112,7 +125,15 @@ try {
   writeJson(boundariesProbe, "packages/backend-transport/package.json", { name: "@fixture/public-transport", type: "module" })
   writeJson(boundariesProbe, "packages/backend-admin-transport/package.json", { name: "@fixture/admin-transport", type: "module" })
   writeJson(boundariesProbe, "packages/shared/package.json", { name: "@fixture/shared", type: "module" })
+  writeJson(boundariesProbe, "apps/web/package.json", {
+    name: "@fixture/web",
+    type: "module",
+    dependencies: { clsx: "1.0.0" }
+  })
   write(boundariesProbe, "packages/backend-infra/src/adapter.ts", "export const adapter = true\n")
+  write(boundariesProbe, "apps/web/src/bad.ts", 'import "clsx"\n')
+  write(boundariesProbe, "apps/web/node_modules/clsx/package.json", '{"name":"clsx","type":"module","exports":"./index.js"}\n')
+  write(boundariesProbe, "apps/web/node_modules/clsx/index.js", "export default true\n")
   write(boundariesProbe, "packages/backend-domain/src/bad.ts", 'import "node:fs"\nimport "forbidden-dependency"\nimport { adapter } from "../../backend-infra/src/adapter.js"\nvoid adapter\n')
   write(boundariesProbe, "packages/backend-domain/src/bad.test.ts", 'import "node:fs"\n')
   write(boundariesProbe, "packages/backend-domain/node_modules/forbidden-dependency/package.json", '{"name":"forbidden-dependency","type":"module","exports":"./index.js"}\n')
@@ -143,6 +164,7 @@ try {
       "public-shared-api-is-not-admin",
       "packages/shared/src/public-api.ts → packages/shared/src/admin-api.ts",
       "admin-shared-api-is-not-public",
+      "react-apps-use-ui-styling",
       "packages/shared/src/admin-api.ts → packages/shared/src/public-api.ts"
     ]
   )

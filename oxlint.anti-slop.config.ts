@@ -33,6 +33,8 @@ export default defineConfig({
     // Unknown-valued dictionaries represent external JSON and reflection boundaries before parsing.
     "anti-slop/no-unsafe-dictionary-type": "off",
     "anti-slop/no-widen-then-assert": "error",
+    "anti-slop/no-styling-outside-ui": "error",
+    "anti-slop/no-visual-dom-outside-ui": "error",
     "anti-slop/require-safety-comment-for-type-assertion": "error",
     // Proxus composition roots import constructors to assemble concrete Layers by design.
     "anti-slop-effect/no-service-constructor-imports": "off",
