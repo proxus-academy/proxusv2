@@ -16,25 +16,24 @@ export default defineConfig({
   ],
   rules: {
     "anti-slop/no-chained-type-assertions": "error",
-    // Proxus uses exact optional properties; conditional spreads preserve absence rather than encoding it as undefined.
+    // Exact optional properties require omission rather than explicit undefined.
     "anti-slop/no-conditional-empty-object-spread": "off",
+    "anti-slop/no-erased-react-state": "error",
     "anti-slop/no-known-value-widening": "error",
     "anti-slop/no-module-mocking": "error",
     "anti-slop/no-object-parameters": "error",
     "anti-slop/no-reflect-apply": "error",
     "anti-slop/no-reflect-get": "error",
-    // Runtime guards are intentional at browser, HTTP, persistence, and other untyped I/O boundaries.
+    // Audit separately: this rule also rejects legitimate browser and library type guards.
     "anti-slop/no-runtime-typeof": "off",
     "anti-slop/no-shape-in-symbol-names": "error",
-    // Boundary adapters accept/return unknown until the owning Effect Schema validates the representation.
-    "anti-slop/no-unknown-parameters": "off",
-    "anti-slop/no-unknown-returns": "off",
+    "anti-slop/no-unknown-parameters": "error",
+    "anti-slop/no-unknown-returns": "error",
     "anti-slop/no-unknown-type-aliases": "error",
-    // Unknown-valued dictionaries represent external JSON and reflection boundaries before parsing.
-    "anti-slop/no-unsafe-dictionary-type": "off",
+    "anti-slop/no-unsafe-dictionary-type": "error",
     "anti-slop/no-widen-then-assert": "error",
     "anti-slop/require-safety-comment-for-type-assertion": "error",
-    // Proxus composition roots import constructors to assemble concrete Layers by design.
+    // Audit separately: upstream currently classifies non-service make* factories as constructors.
     "anti-slop-effect/no-service-constructor-imports": "off",
   },
 })

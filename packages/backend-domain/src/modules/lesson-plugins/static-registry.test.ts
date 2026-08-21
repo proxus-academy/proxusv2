@@ -11,13 +11,19 @@ const host = {
 }
 
 // Test entry point provides the complete dependency graph once.
-const program = <A, E>(effect: Effect.Effect<A, E, LessonPluginRegistry>, candidates: ReadonlyArray<unknown>) =>
+const program = <A, E, Candidate>(effect: Effect.Effect<A, E, LessonPluginRegistry>, candidates: ReadonlyArray<Candidate>) =>
   effect.pipe(
     // @effect-diagnostics-next-line strictEffectProvide:off
     Effect.provide(staticLessonPluginRegistryLayer(host, candidates)),
   )
 
-const manifest = (overrides: Record<string, unknown> = {}) => ({
+interface ManifestOverrides {
+  readonly manifestVersion?: number
+  readonly minimumHostVersion?: string
+  readonly pluginVersion?: string
+}
+
+const manifest = (overrides: ManifestOverrides = {}) => ({
   ...lessonCounterManifest,
   ...overrides,
 })

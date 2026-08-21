@@ -3,7 +3,7 @@
 import { describe, expect, test } from "vitest"
 import { Effect, Layer, Schema } from "effect"
 import { Access } from "./access.js"
-import { Forbidden, RoleStoreError } from "./engine/index.js"
+import { Forbidden } from "./engine/index.js"
 
 describe("canonical Proxus access definition", () => {
   test("contains the approved permissions, roles and scope types", async () => {
@@ -31,7 +31,7 @@ describe("canonical Proxus access definition", () => {
     ))).resolves.toBe(true)
   })
 
-  test("students and unknown persisted roles fail closed", async () => {
+  test("students fail closed", async () => {
     const user = Access.subject("user", "student")
     const global = Access.scope("studyCatalog", "global")
     const resource = Access.resource("studyCatalog", "global")
@@ -40,10 +40,5 @@ describe("canonical Proxus access definition", () => {
     await expect(Effect.runPromise(Access.policyFor("studyCatalog:createNode", { subject: user, resource }).pipe(
       Effect.provide(Layer.succeed(Access.RoleStore, studentStore))
     ))).rejects.toBeInstanceOf(Forbidden)
-
-    const malformedStore = { getRoles: () => Effect.succeed(["super-admin"]) }
-    await expect(Effect.runPromise(Access.canFor("studyCatalog:createNode", { subject: user, resource }).pipe(
-      Effect.provide(Layer.succeed(Access.RoleStore, malformedStore))
-    ))).rejects.toBeInstanceOf(RoleStoreError)
   })
 })

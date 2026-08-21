@@ -2,55 +2,51 @@
  * Adapted from effect-access 0.1.0, commit 134768b.
  * Copyright JavierDeDiegoGuzman. See THIRD_PARTY_NOTICES.md.
  */
-import { Context, Effect } from "effect"
+import { Context, Effect, Option, Schema } from "effect"
 import { AccessDefinitionError, RoleStoreError } from "./errors.js"
 import { forbidden } from "./forbidden.js"
 import { dedupeRefs, effectiveScopes, isObjectRef, resource as makeResource, sameRef, scope as makeScope, subject as makeSubject } from "./refs.js"
 import { makeAccessSchemas } from "./schema.js"
 import { guard, all, any, toBool, type Policy } from "./policy.js"
 import type {
-  PermissionConfig, PermissionOf, Resource, ResourceInput, ResourceMappers,
+  PermissionConfig, PermissionOf, Resource,
   ResourceTypeOf, ResourceTypeOfPermission, RoleBinding, RoleConfig, RoleOf, RoleStoreContract, Scope, Subject
 } from "./types.js"
 
 export interface AccessDefinition<
   Permissions extends PermissionConfig,
-  Roles extends RoleConfig<PermissionOf<Permissions>>,
-  Resources extends ResourceMappers<ResourceTypeOf<Permissions>> = {}
+  Roles extends RoleConfig<PermissionOf<Permissions>>
 > {
   readonly permissions: Permissions
   readonly roles: Roles
-  readonly resources?: Resources
 }
 
 /** Public, stable shape returned by defineAccess. */
 export interface AccessApi<
   Permissions extends PermissionConfig,
-  Roles extends RoleConfig<PermissionOf<Permissions>>,
-  Resources extends ResourceMappers<ResourceTypeOf<Permissions>> = {}
+  Roles extends RoleConfig<PermissionOf<Permissions>>
 > {
-  readonly definition: AccessDefinition<Permissions, Roles, Resources>
+  readonly definition: AccessDefinition<Permissions, Roles>
   readonly permissions: { readonly config: Permissions; readonly all: ReadonlySet<PermissionOf<Permissions>>; readonly has: (value: string) => value is PermissionOf<Permissions> }
   readonly roles: { readonly config: Roles; readonly all: ReadonlySet<RoleOf<Roles>>; readonly has: (value: string) => value is RoleOf<Roles> }
   readonly schemas: ReturnType<typeof makeAccessSchemas<Permissions, Roles>>
   readonly CurrentSubject: Context.Service<AccessApi.CurrentSubject<Permissions, Roles>, Subject>
-  readonly RoleStore: Context.Service<AccessApi.RoleStore<Permissions, Roles>, RoleStoreContract<string, ResourceTypeOf<Permissions>, unknown>>
+  readonly RoleStore: Context.Service<AccessApi.RoleStore<Permissions, Roles>, RoleStoreContract<RoleOf<Roles>, ResourceTypeOf<Permissions>, RoleStoreError>>
   readonly subject: typeof makeSubject
   readonly scope: <const Type extends ResourceTypeOf<Permissions>, const Id extends string>(type: Type, id: Id) => Scope<Type, Id>
-  readonly resource: <const Type extends ResourceTypeOf<Permissions>, const Id extends string>(type: Type, id: Id, options?: { readonly scopes?: readonly Scope<ResourceTypeOf<Permissions>>[] }) => Resource<Type, Id>
-  readonly toResource: <const P extends PermissionOf<Permissions>>(permission: P, input: ResourceInput<Resources, ResourceTypeOf<Permissions>, P>) => Resource<Extract<ResourceTypeOfPermission<P>, ResourceTypeOf<Permissions>>>
+  readonly resource: <const Type extends ResourceTypeOf<Permissions>, const Id extends string>(type: Type, id: Id, options?: { readonly scopes?: readonly Scope<ResourceTypeOf<Permissions>>[] }) => Resource<Type, Id, ResourceTypeOf<Permissions>>
   readonly effectiveScopes: typeof effectiveScopes
   readonly roleBinding: (input: { readonly subject: Subject; readonly scope: Scope<ResourceTypeOf<Permissions>>; readonly role: string }) => RoleBinding<RoleOf<Roles>, ResourceTypeOf<Permissions>>
   readonly makeRoleStore: (bindings: Iterable<RoleBinding<RoleOf<Roles>, ResourceTypeOf<Permissions>>>) => RoleStoreContract<RoleOf<Roles>, ResourceTypeOf<Permissions>>
   readonly permissionsForRoles: (roles: Iterable<RoleOf<Roles>>) => ReadonlySet<PermissionOf<Permissions>>
-  readonly can: <const P extends PermissionOf<Permissions>>(permission: P, input: ResourceInput<Resources, ResourceTypeOf<Permissions>, P>) => Effect.Effect<boolean, RoleStoreError, AccessApi.CurrentSubject<Permissions, Roles> | AccessApi.RoleStore<Permissions, Roles>>
+  readonly can: <const P extends PermissionOf<Permissions>>(permission: P, resource: Resource<Extract<ResourceTypeOfPermission<P>, ResourceTypeOf<Permissions>>, string, ResourceTypeOf<Permissions>>) => Effect.Effect<boolean, RoleStoreError, AccessApi.CurrentSubject<Permissions, Roles> | AccessApi.RoleStore<Permissions, Roles>>
   readonly canFor: (permission: PermissionOf<Permissions>, input: { readonly subject: Subject; readonly resource: Resource<ResourceTypeOf<Permissions>> }) => Effect.Effect<boolean, RoleStoreError, AccessApi.RoleStore<Permissions, Roles>>
-  readonly permission: AccessApi<Permissions, Roles, Resources>["policy"]
-  readonly policy: <const P extends PermissionOf<Permissions>>(permission: P, input: ResourceInput<Resources, ResourceTypeOf<Permissions>, P>) => Policy<RoleStoreError, AccessApi.CurrentSubject<Permissions, Roles> | AccessApi.RoleStore<Permissions, Roles>>
+  readonly permission: AccessApi<Permissions, Roles>["policy"]
+  readonly policy: <const P extends PermissionOf<Permissions>>(permission: P, resource: Resource<Extract<ResourceTypeOfPermission<P>, ResourceTypeOf<Permissions>>, string, ResourceTypeOf<Permissions>>) => Policy<RoleStoreError, AccessApi.CurrentSubject<Permissions, Roles> | AccessApi.RoleStore<Permissions, Roles>>
   readonly policyFor: (permission: PermissionOf<Permissions>, input: { readonly subject: Subject; readonly resource: Resource<ResourceTypeOf<Permissions>> }) => Policy<RoleStoreError, AccessApi.RoleStore<Permissions, Roles>>
   readonly makePolicy: <Error = never, Requirements = never>(predicate: (subject: Subject) => Effect.Effect<boolean, Error, Requirements>, options?: { readonly message?: string }) => Policy<Error, AccessApi.CurrentSubject<Permissions, Roles> | Requirements>
   readonly guard: typeof guard
-  readonly require: <const P extends PermissionOf<Permissions>>(permission: P, input: ResourceInput<Resources, ResourceTypeOf<Permissions>, P>) => ReturnType<typeof guard<RoleStoreError, AccessApi.CurrentSubject<Permissions, Roles> | AccessApi.RoleStore<Permissions, Roles>>>
+  readonly require: <const P extends PermissionOf<Permissions>>(permission: P, resource: Resource<Extract<ResourceTypeOfPermission<P>, ResourceTypeOf<Permissions>>, string, ResourceTypeOf<Permissions>>) => ReturnType<typeof guard<RoleStoreError, AccessApi.CurrentSubject<Permissions, Roles> | AccessApi.RoleStore<Permissions, Roles>>>
   readonly all: typeof all
   readonly any: typeof any
   readonly toBool: typeof toBool
@@ -63,14 +59,13 @@ export declare namespace AccessApi {
 
 let accessInstance = 0
 const failDefinition = (message: string): never => { throw new AccessDefinitionError({ message }) }
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value)
+const isRecord = Schema.is(Schema.Record(Schema.String, Schema.Unknown))
 const unique = <A>(values: Iterable<A>): readonly A[] => Array.from(new Set(values))
 
 export const defineAccess = <
   const Permissions extends PermissionConfig,
-  const Roles extends RoleConfig<PermissionOf<Permissions>>,
-  const Resources extends ResourceMappers<ResourceTypeOf<Permissions>> = {}
->(definition: AccessDefinition<Permissions, Roles, Resources>): AccessApi<Permissions, Roles, Resources> => {
+  const Roles extends RoleConfig<PermissionOf<Permissions>>
+>(definition: AccessDefinition<Permissions, Roles>): AccessApi<Permissions, Roles> => {
   type Permission = PermissionOf<Permissions>
   type Role = RoleOf<Roles>
   type ScopeType = ResourceTypeOf<Permissions>
@@ -117,17 +112,9 @@ export const defineAccess = <
     }
   }
 
-  if (definition.resources !== undefined) {
-    if (!isRecord(definition.resources)) failDefinition("resources must be an object")
-    for (const [type, mapper] of Object.entries(definition.resources)) {
-      if (!scopeTypes.has(type)) failDefinition(`Mapper references unknown resource type ${type}`)
-      if (typeof mapper !== "function") failDefinition(`Mapper for ${type} must be a function`)
-    }
-  }
-
   const id = ++accessInstance
   class CurrentSubject extends Context.Service<AccessApi.CurrentSubject<Permissions, Roles>, Subject>()(`effect-access/CurrentSubject/${id}`) {}
-  class RoleStore extends Context.Service<AccessApi.RoleStore<Permissions, Roles>, RoleStoreContract<string, ScopeType, unknown>>()(`effect-access/RoleStore/${id}`) {}
+  class RoleStore extends Context.Service<AccessApi.RoleStore<Permissions, Roles>, RoleStoreContract<Role, ScopeType, RoleStoreError>>()(`effect-access/RoleStore/${id}`) {}
   const roleSet = new Set<Role>(roleValues)
   const schemas = makeAccessSchemas(definition)
 
@@ -135,41 +122,34 @@ export const defineAccess = <
   const scope = <const Type extends ScopeType, const Id extends string>(type: Type, id: Id): Scope<Type, Id> => makeScope(type, id)
   const resource = <const Type extends ScopeType, const Id extends string>(
     type: Type, id: Id, options?: { readonly scopes?: readonly Scope<ScopeType>[] }
-  ): Resource<Type, Id> => {
+  ): Resource<Type, Id, ScopeType> => {
     const candidate = makeResource(type, id, options)
     validateResource(type, candidate)
     return candidate
   }
 
-  function validateResource<const Type extends ScopeType>(expected: Type, value: unknown): Resource<Type> {
-    if (isRecord(value) && isObjectRef(value) && Array.isArray(value.scopes)) {
-      if (value.type !== expected) failDefinition(`Mapper for ${expected} returned resource type ${String(value.type)}`)
-      const scopes: Scope[] = []
-      for (const parent of value.scopes) {
+  const ResourceCandidate = Schema.Struct({
+    type: Schema.String.pipe(Schema.check(Schema.isMinLength(1))),
+    id: Schema.String.pipe(Schema.check(Schema.isMinLength(1))),
+    scopes: Schema.Array(Schema.Struct({
+      type: Schema.String.pipe(Schema.check(Schema.isMinLength(1))),
+      id: Schema.String.pipe(Schema.check(Schema.isMinLength(1))),
+    })),
+  })
+  const decodeResourceCandidate = Schema.decodeUnknownOption(ResourceCandidate)
+  function validateResource<const Type extends ScopeType, A>(expected: Type, value: A): Resource<Type, string, ScopeType> {
+    const decoded = decodeResourceCandidate(value)
+    if (Option.isSome(decoded)) {
+      const candidate = decoded.value
+      if (candidate.type !== expected) failDefinition(`Resource factory for ${expected} returned resource type ${String(candidate.type)}`)
+      const scopes: Scope<ScopeType>[] = []
+      for (const parent of candidate.scopes) {
         if (!isObjectRef(parent) || !isScopeType(parent.type)) failDefinition(`Resource ${expected} contains an invalid scope`)
         scopes.push(parent)
       }
-      return { type: expected, id: value.id, scopes: dedupeRefs(scopes) }
+      return { type: expected, id: candidate.id, scopes: dedupeRefs(scopes) }
     }
-    return failDefinition(`Mapper for ${expected} returned an invalid resource`)
-  }
-
-  const resourceTypeOfPermission = <const P extends Permission>(permission: P): Extract<ResourceTypeOfPermission<P>, ScopeType> => {
-    const isExpectedType = (value: string): value is Extract<ResourceTypeOfPermission<P>, ScopeType> => permission.startsWith(`${value}:`) && isScopeType(value)
-    const type = permission.slice(0, permission.indexOf(":"))
-    if (isExpectedType(type)) return type
-    return failDefinition(`Permission ${permission} has an invalid resource type`)
-  }
-
-  const mapResource = (type: string, input: unknown): unknown => {
-    const resources: unknown = definition.resources
-    if (!isRecord(resources)) return input
-    const mapper = resources[type]
-    return typeof mapper === "function" ? mapper(input) : input
-  }
-  const toResource = <const P extends Permission>(permission: P, input: ResourceInput<Resources, ScopeType, P>): Resource<Extract<ResourceTypeOfPermission<P>, ScopeType>> => {
-    const type = resourceTypeOfPermission(permission)
-    return validateResource(type, mapResource(type, input))
+    return failDefinition(`Resource factory for ${expected} returned an invalid resource`)
   }
 
   const roleBinding = (input: { readonly subject: Subject; readonly scope: Scope<ScopeType>; readonly role: string }): RoleBinding<Role, ScopeType> => {
@@ -200,48 +180,27 @@ export const defineAccess = <
     return result
   }
 
-  // `unknown` is the adapter-owned RoleStore error before normalization at this seam.
-  // @effect-diagnostics anyUnknownInErrorContext:off
-  const normalizedRoles = (store: RoleStoreContract<string, ScopeType, unknown>, query: { readonly subject: Subject; readonly scopes: readonly Scope<ScopeType>[] }) =>
-    Effect.flatMap(
-      Effect.try({ try: () => store.getRoles(query), catch: (cause) => new RoleStoreError({ message: "RoleStore threw", cause }) }),
-      (request) => Effect.flatMap(
-        Effect.mapError(request, (cause) => cause instanceof RoleStoreError ? cause : new RoleStoreError({ message: "RoleStore failed", cause })),
-        (roles) => Effect.try({
-          try: () => {
-            if (!Array.isArray(roles)) throw new TypeError("getRoles must return an array")
-            // SAFETY: Array.isArray establishes iteration; the loop validates every element before the final narrowing.
-            for (const role of roles as readonly unknown[]) if (typeof role !== "string" || !roleSet.has(role as Role)) throw new TypeError(`Unknown role ${String(role)}`)
-            // SAFETY: the preceding loop proves that every array element belongs to the configured Role set.
-            return unique(roles as readonly Role[])
-          },
-          catch: (cause) => new RoleStoreError({ message: "RoleStore returned invalid roles", cause })
-        })
-      )
-    )
-
   const canFor = (permission: Permission, input: { readonly subject: Subject; readonly resource: Resource<ScopeType> }) =>
     Effect.flatMap(RoleStore, (store) => Effect.map(
-      // SAFETY: resources are validated by this Access instance and therefore retain its ScopeType union.
-      normalizedRoles(store, { subject: input.subject, scopes: effectiveScopes(input.resource) as readonly Scope<ScopeType>[] }),
+      store.getRoles({ subject: input.subject, scopes: effectiveScopes(input.resource) }),
       (roles) => permissionsForRoles(roles).has(permission)
     ))
 
   const policyFor = (permission: Permission, input: { readonly subject: Subject; readonly resource: Resource<ScopeType> }): Policy<RoleStoreError, typeof RoleStore.Identifier> =>
     Effect.flatMap(canFor(permission, input), (allowed) => allowed ? Effect.void : Effect.fail(forbidden({ permission, subject: input.subject, resource: input.resource, message: `Missing permission: ${permission}` })))
 
-  const can = <const P extends Permission>(permission: P, input: ResourceInput<Resources, ScopeType, P>) =>
-    Effect.flatMap(CurrentSubject, (current) => canFor(permission, { subject: current, resource: toResource(permission, input) }))
-  const policy = <const P extends Permission>(permission: P, input: ResourceInput<Resources, ScopeType, P>) =>
-    Effect.flatMap(CurrentSubject, (current) => policyFor(permission, { subject: current, resource: toResource(permission, input) }))
+  const can = <const P extends Permission>(permission: P, resource: Resource<Extract<ResourceTypeOfPermission<P>, ScopeType>, string, ScopeType>) =>
+    Effect.flatMap(CurrentSubject, (current) => canFor(permission, { subject: current, resource }))
+  const policy = <const P extends Permission>(permission: P, resource: Resource<Extract<ResourceTypeOfPermission<P>, ScopeType>, string, ScopeType>) =>
+    Effect.flatMap(CurrentSubject, (current) => policyFor(permission, { subject: current, resource }))
   const makePolicy = <Error = never, Requirements = never>(predicate: (subject: Subject) => Effect.Effect<boolean, Error, Requirements>, options?: { readonly message?: string }): Policy<Error, typeof CurrentSubject.Identifier | Requirements> =>
     Effect.flatMap(CurrentSubject, (current) => Effect.flatMap(predicate(current), (allowed) => allowed ? Effect.void : Effect.fail(forbidden({ subject: current, message: options?.message ?? "Policy denied" }))))
-  const require = <const P extends Permission>(permission: P, input: ResourceInput<Resources, ScopeType, P>) => guard(policy(permission, input))
+  const require = <const P extends Permission>(permission: P, resource: Resource<Extract<ResourceTypeOfPermission<P>, ScopeType>, string, ScopeType>) => guard(policy(permission, resource))
 
-  const api: AccessApi<Permissions, Roles, Resources> = {
+  const api: AccessApi<Permissions, Roles> = {
     definition, permissions: { config: definition.permissions, all: permissionSet, has: isPermission },
     roles: { config: definition.roles, all: roleSet, has: isRole },
-    schemas, CurrentSubject, RoleStore, subject, scope, resource, toResource, effectiveScopes, roleBinding, makeRoleStore,
+    schemas, CurrentSubject, RoleStore, subject, scope, resource, effectiveScopes, roleBinding, makeRoleStore,
     permissionsForRoles, can, canFor, permission: policy, policy, makePolicy, policyFor, guard, require, all, any, toBool
   }
   return api

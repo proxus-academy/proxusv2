@@ -21,7 +21,7 @@ const authorization = new GoogleAuthorization({
   authorizationUrl: "https://accounts.example.test/authorize?state=signed",
 })
 const accepted = new AuthRequestAccepted({ accepted: true })
-const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
+const json = <A>(body: A, status = 200) => new Response(JSON.stringify(body), {
   status,
   headers: { "content-type": "application/json" },
 })

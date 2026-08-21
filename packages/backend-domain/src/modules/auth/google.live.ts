@@ -1,11 +1,22 @@
 // @effect-diagnostics globalDateInEffect:off
-import { Clock, Context, Effect, Layer, Option } from "effect"
+import { Clock, Context, Effect, Layer, Option, Schema } from "effect"
 import { GoogleIdentityProvider } from "./ports.js"
 import { GoogleIdentityRejected, normalizeEmail, type GoogleCallback, type GoogleIntent, type IssuedSession, type VerifiedGoogleIdentity } from "./model.js"
 import { AuthRepositoryError, InvalidRepositoryState, UserConflict, UserNotFound, UserRepository } from "./repositories.js"
 
 export interface GoogleState { readonly intent: GoogleIntent; readonly nonce: string; readonly expiresAt: number }
 export interface PendingGoogle { readonly subject: string; readonly email: string; readonly expiresAt: number }
+
+export const GoogleStateSchema = Schema.Struct({
+  intent: Schema.Literals(["login", "register"]),
+  nonce: Schema.String.pipe(Schema.check(Schema.isMinLength(32))),
+  expiresAt: Schema.Number,
+}) satisfies Schema.Schema<GoogleState>
+export const PendingGoogleSchema = Schema.Struct({
+  subject: Schema.String.pipe(Schema.check(Schema.isMinLength(1))),
+  email: Schema.String.pipe(Schema.check(Schema.isMinLength(1))),
+  expiresAt: Schema.Number,
+}) satisfies Schema.Schema<PendingGoogle>
 
 export class GoogleSecurity extends Context.Service<GoogleSecurity, {
   readonly nonce: () => Effect.Effect<string>

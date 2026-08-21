@@ -73,10 +73,7 @@ export const AccessControlServiceLive = Layer.effect(AccessControlService, Effec
     requireAdministrator: (subject) => withStore(requireAdministrator(subject)),
     capabilities: (subject, resource = adminResource) => withStore(Effect.gen(function* () {
       const store = yield* Access.RoleStore
-      // effectiveScopes preserves the resource's scope union although the vendored helper exposes its broad base type.
-      // SAFETY: Access created the resource and preserves the configured AccessScopeType union.
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
-      const scopes = Access.effectiveScopes(resource) as readonly Scope<AccessScopeType>[]
+      const scopes = Access.effectiveScopes(resource)
       const roles = yield* store.getRoles({ subject, scopes }).pipe(
         Effect.mapError((cause) => cause instanceof RoleStoreError ? cause : new RoleStoreError({ message: "RoleStore failed", cause }))
       )

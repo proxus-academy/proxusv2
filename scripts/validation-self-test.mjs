@@ -81,8 +81,13 @@ try {
   const oxlintProbe = resolve(temporaryRoot, "oxlint")
   mkdirSync(oxlintProbe, { recursive: true })
   linkNodeModules(oxlintProbe)
-  writeToolManifest(oxlintProbe, { lint: rootManifest.scripts.lint })
+  writeToolManifest(oxlintProbe, {
+    lint: rootManifest.scripts.lint,
+    "lint:anti-slop": rootManifest.scripts["lint:anti-slop"]
+  })
   cpSync(resolve(root, ".oxlintrc.json"), resolve(oxlintProbe, ".oxlintrc.json"))
+  cpSync(resolve(root, "oxlint.anti-slop.config.ts"), resolve(oxlintProbe, "oxlint.anti-slop.config.ts"))
+  cpSync(resolve(root, "tools/oxlint/anti-slop"), resolve(oxlintProbe, "tools/oxlint/anti-slop"), { recursive: true })
   writeJson(oxlintProbe, "apps/probe/tsconfig.json", {
     compilerOptions: { module: "ESNext", noEmit: true, strict: true, target: "ES2022" },
     include: ["*.config.ts"]
@@ -90,12 +95,22 @@ try {
   write(
     oxlintProbe,
     "apps/probe/vite.config.ts",
-    "async function save(): Promise<void> {}\n\nsave()\nconst forced = ({ value: 'text' } as unknown) as { value: number }\nvoid forced\n"
+    "import { useState } from 'react'\n\nasync function save(): Promise<void> {}\n\nsave()\nuseState<any>(null)\nconst forced = ({ value: 'text' } as unknown) as { value: number }\nvoid forced\n"
   )
   expectFailure(
     "Oxlint package wrapper and config traversal",
     runPnpmScript("lint", oxlintProbe),
-    ["typescript(no-floating-promises)", "typescript(no-unsafe-type-assertion)", "vite.config.ts"]
+    ["typescript(no-floating-promises)", "typescript(no-explicit-any)", "typescript(no-unsafe-type-assertion)", "vite.config.ts"]
+  )
+  write(
+    oxlintProbe,
+    "apps/probe/vite.config.ts",
+    "import { useState } from 'react'\n\nuseState<unknown>(null)\n"
+  )
+  expectFailure(
+    "Anti-slop React state contract",
+    runPnpmScript("lint", oxlintProbe),
+    ["anti-slop(no-erased-react-state)", "vite.config.ts"]
   )
 
   const boundariesProbe = resolve(temporaryRoot, "boundaries")

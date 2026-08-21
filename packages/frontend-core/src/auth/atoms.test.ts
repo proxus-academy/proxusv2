@@ -20,7 +20,7 @@ const resetInput = Schema.decodeUnknownSync(ResetPasswordInput)({ email: "studen
 const accepted = new AuthRequestAccepted({ accepted: true })
 const authorization = new GoogleAuthorization({ authorizationUrl: "http://fake-google.local/authorize?state=signed" })
 
-const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status, headers: { "content-type": "application/json" } })
+const json = <A>(value: A, status = 200) => new Response(JSON.stringify(value), { status, headers: { "content-type": "application/json" } })
 
 const setup = (options: { readonly unauthorizedSession?: boolean; readonly failSession?: boolean } = {}) => {
   let current = first

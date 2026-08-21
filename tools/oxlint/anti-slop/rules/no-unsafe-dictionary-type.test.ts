@@ -9,6 +9,7 @@ const error = { messageId: "unsafeDictionary" };
 tester.run("anti-slop/no-unsafe-dictionary-type", noUnsafeDictionaryTypeRule, {
 	valid: [
 		"type Commands = Record<string, Command>;",
+		"// ANTI-SLOP-BOUNDARY: external object is inspected before decoding.\ntype External = Record<string, unknown>;",
 		"type Metadata = Record<PropertyKey, JsonValue>;",
 		"type PermissionLevels = Record<Permission, number>;",
 		"type Indexed = { [key: string]: Command };",

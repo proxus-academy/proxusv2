@@ -230,17 +230,21 @@ The checks have no generated allowlist or accepted-violation baseline:
 - `lint` is type-aware for TypeScript and deliberately has no formatting rules.
   Its workspace globs include application JavaScript/ESM, TypeScript source,
   Storybook and root `*.config.ts` files while excluding generated trees. It enforces unsafe Promise use (`await-thenable`,
-  `no-floating-promises`, `no-misused-promises`), dangerous assertions
+  `no-floating-promises`, `no-misused-promises`), explicit `any`, dangerous assertions
   (`no-non-null-assertion`, `no-unsafe-type-assertion`), and rejects direct
   imports of Node filesystem, path, child-process and HTTP APIs that have
   Effect-native counterparts. Narrow platform composition roots and test-owned
   temporary-directory harnesses must document any inline exception. The same
   gate then runs the vendored anti-slop rules selected in
   `oxlint.anti-slop.config.ts`: they preserve inferred evidence, reject module
-  mocking and reflective access, use domain-owned contract names, and require a
+  mocking and reflective access, reject explicit `unknown` parameters/returns,
+  unsafe dictionaries and React state erased to `any` or `unknown`, use
+  domain-owned contract names, and require a
   `SAFETY:` invariant for every necessary non-const assertion. Rules that would
-  reject Proxus's documented boundary parsing, exact optional-property spreads,
-  or composition-root Layer assembly remain explicitly disabled in that config.
+  reject exact optional-property spreads or composition-root Layer assembly
+  remain explicitly disabled in that config. An unavoidable external parsing
+  seam must carry a local `ANTI-SLOP-BOUNDARY:` justification; the rules test
+  this marker while normal Oxlint continues to reject unused disable directives.
   `test:anti-slop` exercises the vendored rule regressions with Node's native
   test runner and TypeScript stripping; `validate:pr` runs it independently of
   lint so a broken rule implementation cannot pass merely because the current
@@ -273,7 +277,8 @@ The checks have no generated allowlist or accepted-violation baseline:
 
 `validate:self-test` creates defective fixtures under the operating system's
 temporary directory and invokes the real Effect wrapper and package scripts.
-Its probes cover config-file typecheck/diagnostics/lint globs, generated-directory
+Its probes cover config-file typecheck/diagnostics/lint globs (including an
+explicit-`any` React-state regression), generated-directory
 exclusions, every public/admin boundary, Shared/Domain external allowlists,
 workspace aliases/relative crossings, Node built-ins and wildcard exports. It
 removes fixtures in `finally` and never mutates repository `apps/*` or

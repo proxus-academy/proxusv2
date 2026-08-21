@@ -35,7 +35,14 @@ const nodes: ReadonlyArray<StudyNode> = [
   new DegreeNode({ ...fields, id: ids.degreeId, kind: "degree" }),
   new SubjectNode({ ...fields, id: ids.subjectId, kind: "subject" }),
 ]
-const decodeInput = (overrides: Record<string, unknown> = {}) => Schema.decodeUnknownSync(OnboardingInput)({
+interface OnboardingOverrides {
+  readonly birthYear?: unknown
+  readonly problemKind?: unknown
+  readonly problemOtherText?: unknown
+  readonly acquisitionSource?: unknown
+  readonly acquisitionOtherText?: unknown
+}
+const decodeInput = (overrides: OnboardingOverrides = {}) => Schema.decodeUnknownSync(OnboardingInput)({
   username: "Learner_1",
   birthYear: 2000,
   problemKind: "understand-content",

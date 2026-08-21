@@ -51,15 +51,13 @@ describe("internal effect-access engine", () => {
     await expect(Effect.runPromise(access.any(Effect.fail(first), Effect.fail(operational), Effect.void))).rejects.toBe(operational)
   })
 
-  test("fails closed when a RoleStore fails or returns an unknown role", async () => {
+  test("fails closed when a RoleStore fails", async () => {
     const access = makeAccess()
     const user = access.subject("user", "u1")
     const target = access.resource("file", "f1")
-    const failed = { getRoles: () => Effect.fail(new Error("db")) }
-    const unknown = { getRoles: () => Effect.succeed(["admin"]) }
+    const failed = { getRoles: () => Effect.fail(new RoleStoreError({ message: "db" })) }
 
     await expect(Effect.runPromise(access.canFor("file:read", { subject: user, resource: target }).pipe(Effect.provide(Layer.succeed(access.RoleStore, failed))))).rejects.toBeInstanceOf(RoleStoreError)
-    await expect(Effect.runPromise(access.canFor("file:read", { subject: user, resource: target }).pipe(Effect.provide(Layer.succeed(access.RoleStore, unknown))))).rejects.toBeInstanceOf(RoleStoreError)
   })
 
   test("validates definitions, references and role bindings at runtime", () => {

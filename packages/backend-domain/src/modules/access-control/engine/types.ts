@@ -24,29 +24,15 @@ export interface ObjectRef<Type extends string = string, Id extends string = str
 export type Subject<Type extends string = string, Id extends string = string> = ObjectRef<Type, Id>
 export type Scope<Type extends string = string, Id extends string = string> = ObjectRef<Type, Id>
 
-export interface Resource<Type extends string = string, Id extends string = string> extends ObjectRef<Type, Id> {
-  readonly scopes: readonly Scope[]
+export interface Resource<
+  Type extends string = string,
+  Id extends string = string,
+  ScopeType extends string = Type
+> extends ObjectRef<Type, Id> {
+  readonly scopes: readonly Scope<ScopeType>[]
 }
 
-type ResourceMapper<Type extends string = string, Input = never> = (input: Input) => Resource<Type>
-
-export type ResourceMappers<ScopeType extends string = string> = Partial<{
-  readonly [Type in ScopeType]: ResourceMapper<Type>
-}>
-
 export type ResourceTypeOfPermission<Permission extends string> = Permission extends `${infer Type}:${string}` ? Type : never
-
-export type ResourceInput<
-  Resources extends ResourceMappers,
-  ScopeType extends string,
-  Permission extends string
-> = Extract<ResourceTypeOfPermission<Permission>, ScopeType> extends infer Type extends ScopeType
-  ? Type extends keyof Resources
-    ? Resources[Type] extends ResourceMapper<Type, infer Input>
-      ? Input
-      : never
-    : Resource<Type>
-  : never
 
 export interface RoleBinding<Role extends string = string, ScopeType extends string = string> {
   readonly subject: Subject
@@ -66,7 +52,7 @@ export interface RoleStoreContract<Role extends string = string, ScopeType exten
 export type RoleStoreImplementation<AccessOrRole = string, ScopeTypeOrError = string, Error = never> =
   [AccessOrRole] extends [string]
     ? RoleStoreContract<AccessOrRole, ScopeTypeOrError extends string ? ScopeTypeOrError : never, Error>
-    : AccessOrRole extends { readonly RoleStore: Context.Service<any, infer Store> }
+    : AccessOrRole extends { readonly RoleStore: Context.Service<unknown, infer Store> }
       ? Store extends RoleStoreContract<infer Role, infer Scope, unknown>
         ? RoleStoreContract<Role, Scope, ScopeTypeOrError>
         : never
