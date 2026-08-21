@@ -168,8 +168,9 @@ hooks use Paraglide `deLocalizeUrl` and `localizeUrl`, so file routes stay
 locale-free while localized URLs, query parameters, and SPA navigation remain
 correct. Views import generated message functions directly; no React translation
 context or string-key lookup is allowed. The root synchronizes `lang` and `dir`
-after render. Message catalogs live in `apps/web/messages` and compile to ignored
-generated modules in `apps/web/src/paraglide`; package scripts compile them before
+after render. The shared Inlang project lives at `project.inlang`; Web-owned
+messages remain in `apps/web/messages` and compile to ignored generated modules
+in `apps/web/src/paraglide`. Package scripts compile them before
 typechecking and testing, while the Vite plugin compiles them during development
 and builds.
 

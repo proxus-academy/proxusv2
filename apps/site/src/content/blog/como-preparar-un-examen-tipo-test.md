@@ -2,6 +2,7 @@
 title: "Cómo preparar un examen tipo test"
 description: "Una estrategia práctica para convertir el temario en preguntas, detectar lagunas y repasar con intención."
 publishedAt: 2026-08-12
+translationKey: prepare-multiple-choice-exam
 ---
 
 Preparar un examen tipo test no consiste únicamente en releer el temario. Necesitas recuperar la información sin verla, comprobar la respuesta y decidir qué debes repasar después.

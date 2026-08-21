@@ -1,4 +1,6 @@
 ---
 import SiteLayout from "../layouts/SiteLayout.astro"
+import * as m from "../paraglide/messages.js"
+const supportHref = `mailto:soporte@proxus.es?subject=${encodeURIComponent(m.site_supportSubject())}`
 ---
-<SiteLayout title="Soporte — Proxus" description="Encuentra ayuda y contacta con el equipo de soporte de Proxus."><section class="page-hero"><div class="container"><span class="eyebrow">Soporte</span><h1>Estamos aquí para ayudarte</h1><p>Cuéntanos qué ha ocurrido e incluye toda la información que pueda ayudarnos a resolverlo.</p></div></section><div class="prose"><div class="card"><h2>Habla con soporte</h2><p>Indica el correo de tu cuenta, el dispositivo y los pasos que produjeron el problema. No compartas contraseñas ni datos de pago.</p><p><a class="button" href="mailto:soporte@proxus.es?subject=Ayuda%20con%20Proxus">Enviar una consulta</a></p></div></div></SiteLayout>
+<SiteLayout title={m.site_supportTitle()} description={m.site_supportDescription()}><section class="page-hero"><div class="container"><span class="eyebrow">{m.site_support()}</span><h1>{m.site_supportHeading()}</h1><p>{m.site_supportIntro()}</p></div></section><div class="prose"><div class="card"><h2>{m.site_talkToSupport()}</h2><p>{m.site_supportInstructions()}</p><p><a class="button" href={supportHref}>{m.site_sendRequest()}</a></p></div></div></SiteLayout>

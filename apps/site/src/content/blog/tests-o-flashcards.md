@@ -2,6 +2,7 @@
 title: "Tests o flashcards: cuándo usar cada herramienta"
 description: "Aprende qué formato encaja mejor con definiciones, relaciones, aplicación práctica y preparación de exámenes."
 publishedAt: 2026-08-10
+translationKey: tests-or-flashcards
 ---
 
 Tests y flashcards practican la recuperación activa, pero no plantean exactamente el mismo reto. Elegir el formato adecuado depende de lo que quieras aprender.

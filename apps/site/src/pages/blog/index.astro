@@ -1,6 +1,13 @@
 ---
 import { getCollection } from "astro:content"
 import SiteLayout from "../../layouts/SiteLayout.astro"
-const posts = (await getCollection("blog", ({ data }) => !data.draft)).sort((a,b) => b.data.publishedAt.valueOf() - a.data.publishedAt.valueOf())
+import { getRelativeLocaleUrl } from "astro:i18n"
+import * as m from "../../paraglide/messages.js"
+import { getLocale } from "../../paraglide/runtime.js"
+import { toSiteLocale } from "../../site-config"
+const locale = toSiteLocale(getLocale())
+const posts = (await getCollection("blog", ({ data }) => !data.draft && data.locale === locale)).sort((a,b) => b.data.publishedAt.valueOf() - a.data.publishedAt.valueOf())
+const localeForDate = locale === "es" ? "es-ES" : "en-GB"
+const postUrl = (id: string) => getRelativeLocaleUrl(locale, `blog/${id.replace(/^en\//, "")}`)
 ---
-<SiteLayout title="Blog de Proxus" description="Guías y recursos para estudiar mejor, preparar exámenes y aprovechar tus herramientas de aprendizaje."><section class="page-hero"><div class="container"><span class="eyebrow">Blog</span><h1>Ideas para estudiar mejor</h1><p>Guías prácticas, métodos de estudio y recursos para sacar más partido a tu tiempo.</p></div></section><section class="post-list">{posts.map(post => <article class="post-card"><time datetime={post.data.publishedAt.toISOString()}>{post.data.publishedAt.toLocaleDateString("es-ES",{dateStyle:"long"})}</time><h2><a href={`/blog/${post.id}/`}>{post.data.title}</a></h2><p>{post.data.description}</p><a href={`/blog/${post.id}/`}><strong>Leer artículo →</strong></a></article>)}</section></SiteLayout>
+<SiteLayout title={m.site_blogTitle()} description={m.site_blogDescription()}><section class="page-hero"><div class="container"><span class="eyebrow">{m.site_blog()}</span><h1>{m.site_blogHeading()}</h1><p>{m.site_blogIntro()}</p></div></section><section class="post-list">{posts.map(post => <article class="post-card"><time datetime={post.data.publishedAt.toISOString()}>{post.data.publishedAt.toLocaleDateString(localeForDate,{dateStyle:"long"})}</time><h2><a href={postUrl(post.id)}>{post.data.title}</a></h2><p>{post.data.description}</p><a href={postUrl(post.id)}><strong>{m.site_readArticle()}</strong></a></article>)}</section></SiteLayout>
