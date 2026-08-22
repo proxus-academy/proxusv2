@@ -1,12 +1,15 @@
 import { AtSign, FileSignature, MapPin, UserRound } from "lucide-react"
 import type { UgcWorkspace } from "@proxus/shared/ugc-management"
+import { Navigate } from "@tanstack/react-router"
 import { WorkspaceState } from "../workspace/workspace-state.js"
+import { canAccessCreatorLibrary } from "./creator-access.js"
 
 export function ProfileScreen() {
   return <WorkspaceState>{(workspace) => <CreatorProfileView workspace={workspace} />}</WorkspaceState>
 }
 
 function CreatorProfileView({ workspace }: { readonly workspace: UgcWorkspace }) {
+  if (!canAccessCreatorLibrary(workspace)) return <Navigate to="/ugc" replace />
   const user = workspace.currentUser
   if (user === null) return null
   const profile = user.data._tag === "ApplicantData" || user.data._tag === "OnboardingData" || user.data._tag === "TrialData" || user.data._tag === "CreatorData" ? user.data.profile : null

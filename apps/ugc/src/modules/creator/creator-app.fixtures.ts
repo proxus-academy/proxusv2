@@ -172,7 +172,7 @@ const video = (
   format: "review",
   reference,
   tiktokUrl: `https://www.tiktok.com/@luciaromero/video/${suffix}`,
-  instagramUrl: null,
+  instagramUrl: `https://www.instagram.com/reel/proxus-${suffix}`,
   submittedAt,
   reviewedAt: status === "submitted" ? null : "2026-08-21T10:00:00.000Z",
   reviewNotes: status === "changes_requested" ? "Ajusta el primer plano del producto." : null,

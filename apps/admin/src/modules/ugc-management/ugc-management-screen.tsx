@@ -14,12 +14,9 @@ import {
   ResumeCreator,
   SuspendCreator,
   makeUgcCampaignId,
-  CampaignBonusRule,
-  CampaignTier,
   type UgcWorkspace,
 } from "@proxus/shared/ugc-management"
 import { makeAccountId } from "@proxus/shared/auth"
-import { Schema } from "effect"
 import * as AsyncResult from "effect/unstable/reactivity/AsyncResult"
 import { Banknote, CalendarClock, Download, Megaphone, Plus, UsersRound } from "lucide-react"
 import { type FormEvent, type ReactNode, useState } from "react"
@@ -27,6 +24,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { CampaignRulesFields } from "./campaign-rules-fields.js"
+import { campaignRulesFromFormData } from "./campaign-rules.js"
 import { downloadPendingPaymentsCsv, pendingPaymentsCsv } from "./payments-csv.js"
 import { adminUgcCommandAction, adminUgcWorkspaceQuery } from "./state.js"
 
@@ -57,11 +56,10 @@ function Campaigns({ workspace }: { readonly workspace: UgcWorkspace }) {
   const managers = workspace.users.filter((user) => user.userType === "manager" && user.status === "active")
   const create = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault(); const data = new FormData(event.currentTarget)
-    const tiers = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Array(CampaignTier)))(String(data.get("tiers")))
-    const bonusRules = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Array(CampaignBonusRule)))(String(data.get("bonuses")))
+    const { tiers, bonusRules } = campaignRulesFromFormData(data)
     run(new CreateCampaign({ name: String(data.get("name")), startsAt: iso(data.get("starts")), submissionsCloseAt: iso(data.get("close")), reconciliationEndsAt: iso(data.get("reconcile")), countries: String(data.get("countries")).split(",").map((item) => item.trim().toUpperCase()), formats: String(data.get("formats")).split(",").map((item) => item.trim()), tiers, bonusRules }))
   }
-  return <Grid><Card><CardHeader><CardTitle>Nueva campaña</CardTitle><CardDescription>Fechas, mercados, formatos, tiers y bonus quedan versionados en la campaña.</CardDescription></CardHeader><CardContent><form className="grid gap-3" onSubmit={create}><Input name="name" placeholder="Nombre" required /><div className="grid gap-3 sm:grid-cols-3"><Input name="starts" type="datetime-local" aria-label="Inicio" required /><Input name="close" type="datetime-local" aria-label="Cierre de entregas" required /><Input name="reconcile" type="datetime-local" aria-label="Fin de revisión" required /></div><Input name="countries" defaultValue="ES" aria-label="Países" /><Input name="formats" defaultValue="testimonial, review" aria-label="Formatos" /><label className="text-sm font-medium">Tiers JSON<textarea name="tiers" className="mt-1 min-h-24 w-full rounded-md border p-3 font-mono text-xs" defaultValue={'[{"id":"tier-1","label":"Tier 1","videoTarget":8,"fixedAmountCents":40000}]'} /></label><label className="text-sm font-medium">Bonus JSON<textarea name="bonuses" className="mt-1 min-h-20 w-full rounded-md border p-3 font-mono text-xs" defaultValue={'[{"_tag":"views","threshold":10000,"amountCents":5000}]'} /></label><Button disabled={waiting}><Plus />Crear borrador</Button></form></CardContent></Card>
+  return <Grid><Card><CardHeader><CardTitle>Nueva campaña</CardTitle><CardDescription>Fechas, mercados, formatos, tiers y bonus quedan versionados en la campaña.</CardDescription></CardHeader><CardContent><form className="grid gap-4" onSubmit={create}><Input name="name" placeholder="Nombre" required /><div className="grid gap-3 sm:grid-cols-3"><Input name="starts" type="datetime-local" aria-label="Inicio" required /><Input name="close" type="datetime-local" aria-label="Cierre de entregas" required /><Input name="reconcile" type="datetime-local" aria-label="Fin de revisión" required /></div><Input name="countries" defaultValue="ES" aria-label="Países" /><Input name="formats" defaultValue="testimonial, review" aria-label="Formatos" /><CampaignRulesFields /><Button disabled={waiting}><Plus />Crear borrador</Button></form></CardContent></Card>
     <Card><CardHeader><CardTitle>Campañas</CardTitle></CardHeader><CardContent className="space-y-4">{workspace.campaigns.length === 0 ? <p className="text-sm text-muted-foreground">No hay campañas.</p> : workspace.campaigns.map((campaign) => { const groups = workspace.groups.filter((group) => group.campaignId === campaign.id); return <article key={campaign.id} className="rounded-xl border p-4"><div className="flex flex-wrap justify-between gap-3"><div><h3 className="font-semibold">{campaign.name}</h3><p className="text-sm text-muted-foreground">{campaign.status} · {campaign.data.countries.join(", ")} · {groups.length} grupos</p></div>{campaign.status === "draft" && groups.length > 0 ? <Button size="sm" onClick={() => run(new PublishCampaign({ campaignId: campaign.id }))}>Publicar</Button> : null}</div>{campaign.status === "draft" ? <form className="mt-3 grid gap-2 sm:grid-cols-4" onSubmit={(event) => { event.preventDefault(); const data = new FormData(event.currentTarget); const manager = managers.find((item) => item.id === data.get("manager")); if (manager !== undefined) run(new CreateGroup({ campaignId: campaign.id, managerId: manager.id, name: String(data.get("name")), capacity: Number(data.get("capacity")) })) }}><select aria-label="Manager del grupo" name="manager" className="rounded-md border bg-background px-3 text-sm" required>{managers.map((manager) => <option value={manager.id} key={manager.id}>{manager.displayName}</option>)}</select><Input name="name" placeholder="Nombre del grupo" required /><Input name="capacity" type="number" min="1" defaultValue="25" required /><Button variant="outline">Añadir grupo</Button></form> : null}</article> })}</CardContent></Card><ImportGroups workspace={workspace} waiting={waiting} /></Grid>
 }
 

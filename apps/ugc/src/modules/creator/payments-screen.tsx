@@ -1,6 +1,8 @@
 import { WalletCards } from "lucide-react"
 import type { UgcWorkspace } from "@proxus/shared/ugc-management"
+import { Navigate } from "@tanstack/react-router"
 import { WorkspaceState } from "../workspace/workspace-state.js"
+import { canAccessCreatorLibrary } from "./creator-access.js"
 
 const money = (cents: number) => (cents / 100).toLocaleString("es-ES", { style: "currency", currency: "EUR" })
 const statusLabel = { pending: "Pendiente", paid: "Pagado", cancelled: "Cancelado" } as const
@@ -10,6 +12,7 @@ export function PaymentsScreen() {
 }
 
 function CreatorPaymentsView({ workspace }: { readonly workspace: UgcWorkspace }) {
+  if (!canAccessCreatorLibrary(workspace)) return <Navigate to="/ugc" replace />
   const campaigns = new Map(workspace.campaigns.map((campaign) => [campaign.id, campaign.name]))
   const total = workspace.payments.reduce((sum, payment) => sum + payment.amountCents, 0)
   const pending = workspace.payments.filter((payment) => payment.status === "pending").reduce((sum, payment) => sum + payment.amountCents, 0)
