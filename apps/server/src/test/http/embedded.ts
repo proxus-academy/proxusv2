@@ -3,11 +3,13 @@ import { ProductAnalyticsLive } from "@proxus/backend-domain/product-analytics"
 import { AccessControlServiceLive, makeMemoryRoleAssignmentsRepository } from "@proxus/backend-domain/access-control"
 import { StudyPathValidator } from "@proxus/backend-domain/auth"
 import { StudyCatalogLive } from "@proxus/backend-domain/study-catalog"
+import { UgcManagementServiceLive, makeMemoryUgcRepository } from "@proxus/backend-domain/ugc-management"
 import { PgliteLive, PgliteMigrationLive } from "@proxus/backend-infra/database/pglite"
 import { FeatureFlagSnapshotRepositoryPgliteLive } from "@proxus/backend-infra/feature-flags/pglite"
 import { makeAuthPersistencePgliteLive } from "@proxus/backend-infra/auth"
 import { ProductAnalyticsRepositoryMemory } from "@proxus/backend-infra/product-analytics/memory"
 import { StudyCatalogRepositoryPgliteLive } from "@proxus/backend-infra/study-catalog/pglite"
+import { UgcSupportingServicesLive } from "@proxus/backend-infra/ugc-management/services"
 import { ProductAnalyticsHttpContextFailClosed } from "@proxus/backend-transport/product-analytics"
 import { PublicApi } from "@proxus/shared/public-api"
 import { Effect, Layer } from "effect"
@@ -30,12 +32,16 @@ const EmbeddedStudyCatalogLive = StudyCatalogLive.pipe(Layer.provide(EmbeddedPer
 const EmbeddedAuthPersistenceLive = makeAuthPersistencePgliteLive(30 * 86_400_000).pipe(Layer.provide(EmbeddedDatabaseLive))
 const EmbeddedAuthLive = makeAuthDevLive(undefined, undefined, EmbeddedAuthPersistenceLive)
 const EmbeddedStudyPathLive = StudyPathValidator.layer.pipe(Layer.provide(EmbeddedStudyCatalogLive))
+const EmbeddedUgcLive = UgcManagementServiceLive.pipe(
+  Layer.provide(Layer.merge(makeMemoryUgcRepository(), UgcSupportingServicesLive)),
+)
 const EmbeddedRoutesLive = makePublicApiRoutes(Layer.merge(EmbeddedAuthLive, EmbeddedStudyPathLive)).pipe(
   Layer.provide(Layer.mergeAll(
     EmbeddedStudyCatalogLive,
     EmbeddedFeatureFlagsLive,
     ProductAnalyticsLive.pipe(Layer.provide(ProductAnalyticsRepositoryMemory)),
     ProductAnalyticsHttpContextFailClosed,
+    EmbeddedUgcLive,
   )),
   Layer.provide(HttpServer.layerServices),
   Layer.provide(EmbeddedAuthLive),

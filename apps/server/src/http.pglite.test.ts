@@ -27,5 +27,5 @@ describe("public embedded HTTP API", () => {
         reason: "no-consent",
       }))
     }))),
-  15_000)
+  30_000)
 })

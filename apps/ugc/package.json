@@ -1,0 +1,36 @@
+{
+  "name": "@proxus/ugc",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 5176 --strictPort",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@effect/atom-react": "4.0.0-beta.98",
+    "@proxus/frontend-core": "workspace:*",
+    "@proxus/shared": "workspace:*",
+    "@proxus/ui": "workspace:*",
+    "@tanstack/react-router": "1.170.30",
+    "effect": "4.0.0-beta.98",
+    "lucide-react": "^1.24.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
+  },
+  "devDependencies": {
+    "@storybook/react-vite": "^10.5.0",
+    "@tailwindcss/vite": "^4.3.2",
+    "@tanstack/router-plugin": "1.168.33",
+    "@testing-library/react": "^16.3.2",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "happy-dom": "^18.0.1",
+    "tailwindcss": "^4.3.2",
+    "typescript": "^5.8.3",
+    "vite": "^7.2.7",
+    "vitest": "3.2.7"
+  }
+}

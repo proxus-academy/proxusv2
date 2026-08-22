@@ -53,6 +53,8 @@ describe("admin server surface", () => {
         yield* Effect.promise(() => response.text()),
       )
       expect(document.paths["/admin/study-catalog/nodes"]).toBeDefined()
+      expect(document.paths["/admin/ugc/workspace"]).toBeDefined()
+      expect(document.paths["/admin/ugc/commands"]).toBeDefined()
       expect(Object.keys(document.paths).some((path) => path.startsWith("/study-catalog/"))).toBe(false)
     }))),
   15_000)

@@ -71,6 +71,15 @@ export const makeAuthAtoms = <R, ER = never>(runtime: Atom.AtomRuntime<PublicApi
     get.set(sessionAtom, AsyncResult.success(null))
   }))
 
+  const logoutAtom = runtime.fn((_input: void, get) =>
+    PublicApiClient.pipe(
+      Effect.flatMap((client) => client.authSession.logout({})),
+      Effect.tap(() => Effect.sync(() => {
+        get.set(sessionAtom, AsyncResult.success(null))
+      })),
+    ),
+  )
+
   const requestPasswordResetAtom = runtime.fn((input: RequestPasswordResetInput) =>
     PublicApiClient.pipe(Effect.flatMap((client) => client.auth.requestPasswordReset({ payload: input }))),
   )
@@ -95,6 +104,7 @@ export const makeAuthAtoms = <R, ER = never>(runtime: Atom.AtomRuntime<PublicApi
     completeGoogleCallbackAtom,
     completeGoogleRegistrationAtom,
     clearSessionAtom,
+    logoutAtom,
     requestPasswordResetAtom,
     resetPasswordAtom,
     requestPasswordResetFlowAtom,

@@ -12,7 +12,8 @@
     "./feature-flags": "./src/modules/feature-flags/index.ts",
     "./product-analytics": "./src/modules/product-analytics/index.ts",
     "./auth": "./src/modules/auth/index.ts",
-    "./access-control": "./src/modules/access-control/index.ts"
+    "./access-control": "./src/modules/access-control/index.ts",
+    "./ugc-management": "./src/modules/ugc-management/index.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",

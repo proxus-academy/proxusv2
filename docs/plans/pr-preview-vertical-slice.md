@@ -1,10 +1,10 @@
 # PR preview vertical slice
 
-> Status: local artifact and Cloud Run spike verified; label-driven PR lifecycle implemented.
+> Status: local artifact and Cloud Run spike verified; label-driven PR lifecycle implemented. The dedicated UGC SPA is included at `/ugc`.
 
 ## Goal
 
-Prove one complete, disposable preview before automating PR lifecycle or selecting an IaC writer. The preview packages the two compiled frontends and both HTTP surfaces in one Cloud Run image, backed by a dedicated database on the existing shared Cloud SQL PostgreSQL 17 instance.
+Prove one complete, disposable preview before automating PR lifecycle or selecting an IaC writer. The preview packages the three compiled frontends and both HTTP surfaces in one Cloud Run image, backed by a dedicated database on the existing shared Cloud SQL PostgreSQL 17 instance.
 
 This packaging is preview-only. Production retains separately deployable public/admin APIs and CDN-hosted frontends.
 
@@ -30,13 +30,14 @@ Cloud Run :8080
     ├── /api/*       → combined Effect HTTP runtime, public routes
     ├── /admin-api/* → combined Effect HTTP runtime, admin routes
     ├── /admin/*     → compiled Admin SPA
+    ├── /ugc/*       → compiled UGC SPA
     ├── /ui/*        → compiled Storybook
     └── /*           → compiled Web SPA
              │
              └── dedicated preview database in shared Cloud SQL
 ```
 
-A single Effect HTTP runtime serves both API surfaces and the compiled frontends. Public and administrative routes are mounted under `/api` and `/admin-api`; Effect's static server serves the Web and Admin SPAs under `/` and `/admin`, plus the compiled Storybook under `/ui`. Cloud Run receives traffic on port 8080, and `NodeRuntime` owns interruption and graceful server shutdown. There is no internal proxy, second listener or child-process supervisor.
+A single Effect HTTP runtime serves both API surfaces and the compiled frontends. Public and administrative routes are mounted under `/api` and `/admin-api`; Effect's static server serves the Web, Admin and UGC SPAs under `/`, `/admin` and `/ugc`, plus the compiled Storybook under `/ui`. Cloud Run receives traffic on port 8080, and `NodeRuntime` owns interruption and graceful server shutdown. There is no internal proxy, second listener or child-process supervisor.
 
 The preview runtime uses real PostgreSQL repositories. Startup only checks the Drizzle ledger and fails when migrations are pending; it never changes the schema. A one-shot Cloud Run Job applies migrations and installs deterministic synthetic catalog/auth fixtures when the preview database is first created. It deliberately uses fake Google identity, console email and in-memory analytics; no production data or provider credentials are used.
 
@@ -50,7 +51,7 @@ pnpm preview:smoke
 pnpm preview:down
 ```
 
-Local Compose uses PostgreSQL 17.7. The smoke command waits for migration/seed completion and verifies Web, Admin, Storybook, Public OpenAPI and Admin OpenAPI through the same preview URL.
+Local Compose uses PostgreSQL 17.7. The smoke command waits for migration/seed completion and verifies Web, Admin, UGC (including an SPA fallback), Storybook, Public OpenAPI and Admin OpenAPI through the same preview URL.
 
 ## GCP spike
 
@@ -75,7 +76,7 @@ The trusted `pull_request_target` workflow checks out lifecycle code from `main`
 
 The inline Cloud Build configuration is captured when the trigger is created; it is not read from the observed PR branch. Release image tags include both commit and build IDs in the immutable `proxus` repository. A separate mutable `proxus-preview-cache` Artifact Registry repository carries BuildKit inline cache metadata without weakening release-image immutability. The preview image fetches dependencies before copying application sources and compiles Web, Admin and Storybook concurrently on an eight-vCPU Cloud Build worker. Cloud Build pulls its deployment-tool image in parallel with the application build.
 
-Every preview is initially deployed without anonymous access. On that first deployment, Cloud Build receives a temporary resource-level Cloud Run invoker binding, waits for one readiness route, verifies the remaining SPA, Storybook and API surfaces concurrently with an identity token, and then removes that binding. The build enables IAP directly on the service, grants `roles/iap.httpsResourceAccessor` only to the Google Group configured by the trusted `PREVIEW_IAP_GROUP` environment variable, grants the IAP service agent Cloud Run invocation, and verifies that anonymous navigation redirects to IAP. Subsequent commits preserve IAP and its policies instead of toggling them: Cloud Run waits for the new revision to become ready and the build verifies the existing IAP redirect. The final service has no direct user or build-service-account invoker binding.
+Every preview is initially deployed without anonymous access. On that first deployment, Cloud Build receives a temporary resource-level Cloud Run invoker binding, waits for one readiness route, verifies the Web, Admin, UGC and Storybook SPA surfaces plus both APIs concurrently with an identity token, and then removes that binding. The build enables IAP directly on the service, grants `roles/iap.httpsResourceAccessor` only to the Google Group configured by the trusted `PREVIEW_IAP_GROUP` environment variable, grants the IAP service agent Cloud Run invocation, and verifies that anonymous navigation redirects to IAP. Subsequent commits preserve IAP and its policies instead of toggling them: Cloud Run waits for the new revision to become ready and the build verifies the existing IAP redirect. The final service has no direct user or build-service-account invoker binding.
 
 A measured update on the eight-vCPU worker took 75 seconds while seeding the dedicated cache and 47 seconds with a warm cache, compared with 4 minutes 53 seconds before these changes. The warm run spent 9 seconds building the image, 10 seconds deploying the revision and 28 seconds pulling the Cloud SDK image in parallel with the build; that tool-image pull is now the dominant floor.
 

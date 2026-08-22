@@ -1,503 +1,979 @@
-# Plan — Navegación SPA idiomática con TanStack Router
+# Plan — Plataforma de gestión UGC
 
 ## Objetivo
 
-Eliminar la abstracción propia de navegación SPA de `apps/web` y hacer que TanStack Router sea el único propietario de URL, History, params, search params, enlaces y navegación interna.
+Construir una aplicación dedicada para gestionar el ciclo completo de los creadores UGC:
 
-Effect y Effect Atom seguirán siendo responsables de peticiones remotas, mutaciones, `AsyncResult`, formularios, workflows de producto, analytics, persistencia y capacidades externas. La navegación completa del documento usada por OAuth seguirá modelada mediante `DocumentNavigation`.
+1. Captación inbound y outbound.
+2. Registro y validación.
+3. Onboarding y reuniones.
+4. Periodo de prueba.
+5. Asignación a campañas y grupos.
+6. Entrega y seguimiento de vídeos.
+7. Cierre y revisión de campañas.
+8. Generación y liquidación de pagos.
 
-La coordinación entre una mutación y una navegación posterior se hará en el event handler React con la API real de Effect Atom:
+El diseño debe ser pequeño, robusto y testeable. Las entidades con ciclo de vida se modelarán como máquinas de estados finitos y solo podrán cambiar mediante acciones semánticas de dominio.
 
-```tsx
-const submit = useAtomSet(action, { mode: "promiseExit" })
-const navigate = Route.useNavigate()
+## Decisiones principales
 
-const exit = await submit(input)
-if (Exit.isSuccess(exit)) {
-  await navigate({ to: "/..." })
-}
-```
+- Usar ugc_users como agregado principal del journey del creador.
+- No crear ugc_applications, ugc_trials, ugc_submissions ni ugc_jobs en el MVP. La relación histórica creador–campaña sí necesita `ugc_group_members`, porque cada participación debe pasar obligatoriamente por un grupo y puede haber una asignación futura además de la actual.
+- Persistir estados gruesos y derivar los subestados temporales usando las fechas y entidades relacionadas.
+- Guardar la información variable de cada estado en data JSONB.
+- Validar status + data como una unión discriminada versionada mediante Effect Schema.
+- Mantener como columnas normales las relaciones, versiones y campos que requieren claves foráneas, unicidad o consultas frecuentes.
+- Permitir varias asignaciones históricas y una campaña futura, pero rechazar ventanas activas solapadas.
+- No crear `ugc_events` en este MVP: el sistema de eventos está pendiente en otra PR. Se conservan restricciones únicas y concurrencia optimista donde corresponde.
+- No exponer operaciones genéricas como SetStatus o PatchData.
 
-No se añadirán callbacks de navegación a los inputs de los atoms y no se usará `useEffect` para inferir navegación observando un resultado.
+## Límite del módulo
 
-## Alcance por capas
+Nombre propuesto del bounded context: ugc-management.
 
-```text
-- contrato compartido/API: no
-- persistencia y repositories: no
-- services/casos de uso backend: no
-- handlers HTTP: no
-- frontend-core/atoms: sí, solo si es necesario desacoplar URL del flujo neutral
-- adapters frontend web: sí
-- UI, pantallas y rutas: sí
-- tests y fixtures: sí
-- documentación: sí
-```
+    HTTP handler
+      → service/use case
+      → repository port
+      → adapter Drizzle
 
-## Arquitectura final
+Capas afectadas:
 
-### TanStack Router gestionará
+- Contratos compartidos y API: sí.
+- Persistencia y repositories: sí.
+- Services y casos de uso: sí.
+- Handlers HTTP: sí.
+- Frontend core y atoms: sí.
+- UI, pantallas y rutas: sí.
+- Tests y fixtures: sí.
+- Documentación: sí.
 
-- árbol file-based de rutas;
-- URL, History y locale;
-- params y search params;
-- redirects;
-- navegación declarativa mediante `Link`;
-- navegación imperativa mediante `Route.useNavigate()` o `router.navigate()` cuando no exista contexto React apropiado.
+## Tablas del MVP
 
-### Effect y Effect Atom gestionarán
+    ugc_users
+    ugc_campaigns
+    ugc_groups
+    ugc_group_members
+    ugc_meets
+    ugc_videos
+    ugc_video_data
+    ugc_payments
 
-- clientes HTTP tipados;
-- queries, mutaciones y `AsyncResult`;
-- validación y formularios;
-- transiciones y workflows de auth y registro;
-- analytics;
-- persistencia del borrador;
-- concurrencia, cancelación y errores;
-- navegación externa de OAuth mediante `DocumentNavigation`.
+## 1. ugc_users
 
-### Flujo esperado
+Representa el journey actual del creador desde que es un lead hasta que abandona la plataforma.
 
-```text
-evento React
-  → despacha AtomResultFn con mode: "promiseExit"
-  → espera Exit
-  → si Success, navega con TanStack Router
-```
+### Columnas
 
-Para enlaces simples:
+    id                    uuid primary key
+    auth_user_id          uuid null, unique
+    user_type             creator | manager
+    status                ugc_user_status
+    display_name          text
+    email                 text unique
+    country_code          char(2)
+    data                  jsonb
+    data_version          integer
+    version               integer
+    created_at            timestamptz
+    updated_at            timestamptz
 
-```text
-interacción del usuario → Link tipado de TanStack Router
-```
+auth_user_id es nulo para un lead outbound que todavía no se ha registrado. Al registrarse, se enlaza el usuario real sin crear otro ugc_user.
 
-Para OAuth:
+La campaña no se guarda directamente en `ugc_users`. Se deriva de `ugc_group_members → ugc_groups → ugc_campaigns`, lo que impide representar una participación sin grupo y conserva el histórico.
 
-```text
-atom/workflow Effect → DocumentNavigation → navegación completa fuera de la SPA
-```
+### Estados persistidos
 
-## 1. Inventario y pruebas de caracterización
+    lead
+    applicant
+    onboarding
+    trial
+    creator
+    suspended
+    rejected
+    disqualified
+    exited
 
-Antes de eliminar código:
+- lead: contacto outbound aún no registrado.
+- applicant: persona registrada pendiente de aceptación.
+- onboarding: candidatura aceptada, completando requisitos y reunión.
+- trial: periodo de prueba en curso o pendiente de evaluación.
+- creator: creador aprobado, con o sin campaña actual.
+- suspended: acceso operativo detenido temporalmente.
+- rejected: candidatura no aceptada.
+- disqualified: proceso terminado por incumplimiento, como dos ausencias.
+- exited: relación con la plataforma finalizada.
 
-1. Localizar todos los consumidores de:
-   - `navigate`;
-   - `navigateAction`;
-   - `currentLocale`;
-   - `currentSearch`;
-   - `setSearch`;
-   - `replaceSearch`;
-   - `navigationRuntime`.
-2. Identificar cada navegación como:
-   - enlace interactivo;
-   - navegación posterior a mutación;
-   - sincronización de search params;
-   - redirect por estado;
-   - navegación completa del documento.
-3. Preservar mediante tests:
-   - locale actual;
-   - `push` frente a `replace`;
-   - parámetros de atribución no relacionados;
-   - limpieza de secretos OAuth;
-   - ausencia de navegación después de fallo;
-   - comportamiento back/forward del wizard.
+### Estados efectivos derivados
 
-## 2. Autenticación: sacar navegación SPA de los atoms
+No se persisten. Una función pura los calcula con un reloj inyectado.
 
-Archivo principal:
+    onboarding
+      requirements_pending
+      meeting_pending
+      meeting_scheduled
+      follow_up_required
 
-```text
-apps/web/src/modules/auth/actions.ts
-```
+    trial
+      preparation
+      warming_up
+      publishing
+      awaiting_evaluation
 
-### Actions afectadas
-
-- `openPasswordRecoveryAction`;
-- `submitPasswordRecoveryAction`;
-- `submitRecoveryCodeAction`;
-- `submitNewPasswordAction`;
-- `backToLoginAction`.
-
-Cada action conservará únicamente:
-
-- validación del input;
-- llamada a atoms de `frontend-core`;
-- transición del estado de recuperación;
-- resultado tipado de la operación.
-
-Se eliminarán sus llamadas a `navigate(...)` y las actions normales pasarán de `navigationRuntime.fn` a `Atom.fn` cuando ya no consuman servicios externos.
-
-`startGoogleLoginAction` seguirá usando Effect y `DocumentNavigation`, porque abandona la SPA.
-
-### Posibles renombres
-
-Si no amplían innecesariamente el diff:
-
-- `openPasswordRecoveryAction` → `startPasswordRecoveryAction`;
-- `backToLoginAction` → `resetPasswordRecoveryAction`.
-
-Los nombres deben describir la transición de aplicación, no prometer navegación.
-
-## 3. Autenticación: navegar desde los event handlers de ruta
-
-Archivos:
-
-```text
-apps/web/src/routes/$locale/_public/login.tsx
-apps/web/src/routes/$locale/_public/password-recovery/index.tsx
-apps/web/src/routes/$locale/_public/password-recovery/code.tsx
-apps/web/src/routes/$locale/_public/password-recovery/new-password.tsx
-apps/web/src/routes/$locale/_public/password-recovery/done.tsx
-```
-
-### Patrón para mutaciones
-
-Cada ruta usará:
-
-```tsx
-const mutate = useAtomSet(action, { mode: "promiseExit" })
-const navigate = Route.useNavigate()
-const { locale } = Route.useParams()
-```
-
-El handler:
-
-1. previene el submit nativo;
-2. espera la mutación;
-3. comprueba `Exit.isSuccess(exit)`;
-4. navega con destino y params tipados;
-5. no navega en caso de failure o defect.
-
-### Destinos
-
-| Origen | Éxito/evento | Destino |
-| --- | --- | --- |
-| Login | iniciar recuperación | `/$locale/password-recovery` |
-| Password recovery | solicitar código | `/$locale/password-recovery/code` |
-| Recovery code | aceptar código | `/$locale/password-recovery/new-password` |
-| New password | restablecer contraseña | `/$locale/password-recovery/done` |
-| Recovery/done | volver al login | `/$locale/login` |
-
-### Enlaces simples
-
-Los controles que solo cambian de ruta usarán `Link` cuando `@proxus/ui` permita composición accesible sin markup inválido. Si `Button` no soporta renderizar como enlace, se usará el componente adecuado de UI o `Route.useNavigate()` como solución localizada; no se modificará `@proxus/ui` sin necesidad.
+    creator
+      waiting_campaign
+      campaign_scheduled
+      campaign_active
+      campaign_reconciliation
 
 Ejemplos:
 
-- login → crear cuenta;
-- registro → iniciar sesión.
+- trial y now anterior a publishingStartsAt: warming_up.
+- trial y now dentro de la ventana: publishing.
+- trial y now posterior a publishingEndsAt: awaiting_evaluation.
+- creator sin membresía vigente o futura: waiting_campaign.
+- El subestado de un creator con campaña se deriva de las fechas y estado de esa campaña.
 
-## 4. Navegación externa de OAuth
+### Data tipado por status
 
-Se mantendrán:
+La fuente de verdad en código será una unión discriminada equivalente a:
 
-```text
-packages/frontend-core/src/navigation/document-navigation.ts
-apps/web/src/platform/routing/document-navigation.web.ts
-```
+    LeadState          = { status: "lead", dataVersion: 1, data: LeadData }
+    ApplicantState     = { status: "applicant", dataVersion: 1, data: ApplicantData }
+    OnboardingState    = { status: "onboarding", dataVersion: 1, data: OnboardingData }
+    TrialState         = { status: "trial", dataVersion: 1, data: TrialData }
+    CreatorState       = { status: "creator", dataVersion: 1, data: CreatorData }
+    SuspendedState     = { status: "suspended", dataVersion: 1, data: SuspendedData }
+    RejectedState      = { status: "rejected", dataVersion: 1, data: RejectedData }
+    DisqualifiedState  = { status: "disqualified", dataVersion: 1, data: DisqualifiedData }
+    ExitedState        = { status: "exited", dataVersion: 1, data: ExitedData }
 
-El archivo ambiguo:
+Información orientativa:
 
-```text
-apps/web/src/routes/navigation-runtime.ts
-```
+    LeadData
+      source = outbound
+      contact
+      countryCode
+      createdByManagerId
+      notes
 
-se moverá o renombrará a:
+    ApplicantData
+      source = inbound | outbound
+      profile
+      contact
+      countryCode
+      appliedAt
 
-```text
-apps/web/src/platform/routing/document-navigation-runtime.ts
-```
+    OnboardingData
+      acceptedAt
+      acceptedBy
+      requirements
+      missedMeetCount
 
-Se actualizarán los imports desde auth, registro y tests.
+    TrialData
+      startedAt
+      publishingStartsAt
+      publishingEndsAt
+      requiredVideoCount
+      requirements
+      rulesSnapshot
 
-Se evaluará proporcionar `DocumentNavigation` mediante el runtime canónico de la aplicación. Solo se eliminará el runtime especializado si el cambio resulta directo y no mezcla lifecycles ni amplía el alcance. No se creará un servicio `SpaNavigation`.
+    CreatorData
+      approvedAt
+      tier
+      profile
 
-## 5. Registro: enlace a login
+    TerminalData
+      reason
+      decidedAt
+      decidedBy
+      previousStateSnapshot, solo cuando sea necesario reanudar
 
-Archivo actual:
+Los datos que deben sobrevivir a todos los estados pueden vivir en una sección común del JSON. Las transiciones construyen el siguiente documento completo; no aplican parches opacos.
 
-```text
-apps/web/src/modules/registration/steps/choosing-method.tsx
-```
+### Managers
 
-Se eliminará el uso de `navigateAction`.
+Manager es un `user_type` de `ugc_users`, con estado `active | disabled` y `ManagerData` tipado.
 
-La ruta terminal de registro poseerá la navegación TanStack. La integración descendente se resolverá con la interfaz React mínima necesaria, preferiblemente una composición/enlace o un callback visual `onOpenLogin`; no se pasarán atoms ni el router como props.
+- `auth_user_id` enlaza la identidad común de Proxus.
+- `ManagerData` conserva mercados, disponibilidad para reuniones y notas operativas.
+- La superficie de manager solo se muestra si la sesión resuelve un `ugc_user` manager activo.
+- Un grupo referencia ese perfil UGC de manager; administración sigue usando el rol global existente.
 
-Un callback React visual es aceptable aquí porque expresa un evento del componente, no una continuación incrustada en una mutación Effect.
+## 2. campaigns
 
-## 6. Registro: completar operaciones y navegar a home
+Representa una campaña, sus reglas, ámbito geográfico, ventanas temporales y configuración económica.
 
-Actions afectadas:
+### Columnas
 
-- `verifyRegistrationCodeAction`;
-- `confirmGoogleRegistrationAction`;
-- rama de sesión existente de `resolveGoogleCallbackAction`.
+    id                       uuid primary key
+    status                   campaign_status
+    starts_at                timestamptz
+    submissions_close_at     timestamptz
+    reconciliation_ends_at   timestamptz
+    data                     jsonb
+    data_version             integer
+    version                  integer
+    created_at               timestamptz
+    updated_at               timestamptz
 
-Las actions dejarán de despachar `navigateAction`.
+### Estados persistidos
 
-Las superficies React que disparan verificación o confirmación usarán `useAtomSet(..., { mode: "promiseExit" })`. Tras `Exit.Success`, navegarán con TanStack a:
+    draft
+    published
+    finalized
+    cancelled
+    archived
 
-```text
-/$locale/app
-```
+### Estados efectivos derivados
 
-usando `replace: true` donde el comportamiento actual ya lo requiera.
+Para una campaña published:
 
-Se preservará el orden:
+    now < starts_at
+      scheduled
 
-1. completar operación remota;
-2. actualizar sesión y estado de registro;
-3. registrar analytics;
-4. resolver la mutación;
-5. navegar desde React.
+    starts_at <= now < submissions_close_at
+      active
 
-Un fallo en cualquiera de los pasos que pertenezcan al contrato actual impedirá la navegación.
+    submissions_close_at <= now < reconciliation_ends_at
+      reconciliation
 
-## 7. Callback OAuth de registro
+    now >= reconciliation_ends_at
+      ready_to_finalize
 
-El callback OAuth requiere tratamiento separado porque llega tras una navegación completa y se procesa desde la URL.
+finalized sí es una acción explícita: congela resultados y genera pagos, por lo que no puede depender únicamente del reloj.
 
-### Responsabilidades de la ruta
+### CampaignData
 
-- leer `code` y `state` desde search params de TanStack;
-- validar/decodificar esos valores;
-- proporcionar identidad estable al lifecycle/action;
-- limpiar `code` y `state` mediante navegación `replace`;
-- navegar a home si el resultado representa una sesión existente.
+    name
+    description
+    market
+    eligibleCountryCodes
+    timezone
+    objectives
+    formats
+    tiers
+    baseCompensation
+    bonusRules
+    videoRules
+    rulesVersion
 
-### Responsabilidades del atom
+Las reglas económicas y de validación se congelan por versión o snapshot. Cambiar una campaña no puede alterar retroactivamente vídeos o pagos ya cerrados.
 
-- completar el callback remoto;
-- deduplicar el callback ya procesado;
-- restaurar la transición `GoogleStarted` cuando corresponda;
-- actualizar sesión y estado de registro;
-- devolver un resultado explícito que permita distinguir:
-  - sesión existente;
-  - registro nuevo pendiente de confirmación.
+## 3. ugc_groups
 
-No deberá leer directamente el router ni escribir History.
+Representa un grupo operativo dentro de una campaña.
 
-### Lifecycle
+### Columnas
 
-El procesamiento automático del callback puede mantenerse como lifecycle porque sincroniza la aplicación con una respuesta OAuth externa presente al montar. Sin embargo, no usará globals ni funciones singleton de navegación. La coordinación exacta se diseñará para no introducir navegación inferida mediante un `useEffect` que observe `AsyncResult`.
+    id                uuid primary key
+    campaign_id       uuid → campaigns.id
+    manager_user_id   uuid → users.id
+    status            group_status
+    capacity          integer null
+    data              jsonb
+    version           integer
+    created_at        timestamptz
+    updated_at        timestamptz
 
-Si el lifecycle actual no permite devolver el resultado a la ruta de forma limpia, se extraerá una acción explícita disparada por la ruta con input `{ code, state }`, manteniendo deduplicación en el atom.
+### Estados
 
-## 8. Search params del wizard de registro
+    draft
+    active
+    completed
+    cancelled
 
-Archivo:
+Reglas del MVP:
 
-```text
-apps/web/src/platform/registration/wizard-url.ts
-```
+- Cada grupo pertenece a una campaña.
+- Cada grupo tiene un manager responsable.
+- Un manager puede tener varios grupos.
+- Cada participación de un creador se guarda en `ugc_group_members` y siempre referencia un grupo.
+- Puede haber una campaña futura mientras la actual no solape su ventana de publicación.
+- No se puede superar la capacidad del grupo.
+- Creador, campaña, grupo y manager deben ser compatibles por mercado.
 
-Se separarán codecs puros de escritura de URL.
+La coherencia grupo-campaña se refuerza con claves foráneas, unicidad creador–grupo y la política de no solapamiento del service.
 
-### Se conservarán como funciones puras
+Importar grupos de una campaña anterior copia su configuración, no sus miembros implícitamente. Cada reasignación se valida contra la campaña nueva.
 
-- `decodeRegistrationQuery(searchValue)`;
-- codificación de `step` y `path`;
-- preservación de parámetros no relacionados;
-- schemas de `RegistrationStepParam` y `RegistrationPathParam`.
+Si un grupo necesita varios managers en el futuro, se añadirá una tabla de relación. No se almacenará un array de IDs en JSON.
 
-### Se eliminarán o sustituirán
+## 4. meets
 
-- `registrationUrlState()` basado en el router singleton;
-- `changeRegistrationStep()` que escribe History indirectamente;
-- imports de `routes/navigation.ts`;
-- `WebNavigationError` en el codec.
+Cada fila representa un intento real de reunión de onboarding.
 
-### Autoridad de URL
+### Columnas
 
-La ruta de registro leerá search params desde TanStack y escribirá con `Route.useNavigate()`.
+    id                 uuid primary key
+    ugc_user_id        uuid → ugc_users.id
+    manager_user_id    uuid → users.id
+    status             meet_status
+    scheduled_at       timestamptz
+    completed_at       timestamptz null
+    data               jsonb
+    version            integer
+    created_at         timestamptz
+    updated_at         timestamptz
 
-El flujo neutral de `frontend-core` no importará TanStack. Se revisará `makeRegistrationFlowAtoms` para desacoplar su callback `navigate` de la escritura directa de URL. La adaptación debe preservar:
+### Estados
 
-- transición de step;
-- path del estudio;
-- `push`/`replace`;
-- back/forward;
-- restauración de draft;
-- parámetros de campañas y referidos.
+    scheduled
+    attended
+    missed
+    cancelled
 
-No se moverá estado de producto al router ni se usarán loaders, `beforeLoad`, caché o invalidación de TanStack.
+### Reglas
 
-## 9. Eliminar la abstracción SPA existente
+- Solo un usuario en onboarding con requisitos previos completos puede reservar.
+- El manager debe estar habilitado para el mercado del creador.
+- Debe comprobarse la disponibilidad antes de reservar.
+- La primera ausencia devuelve al usuario a meeting_pending.
+- La segunda ausencia ejecuta DisqualifyApplicant.
+- Una reunión atendida no aprueba automáticamente el onboarding; el manager registra el resultado.
 
-Cuando todos los consumidores estén migrados, eliminar:
+## 5. videos
 
-```text
-apps/web/src/routes/navigation.ts
-```
+Representa una entrega de vídeo durante una prueba o una campaña.
 
-Con ello desaparecerán:
+### Columnas
 
-- `NavigationDestination`;
-- `WebNavigationError`;
-- `navigate`;
-- `navigateAction`;
-- `currentLocale`;
-- `currentSearch`;
-- `setSearch`;
-- `replaceSearch`.
+    id              uuid primary key
+    ugc_user_id     uuid → ugc_users.id
+    campaign_id     uuid null → campaigns.id
+    context         video_context
+    status          video_status
+    published_at    timestamptz null
+    data            jsonb
+    data_version    integer
+    version         integer
+    created_at      timestamptz
+    updated_at      timestamptz
 
-También se eliminará o reemplazará:
+### Contextos
 
-```text
-apps/web/src/routes/navigation.types.test.ts
-```
+    trial
+    campaign
 
-Los tests sustitutos validarán directamente rutas y navegación tipada de TanStack.
+Un vídeo de prueba no necesita campaña. Un vídeo de campaña sí.
 
-Comprobación final:
+### Estados
 
-```bash
-rg "navigation\.js|navigateAction|currentSearch|setSearch|replaceSearch|NavigationDestination|WebNavigationError" apps/web/src
-```
+    submitted
+    accepted
+    rejected
+    locked
 
-No deberán quedar consumidores de la abstracción eliminada.
+locked significa que ya forma parte de un cierre y no puede editarse.
 
-## 10. Tests
+### VideoData
 
-### Auth
+    formatId
+    primaryUrl
+    secondaryUrl
+    platformIdentifiers
+    validation
+    rejectionReason
+    rulesSnapshot
+
+### Reglas
+
+- Solo el propietario puede registrar sus vídeos, salvo una acción administrativa explícita.
+- Un vídeo de prueba solo se sube durante la ventana de publicación del trial.
+- Un vídeo de campaña solo se sube mientras la campaña acepta entregas.
+- El creador debe estar asignado a esa campaña.
+- Los identificadores externos deben ser únicos cuando la plataforma lo garantice.
+- Tras cerrar las entregas no se pueden añadir ni modificar vídeos.
+- La validación final usa el snapshot de reglas asociado al vídeo.
+
+## 6. video_data
+
+Serie histórica append-only de métricas observadas para un vídeo.
+
+### Columnas
+
+    id             uuid primary key
+    video_id       uuid → videos.id
+    captured_at    timestamptz
+    source         text
+    data           jsonb
+    created_at     timestamptz
+
+data puede contener views, likes, comments, shares, followers y, si hace falta, el payload original del proveedor.
+
+Reglas:
+
+- No se actualizan capturas anteriores.
+- Una restricción como unique(video_id, source, captured_at) hace idempotente la ingesta.
+- Los bonos indican qué captura o ventana se utilizó.
+
+## 7. payments
+
+Representa una obligación de pago ya calculada y congelada.
+
+### Columnas
+
+    id                uuid primary key
+    ugc_user_id       uuid → ugc_users.id
+    campaign_id       uuid → campaigns.id
+    status            payment_status
+    amount_minor      bigint
+    currency          char(3)
+    data              jsonb
+    version           integer
+    created_at        timestamptz
+    updated_at        timestamptz
+    paid_at           timestamptz null
+
+### Estados
+
+    pending
+    paid
+    cancelled
+
+### PaymentData
+
+    baseAmount
+    videoAmounts
+    bonuses
+    adjustments
+    calculationVersion
+    calculationInputs
+    externalPaymentReference
+    cancelReason
+
+### Reglas
+
+- Finalizar una campaña genera como máximo un pago por creador y campaña en el MVP.
+- La generación es idempotente.
+- El importe usa unidades menores, nunca coma flotante.
+- El desglose y los inputs del cálculo quedan congelados.
+- Exportar CSV no cambia el estado.
+- Marcar como pagado requiere referencia, actor y fecha.
+- Un pago pagado no vuelve a pending ni se recalcula.
+- Las correcciones se modelan como ajustes explícitos, no sobrescribiendo el histórico.
+
+## 8. Eventos de dominio, fuera del MVP
+
+No se crea `ugc_events` en esta entrega. Las acciones ya son comandos semánticos y el módulo queda preparado para publicar eventos cuando se integre la PR del sistema de eventos, sin acoplar ahora una tabla provisional.
+
+## Relación usuario-campaña
+
+En el MVP vive en:
+
+    ugc_group_members.group_id
+      → ugc_groups.campaign_id
+
+Invariante necesaria:
+
+> Un creador nunca participa en una campaña sin grupo y sus ventanas activas no pueden solaparse.
+
+El histórico se obtiene directamente de las membresías, vídeos y pagos. No se guardan arrays de campañas en `ugc_users.data`.
+
+## Tipado en código y restricciones en base de datos
+
+### En código
+
+Effect Schema es la fuente de verdad para status + dataVersion + data.
+
+- Cada lectura del repositorio decodifica el registro.
+- Cada escritura valida el estado completo antes de persistir.
+- Un registro imposible produce InvalidRepositoryState.
+- data_version permite migrar documentos antiguos.
+- El frontend consume contratos derivados de los mismos schemas compartidos.
+
+### En PostgreSQL
+
+La base de datos protege invariantes estructurales y concurrentes:
+
+- Enums o checks para estados.
+- data debe ser un objeto JSON.
+- Versiones positivas.
+- Claves foráneas y unicidad.
+- Coherencia entre grupo y campaña.
+- Importes y capacidades válidos.
+- Fechas ordenadas.
+- Compare-and-swap mediante version.
+
+No se duplicará en SQL toda la unión discriminada de Effect Schema, porque produciría dos fuentes de verdad.
+
+### Cuándo usar columna o JSON
+
+Usar columna si el dato:
+
+- Participa en una clave foránea.
+- Necesita unicidad.
+- Forma parte habitual de filtros, orden o joins.
+- Interviene en una invariante concurrente.
+- Debe actualizarse sin reescribir un documento completo.
+
+Usar data JSONB si:
+
+- Varía según el estado.
+- Es configuración flexible.
+- Se lee normalmente junto al agregado.
+- No necesita integridad referencial propia.
+
+Los índices de expresiones JSON o GIN se añadirán cuando existan consultas reales que los justifiquen.
+
+## Acciones de dominio
+
+### ugc_user
+
+    CreateOutboundLead
+    RegisterInboundApplicant
+    RegisterOutboundLead
+    AcceptApplicant
+    RejectApplicant
+    CompleteOnboardingRequirement
+    ScheduleOnboardingMeet
+    RecordMeetAttendance
+    ApproveOnboarding
+    StartTrial
+    CompleteTrialRequirement
+    SubmitTrialVideo
+    PassTrial
+    FailTrial
+    AssignToCampaign
+    MoveToGroup
+    RemoveFromCampaign
+    ChangeCreatorTier
+    SuspendCreator
+    ResumeCreator
+    ExitCreator
+
+### campaign
+
+    CreateCampaign
+    UpdateDraftCampaign
+    PublishCampaign
+    CreateCampaignGroups
+    ImportGroupConfiguration
+    CloseSubmissionsEarly
+    FinalizeCampaign
+    CancelCampaign
+    ArchiveCampaign
+
+### video
+
+    SubmitVideo
+    UpdateSubmittedVideo
+    AcceptVideo
+    RejectVideo
+    LockVideo
+    CaptureVideoMetrics
+
+### payment
+
+    GenerateCampaignPayments
+    ExportPendingPayments
+    MarkPaymentPaid
+    CancelPayment
+
+Cada acción declara:
+
+- Actor permitido.
+- Estado de origen.
+- Input.
+- Precondiciones.
+- Nuevo estado.
+- Entidades relacionadas afectadas.
+- Evento generado.
+- Errores de dominio posibles.
+
+## Implementación de las FSM
+
+La lógica central será pura:
+
+    deriveEffectiveState(persistedState, relatedState, now)
+      → effectiveState
+
+    decide(persistedState, command, context, now)
+      → nextState + escrituras relacionadas
+
+Principios:
+
+- decide no accede a base de datos, red ni reloj global.
+- El tiempo entra como dependencia.
+- Las transiciones imposibles devuelven errores de dominio tipados.
+- El service carga el agregado y sus referencias.
+- El service invoca la decisión pura.
+- El repository persiste los cambios relacionados respetando sus restricciones.
+- La escritura usa id y version esperada.
+- Si ninguna fila cambia, se devuelve un conflicto de concurrencia.
+
+## Acciones que afectan varias entidades
+
+### RegisterOutboundLead
+
+    ugc_user
+      enlaza auth_user_id
+      lead → applicant
+
+
+### ScheduleOnboardingMeet
+
+    ugc_user
+      permanece onboarding
+
+    meet
+      crea un intento scheduled
+
+
+### RecordMeetAttendance = missed
+
+    meet
+      scheduled → missed
+
+    ugc_user
+      primera ausencia → onboarding / meeting_pending
+      segunda ausencia → disqualified
+
+### PassTrial
+
+    ugc_user
+      trial → creator
+      queda waiting_campaign
+
+    videos
+      se conservan como histórico de prueba
+
+### AssignToCampaign
+
+    ugc_group_member
+      enlaza creador y grupo con tier y estado de participación
+
+    campaign
+      debe estar published y admitir asignaciones
+
+    ugc_group
+      debe pertenecer a la campaña, tener capacidad y ser compatible
+
+### FinalizeCampaign
+
+    campaign
+      ready_to_finalize → finalized
+
+    videos
+      se bloquean los incluidos en el cierre
+
+    ugc_group_members
+      se marcan completed; el creador permanece creator / waiting_campaign
+
+    payments
+      administración los genera después del cierre, de forma idempotente y con desglose congelado
+
+## Filtros y elegibilidad
+
+La elegibilidad será una política de dominio reutilizada para listar opciones y ejecutar asignaciones. Ocultar algo en la UI no sustituye la validación backend.
+
+### Datos mínimos
+
+Del creador:
+
+    countryCode
+    languageCodes
+    tier
+    estado efectivo
+    campaña actual
+    suspensión o restricciones
+
+De la campaña:
+
+    market
+    eligibleCountryCodes
+    requiredLanguageCodes
+    allowedTiers
+    ventana temporal
+    capacidad
+
+Del manager y grupo:
+
+    mercados autorizados
+    idiomas
+    campañas asignadas
+    capacidad del grupo
+    disponibilidad para meets
+
+### Políticas
+
+    CanBookMeet(creator, manager, availability, now)
+    CanJoinCampaign(creator, campaign, now)
+    CanJoinGroup(creator, campaign, group, manager, now)
+    CanSubmitVideo(creator, campaignOrTrial, now)
+    CanFinalizeCampaign(campaign, videos, now)
+
+Cada política devuelve un resultado explicativo:
+
+    eligible = true
+
+    o
+
+    eligible = false
+    reasons = [country_not_allowed, manager_market_mismatch, ...]
+
+Ejemplo: un creador de México no puede reservar con un manager limitado a España ni entrar en un grupo español, pero sí puede entrar en una campaña LATAM gestionada por un manager habilitado.
+
+## Ausencia de jobs persistidos
+
+No habrá una tabla jobs para cambiar estados cuando pase una fecha.
+
+- Las lecturas calculan el estado efectivo con now.
+- Las acciones validan ese estado antes de ejecutarse.
+- Los listados filtran usando las fechas persistidas.
+- Finalizar campañas, aprobar pruebas y marcar pagos siguen siendo acciones explícitas.
+
+Así no existen estados obsoletos por un job fallido.
+
+Los recordatorios no serán fuente de verdad. Si más adelante se necesita entrega fiable de notificaciones, se evaluará un outbox técnico independiente.
+
+## Concurrencia, idempotencia y transacciones
+
+### Concurrencia optimista
+
+Todas las entidades mutables llevan version.
+
+    UPDATE ugc_users
+    SET status = ..., data = ..., version = version + 1
+    WHERE id = ... AND version = ...;
+
+Dos managers no pueden aprobar, asignar o finalizar simultáneamente el mismo agregado sin que uno reciba un conflicto explícito.
+
+### Idempotencia
+
+- Los pagos tienen unicidad por creador y campaña y `GeneratePayments` omite los ya existentes.
+- Leads, usuarios, membresías y grupos tienen claves únicas que impiden duplicados relevantes.
+- La idempotencia general por `command_id` se añadirá junto al sistema de eventos.
+
+### Transacciones
+
+Las escrituras relacionadas deben agruparse transaccionalmente en el adapter. Los pagos se generan con una acción administrativa separada después de finalizar la campaña, por lo que el cierre no depende de un proveedor de pagos.
+
+## Autorización
+
+Roles:
+
+    creator
+    manager
+    admin
+
+- Creator: modifica solo su perfil, requisitos, reservas y entregas permitidas.
+- Manager: gestiona leads, onboarding, meets, trials y grupos dentro de su ámbito.
+- Admin: configura campañas, ámbitos, cierres, pagos y excepciones.
+
+La autorización combina:
+
+1. Capacidad global del rol.
+2. Ámbito concreto de mercado, campaña o grupo.
+
+El backend comprueba ambos niveles en cada acción.
+
+## Estrategia de pruebas
+
+### 1. Tests unitarios de FSM
+
+Una matriz por agregado:
+
+    estado inicial
+    acción
+    contexto y now
+    resultado esperado
+    evento esperado
+    error esperado
 
 Cubrir:
 
-- navegación después de mutación exitosa;
-- ausencia de navegación tras failure;
-- conservación de locale `es`/`en`;
-- transición correcta del estado de recuperación;
-- enlaces accesibles;
-- reset de identidad de campos entre rutas;
-- OAuth continúa usando navegación completa del documento.
+- Todas las transiciones válidas.
+- Transiciones prohibidas importantes.
+- Límites exactos de fechas.
+- Primera y segunda ausencia.
+- Ocho vídeos en ocho días y configuraciones alternativas.
+- Incompatibilidades de país, mercado, tier y manager.
+- Suspensión y reanudación.
+- Finalización idempotente.
 
-Se preferirá un router real con `createMemoryHistory` frente a mocks del singleton.
+### 2. Tests de políticas
 
-### Registro
+Las políticas de elegibilidad son funciones puras y se prueban con matrices pequeñas. El mismo resultado alimenta la UI y la validación del comando.
 
-Cubrir:
+### 3. Tests de services
 
-- enlace de registro a login;
-- verificación email exitosa → home con replace;
-- error de verificación → permanece en la ruta;
-- confirmación Google exitosa → home;
-- callback de sesión existente → limpia query y navega a home;
-- callback de registro nuevo → limpia query y muestra confirmación;
-- deduplicación del callback;
-- codificación y decodificación de `step` y `path`;
-- conservación de query params de atribución;
-- semántica push/replace y navegación back/forward.
+Con repositories de prueba:
 
-### Arquitectura
+- Carga de entidades necesarias.
+- Autorización del actor.
+- Invocación de FSM o política.
+- Coordinación de cambios relacionados.
+- Persistencia transaccional.
+- Conversión de conflictos y errores.
 
-Actualizar `apps/web/src/architecture.test.ts` para comprobar:
+### 4. Tests de adapters
 
-- TanStack es el único escritor de History SPA;
-- `frontend-core` no importa TanStack Router;
-- no existe catálogo paralelo de destinos;
-- atoms neutrales no acceden a URL ni globals del navegador;
-- no hay navegación SPA inferida desde `useEffect`;
-- `DocumentNavigation` se limita a navegación externa.
+Con PGlite y, para garantías críticas, PostgreSQL:
 
-## 11. Documentación
+- Claves foráneas.
+- Relación compuesta grupo-campaña.
+- Unicidad.
+- Compare-and-swap.
+- Deduplicación por command_id.
+- Generación única de pagos.
+- Roundtrip y decodificación de JSON.
+- Rechazo de registros corruptos.
+- Consultas y filtros reales.
 
-Actualizar:
+### 5. Tests HTTP
 
-```text
-docs/webapp-architecture.md
-docs/effect/90_react_and_effect_atom.md
-docs/architecture/atom-first-frontend.md
-```
+Usar el cliente tipado para comprobar contratos, autorización, mapeo de errores, idempotency key y respuestas consumidas por frontend.
 
-Eliminar las reglas que actualmente obligan a usar `apps/web/src/routes/navigation.ts` o describen toda navegación como servicio Effect.
+### 6. Tests frontend
 
-Documentar:
+Probar acciones disponibles, razones de inelegibilidad, carga, error, conflictos, invalidación de vistas y formularios variables. No acoplarse a detalles internos de atoms o componentes.
 
-- TanStack Router posee navegación SPA y URL;
-- `Link` es preferible para navegación interactiva;
-- `Route.useNavigate()` se usa tras eventos y mutaciones exitosas;
-- `useAtomSet(atom, { mode: "promiseExit" })` permite esperar una mutación sin callbacks de UI en el atom;
-- `Exit.isSuccess` controla la navegación posterior;
-- `useEffect` no observa resultados para decidir navegación;
-- `DocumentNavigation` se reserva para abandonar la SPA.
+### Casos críticos de regresión
 
-## 12. Orden de implementación
+- Dos managers intentan aceptar al mismo applicant.
+- Dos grupos intentan ocupar la última plaza.
+- Un creador sube un vídeo justo al cerrar la ventana.
+- Una campaña se finaliza dos veces.
+- Se reintenta marcar un pago como pagado.
+- Cambia una regla después de registrar un vídeo.
+- Un JSON antiguo necesita migración.
+- Un usuario mexicano se intenta asignar a un grupo solo España.
 
-1. Añadir/ajustar pruebas de caracterización de auth, registro, OAuth y URL.
-2. Hacer puros los codecs de `wizard-url.ts`.
-3. Mover y renombrar el runtime de `DocumentNavigation`.
-4. Sacar navegación SPA de las actions de auth.
-5. Migrar rutas de auth a `promiseExit` + `Route.useNavigate()`/`Link`.
-6. Migrar el enlace de registro a login.
-7. Sacar navegación a home de verificación y confirmación de registro.
-8. Adaptar el callback OAuth y limpieza de search params.
-9. Transferir la sincronización del wizard a TanStack Router.
-10. Eliminar `routes/navigation.ts` y sus tests obsoletos.
-11. Actualizar tests arquitectónicos.
-12. Actualizar documentación normativa.
-13. Ejecutar validación proporcional y global.
+## Orden de implementación
 
-## 13. Riesgos y mitigaciones
+### Fase 1 — Lenguaje y contratos
 
-### Resultado de mutaciones concurrentes
+1. Schemas compartidos de estados, comandos, errores y datos versionados.
+2. Funciones puras de estados efectivos.
+3. Matrices de transición y políticas de elegibilidad.
+4. Tests unitarios antes de la persistencia.
 
-`useAtomSet(..., { mode: "promiseExit" })` espera el resultado del `AtomResultFn`. Los formularios actuales evitan submits paralelos mediante estado `waiting`. Se verificará que ninguna action migrada use `concurrent: true` ni pueda ser disparada simultáneamente desde múltiples superficies.
+### Fase 2 — Persistencia
 
-### Errores y defects
+1. Migraciones de las ocho tablas.
+2. Repository ports por agregado.
+3. Adapters Drizzle con decode obligatorio.
+4. CAS, transacciones, constraints y tests de adapter.
 
-Se usará `promiseExit`, no `promise`, para evitar convertir causas tipadas en excepciones mediante `Cause.squash`. Solo `Exit.Success` permitirá navegar.
+### Fase 3 — Captación y onboarding
 
-### URL frente a estado de producto
+1. Leads inbound y outbound.
+2. Registro y enlace con autenticación.
+3. Aceptación o rechazo.
+4. Requisitos previos.
+5. Reserva y resultado de meets.
 
-TanStack será autoridad de URL; Effect Atom seguirá siendo autoridad del workflow. No se duplicará el estado completo del registro en search params ni se copiará la URL a un atom sin necesidad.
+### Fase 4 — Trial
 
-### OAuth y Strict Mode
+1. Configuración versionada.
+2. Calentamiento y publicación derivados.
+3. Entrega de vídeos.
+4. Evaluación, aprobación y rechazo.
 
-El callback debe seguir deduplicado y tolerar montajes repetidos. Se mantendrá una identidad estable basada en `code:state` y se probará el comportamiento.
+### Fase 5 — Campañas y grupos
 
-### Atribución
+1. Creación y publicación.
+2. Grupos y managers.
+3. Importación de configuración.
+4. Elegibilidad y asignación.
+5. Entregas de campaña.
 
-Al modificar `step` y `path`, los demás search params deben conservarse. Al limpiar OAuth solo se eliminarán `code` y `state`.
+### Fase 6 — Cierre y pagos
 
-### Accesibilidad
+1. Reconciliación de métricas.
+2. Validación final.
+3. Finalización transaccional.
+4. Generación de pagos.
+5. Exportación CSV y marcado como pagado.
 
-Los enlaces deben conservar semántica de enlace, apertura en nueva pestaña cuando sea aplicable y navegación por teclado. No se anidará un `<a>` dentro de un `<button>`.
+### Fase 7 — Interfaces
 
-## 14. Criterios de aceptación
+1. Portal del creador.
+2. Operativa de managers.
+3. Administración de campañas, cierres y pagos.
+4. Filtros y vistas por campaña, grupo y creador.
 
-- No existe `apps/web/src/routes/navigation.ts`.
-- No existe `navigateAction` ni un union paralelo de destinos SPA.
-- La navegación interna usa APIs tipadas de TanStack Router.
-- Las mutaciones navegables se esperan con `mode: "promiseExit"`.
-- Los atoms no reciben callbacks de navegación.
-- Un fallo de mutación no navega.
-- OAuth externo continúa usando `DocumentNavigation`.
-- `frontend-core` no depende de TanStack ni del navegador.
-- El wizard conserva locale, query de atribución, push/replace y back/forward.
-- No se introducen loaders, `beforeLoad`, caché del router ni navegación mediante `useEffect`.
-- Tests y documentación reflejan la arquitectura real.
+## Portal del creador — mapa de pantallas
 
-## 15. Validación
+La navegación principal del MVP tendrá cuatro destinos: `Inicio`, `Vídeos`, `Pagos` y `Perfil`. No habrá una pantalla separada llamada “Campaña actual”: cuando exista una prueba o campaña operativa, será el contenido principal de Inicio.
 
-Validación enfocada:
+### Inicio
 
-```bash
-pnpm --filter @proxus/frontend-core typecheck
-pnpm --filter @proxus/frontend-core test
-pnpm --filter @proxus/web typecheck
-pnpm --filter @proxus/web test
-pnpm --filter @proxus/web build
-```
+Inicio responde siempre a dos preguntas: qué está ocurriendo ahora y qué debe hacer el creador a continuación. La presentación se deriva del estado efectivo, no de rutas distintas para cada estado.
 
-Validación Effect y global:
+- applicant: solicitud recibida, fecha y acceso a los datos enviados.
+- rejected: decisión, explicación permitida y contacto con soporte.
+- onboarding: progreso, requisitos y única siguiente acción relevante.
+- meeting_pending: explicación y reserva de reunión.
+- meeting_scheduled: fecha, manager, acceso y cambio de reserva.
+- follow_up_required: primera ausencia, advertencia y nueva reserva.
+- trial/preparation: contrato, cuentas sociales y preparativos pendientes.
+- trial/warming_up: guía y cuenta atrás hasta poder publicar.
+- trial/publishing: objetivo, plazo, métricas, vídeos recientes y acción de subir.
+- trial/awaiting_evaluation: resultado pendiente e histórico bloqueado.
+- creator/waiting_campaign: confirmación de aprobación y disponibilidad.
+- creator/campaign_scheduled: campaña, fechas, reglas, formatos, grupo y manager.
+- creator/campaign_active: campaña como superficie principal, con progreso, views por plataforma, referidos, dinero estimado y vídeos recientes.
+- creator/campaign_reconciliation: publicaciones cerradas, métricas en revisión y fecha prevista del resultado.
+- campaña finalizada: pago generado y accesos a Pagos y Vídeos.
+- suspended o exited: motivo visible permitido y acceso de solo lectura al histórico.
 
-```bash
-pnpm effect:diagnostics
-pnpm static
-pnpm test
-pnpm build
-```
+Durante una campaña activa se recuperan del panel anterior únicamente los datos accionables. Ranking, retos, reglas y tablas densas quedan fuera de Inicio. El desglose detallado permanece disponible en las superficies secundarias.
 
-Al finalizar se informará del resultado de cada comando, advertencias existentes y cualquier comprobación no ejecutada.
+### Vídeos
+
+La UI usa el término “Vídeos” o “Contenidos”; no introduce una entidad visible llamada “entrega”. Cada contenido agrupa:
+
+- enlace de TikTok;
+- enlace de Instagram;
+- formato;
+- fecha de publicación;
+- referencia o indicación de contenido propio;
+- views por plataforma y total;
+- estado de revisión;
+- fijo, bonus y total estimado.
+
+La pantalla permite filtrar por campaña o prueba y buscar por título o campaña. Solo muestra “Subir vídeo” cuando `CanSubmitVideo` lo permite. El alta requiere ambas URLs, fecha, formato y referencia o contenido propio; la verificación de autoría y views será automática con alternativa manual cuando falle.
+
+### Pagos
+
+Muestra totales generado, pendiente y pagado. Separa pagos pendientes del histórico y permite abrir el desglose congelado de fijo, bonus y ajustes de cada campaña. Las estimaciones durante una campaña no son pagos y deben etiquetarse como tales.
+
+### Perfil
+
+Agrupa datos personales, país, idiomas, disponibilidad, cuentas verificadas de TikTok e Instagram, datos de cobro y documentos firmados. Los campos que condicionan la elegibilidad deben explicar que un cambio puede afectar a futuras campañas.
+
+### Criterios de simplicidad y responsive
+
+- Una acción primaria por estado; las acciones secundarias no compiten visualmente.
+- Header horizontal con navegación centrada en escritorio y barra inferior en móvil.
+- Tarjetas y listas en móvil; ninguna tabla horizontal es necesaria para el creador.
+- El histórico completo queda fuera de Inicio.
+- Los importes durante campaña se marcan como estimados y los vídeos pendientes de revisión se señalan explícitamente.
+- Los estados sin acción no muestran botones artificiales.
+
+## Decisiones abiertas
+
+- Si un creador puede estar en varias campañas simultáneamente.
+- Si un grupo puede tener varios managers.
+- Si una campaña puede cambiar reglas después de publicarse.
+- Qué requisitos exactos existen antes del meet.
+- Cómo se calcula cada tier y bono.
+- Qué métricas y momento de captura determinan el pago.
+- Cómo se representan ajustes posteriores al pago.
+- Qué capacidad y calendarios se usan para repartir meetings.
+
+Estas preguntas no bloquean el esqueleto del MVP, pero pueden justificar nuevas tablas cuando aparezcan invariantes que no encajen honestamente en el modelo actual.
+
+## Criterio de éxito arquitectónico
+
+El modelo es correcto si:
+
+- Ningún estado cambia mediante un parche arbitrario.
+- Cada acción inválida falla con una razón de dominio.
+- El mismo comando puede reintentarse sin duplicar efectos.
+- Las fechas no requieren sincronizar jobs con estados persistidos.
+- La base de datos protege relaciones y carreras importantes.
+- Todos los JSON se decodifican mediante schemas versionados.
+- Se puede explicar quién cambió una entidad y por qué.
+- Añadir un estado o regla modifica una FSM y sus tests, no reparte condicionales por handlers y componentes.

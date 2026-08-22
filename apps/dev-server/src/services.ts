@@ -11,6 +11,7 @@ import { makeGoogleFlowLive } from "@proxus/backend-domain/auth/google-live"
 import { FeatureFlagSnapshotReaderLive } from "@proxus/backend-domain/feature-flags"
 import { ProductAnalyticsLive } from "@proxus/backend-domain/product-analytics"
 import { StudyCatalogLive } from "@proxus/backend-domain/study-catalog"
+import { UgcManagementServiceLive } from "@proxus/backend-domain/ugc-management"
 import { AdminSessionAuthorizationLive } from "@proxus/backend-admin-transport/session"
 import { RoleAssignmentsRepositoryPgliteLive } from "@proxus/backend-infra/access-control/pglite"
 import {
@@ -28,9 +29,12 @@ import {
 } from "@proxus/backend-infra/auth"
 import { seedAuthQa } from "@proxus/backend-infra/auth-qa"
 import { PgliteDevelopmentLive, defaultMigrationsFolder, migratePglite, seedPgliteStudyCatalog } from "@proxus/backend-infra/database/pglite"
+import { seedPgliteUgcPreviewFixtures } from "@proxus/backend-infra/database/ugc-seed-pglite"
 import { FeatureFlagSnapshotRepositoryPgliteLive } from "@proxus/backend-infra/feature-flags/pglite"
 import { ProductAnalyticsRepositoryPgliteLive } from "@proxus/backend-infra/product-analytics/pglite"
 import { StudyCatalogRepositoryPgliteLive } from "@proxus/backend-infra/study-catalog/pglite"
+import { UgcRepositoryPgliteLive } from "@proxus/backend-infra/ugc-management/pglite"
+import { UgcSupportingServicesLive } from "@proxus/backend-infra/ugc-management/services"
 import { AuthSessionView, makeAuthSessionCookies } from "@proxus/backend-transport/auth"
 import { ProductAnalyticsHttpContextDevelopment } from "@proxus/backend-transport/product-analytics"
 import { AccountSummary, CurrentSession } from "@proxus/shared/auth"
@@ -49,6 +53,7 @@ const persistence = Layer.mergeAll(
   FeatureFlagSnapshotRepositoryPgliteLive,
   ProductAnalyticsRepositoryPgliteLive,
   makeAuthPersistencePgliteLive(sessionPolicy.ttlMillis),
+  UgcRepositoryPgliteLive,
 ).pipe(Layer.provide(database))
 
 const AuthSessionViewLive = Layer.effect(AuthSessionView, Effect.gen(function*() {
@@ -114,17 +119,19 @@ const authSurface = Layer.mergeAll(
 const analytics = ProductAnalyticsLive.pipe(Layer.provide(persistence))
 const flags = FeatureFlagSnapshotReaderLive.pipe(Layer.provide(persistence))
 const adminUsers = AdminUsersServiceLive.pipe(Layer.provide(Layer.merge(persistence, access)))
+const ugc = UgcManagementServiceLive.pipe(Layer.provide(Layer.merge(persistence, UgcSupportingServicesLive)))
 
 const seed = Layer.effectDiscard(Effect.gen(function*() {
   const migrations = yield* Config.string("DATABASE_MIGRATIONS_DIR").pipe(Config.withDefault(defaultMigrationsFolder))
   yield* migratePglite(migrations)
   yield* seedPgliteStudyCatalog
   yield* seedAuthQa()
+  yield* seedPgliteUgcPreviewFixtures
 })).pipe(Layer.provide(Layer.merge(database, Layer.merge(persistence, PasswordsLive))))
 
 const sharedServices = Layer.merge(
   Layer.mergeAll(persistence, authSurface, access, catalog, studyPath),
-  Layer.mergeAll(analytics, ProductAnalyticsHttpContextDevelopment, flags, adminUsers, seed),
+  Layer.mergeAll(analytics, ProductAnalyticsHttpContextDevelopment, flags, adminUsers, ugc, seed),
 )
 
 const adminSession = AdminSessionAuthorizationLive.pipe(Layer.provide(sharedServices))

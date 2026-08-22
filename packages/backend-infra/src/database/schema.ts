@@ -225,6 +225,181 @@ export const productAnalyticsEvents = pgTable(
   ],
 )
 
+export const ugcUsers = pgTable(
+  "ugc_users",
+  {
+    id: uuid("id").primaryKey(),
+    authUserId: uuid("auth_user_id").references(() => users.id, { onDelete: "set null" }),
+    userType: text("user_type", { enum: ["creator", "manager"] }).notNull(),
+    status: text("status").notNull(),
+    displayName: text("display_name").notNull(),
+    email: text("email").notNull(),
+    countryCode: text("country_code").notNull(),
+    data: jsonb("data").notNull(),
+    dataVersion: integer("data_version").notNull().default(1),
+    version: integer("version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("ugc_users_auth_user_id_uidx").on(table.authUserId).where(sql`${table.authUserId} is not null`),
+    uniqueIndex("ugc_users_email_uidx").on(table.email),
+    index("ugc_users_type_status_idx").on(table.userType, table.status),
+    index("ugc_users_country_idx").on(table.countryCode),
+    check("ugc_users_type_check", sql`${table.userType} in ('creator', 'manager')`),
+    check("ugc_users_status_check", sql`${table.status} in ('lead','applicant','onboarding','trial','creator','suspended','rejected','disqualified','exited','active','disabled')`),
+    check("ugc_users_type_status_pair_check", sql`(${table.userType} = 'manager' and ${table.status} in ('active','disabled')) or (${table.userType} = 'creator' and ${table.status} not in ('active','disabled'))`),
+    check("ugc_users_email_check", sql`${table.email} = lower(btrim(${table.email}))`),
+    check("ugc_users_country_check", sql`${table.countryCode} ~ '^[A-Z]{2}$'`),
+    check("ugc_users_versions_check", sql`${table.dataVersion} > 0 and ${table.version} > 0`),
+  ],
+)
+
+export const ugcCampaigns = pgTable(
+  "ugc_campaigns",
+  {
+    id: uuid("id").primaryKey(),
+    name: text("name").notNull(),
+    status: text("status", { enum: ["draft", "published", "finalized", "cancelled", "archived"] }).notNull(),
+    startsAt: timestamp("starts_at", { withTimezone: true, mode: "date" }).notNull(),
+    submissionsCloseAt: timestamp("submissions_close_at", { withTimezone: true, mode: "date" }).notNull(),
+    reconciliationEndsAt: timestamp("reconciliation_ends_at", { withTimezone: true, mode: "date" }).notNull(),
+    data: jsonb("data").notNull(),
+    dataVersion: integer("data_version").notNull().default(1),
+    version: integer("version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).notNull(),
+  },
+  (table) => [
+    index("ugc_campaigns_status_dates_idx").on(table.status, table.startsAt, table.submissionsCloseAt),
+    check("ugc_campaigns_status_check", sql`${table.status} in ('draft','published','finalized','cancelled','archived')`),
+    check("ugc_campaigns_dates_check", sql`${table.startsAt} < ${table.submissionsCloseAt} and ${table.submissionsCloseAt} < ${table.reconciliationEndsAt}`),
+    check("ugc_campaigns_versions_check", sql`${table.dataVersion} > 0 and ${table.version} > 0`),
+  ],
+)
+
+export const ugcGroups = pgTable(
+  "ugc_groups",
+  {
+    id: uuid("id").primaryKey(),
+    campaignId: uuid("campaign_id").notNull().references(() => ugcCampaigns.id, { onDelete: "restrict" }),
+    managerId: uuid("manager_id").notNull().references(() => ugcUsers.id, { onDelete: "restrict" }),
+    name: text("name").notNull(),
+    status: text("status", { enum: ["draft", "active", "completed", "cancelled"] }).notNull(),
+    capacity: integer("capacity").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("ugc_groups_campaign_name_uidx").on(table.campaignId, table.name),
+    index("ugc_groups_manager_idx").on(table.managerId),
+    check("ugc_groups_status_check", sql`${table.status} in ('draft','active','completed','cancelled')`),
+    check("ugc_groups_capacity_check", sql`${table.capacity} > 0`),
+  ],
+)
+
+export const ugcGroupMembers = pgTable(
+  "ugc_group_members",
+  {
+    id: uuid("id").primaryKey(),
+    groupId: uuid("group_id").notNull().references(() => ugcGroups.id, { onDelete: "restrict" }),
+    creatorId: uuid("creator_id").notNull().references(() => ugcUsers.id, { onDelete: "restrict" }),
+    tierId: text("tier_id").notNull(),
+    status: text("status", { enum: ["scheduled", "active", "completed", "removed"] }).notNull(),
+    joinedAt: timestamp("joined_at", { withTimezone: true, mode: "date" }).notNull(),
+    completedAt: timestamp("completed_at", { withTimezone: true, mode: "date" }),
+  },
+  (table) => [
+    uniqueIndex("ugc_group_members_group_creator_uidx").on(table.groupId, table.creatorId),
+    index("ugc_group_members_creator_idx").on(table.creatorId),
+    check("ugc_group_members_status_check", sql`${table.status} in ('scheduled','active','completed','removed')`),
+  ],
+)
+
+export const ugcMeets = pgTable(
+  "ugc_meets",
+  {
+    id: uuid("id").primaryKey(),
+    managerId: uuid("manager_id").notNull().references(() => ugcUsers.id, { onDelete: "restrict" }),
+    creatorId: uuid("creator_id").references(() => ugcUsers.id, { onDelete: "restrict" }),
+    status: text("status", { enum: ["available", "reserved", "attended", "missed", "cancelled"] }).notNull(),
+    startsAt: timestamp("starts_at", { withTimezone: true, mode: "date" }).notNull(),
+    durationMinutes: integer("duration_minutes").notNull(),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).notNull(),
+  },
+  (table) => [
+    index("ugc_meets_manager_starts_idx").on(table.managerId, table.startsAt),
+    index("ugc_meets_creator_idx").on(table.creatorId),
+    check("ugc_meets_status_check", sql`${table.status} in ('available','reserved','attended','missed','cancelled')`),
+    check("ugc_meets_reservation_check", sql`(${table.status} = 'available' and ${table.creatorId} is null) or (${table.status} in ('reserved','attended','missed') and ${table.creatorId} is not null) or ${table.status} = 'cancelled'`),
+    check("ugc_meets_duration_check", sql`${table.durationMinutes} > 0`),
+  ],
+)
+
+export const ugcVideos = pgTable(
+  "ugc_videos",
+  {
+    id: uuid("id").primaryKey(),
+    creatorId: uuid("creator_id").notNull().references(() => ugcUsers.id, { onDelete: "restrict" }),
+    campaignId: uuid("campaign_id").references(() => ugcCampaigns.id, { onDelete: "restrict" }),
+    status: text("status", { enum: ["submitted", "changes_requested", "accepted", "rejected", "locked"] }).notNull(),
+    format: text("format").notNull(),
+    reference: text("reference").notNull(),
+    tiktokUrl: text("tiktok_url"),
+    instagramUrl: text("instagram_url"),
+    submittedAt: timestamp("submitted_at", { withTimezone: true, mode: "date" }).notNull(),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true, mode: "date" }),
+    reviewNotes: text("review_notes"),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).notNull(),
+  },
+  (table) => [
+    index("ugc_videos_creator_campaign_idx").on(table.creatorId, table.campaignId),
+    index("ugc_videos_status_idx").on(table.status),
+    check("ugc_videos_status_check", sql`${table.status} in ('submitted','changes_requested','accepted','rejected','locked')`),
+    check("ugc_videos_link_check", sql`${table.tiktokUrl} is not null or ${table.instagramUrl} is not null`),
+  ],
+)
+
+export const ugcVideoData = pgTable(
+  "ugc_video_data",
+  {
+    id: uuid("id").primaryKey(),
+    videoId: uuid("video_id").notNull().references(() => ugcVideos.id, { onDelete: "cascade" }),
+    tiktokViews: integer("tiktok_views").notNull(),
+    instagramViews: integer("instagram_views").notNull(),
+    capturedAt: timestamp("captured_at", { withTimezone: true, mode: "date" }).notNull(),
+    source: text("source", { enum: ["mock", "rapid-api", "manual"] }).notNull(),
+  },
+  (table) => [
+    index("ugc_video_data_video_captured_idx").on(table.videoId, table.capturedAt),
+    check("ugc_video_data_views_check", sql`${table.tiktokViews} >= 0 and ${table.instagramViews} >= 0`),
+    check("ugc_video_data_source_check", sql`${table.source} in ('mock','rapid-api','manual')`),
+  ],
+)
+
+export const ugcPayments = pgTable(
+  "ugc_payments",
+  {
+    id: uuid("id").primaryKey(),
+    creatorId: uuid("creator_id").notNull().references(() => ugcUsers.id, { onDelete: "restrict" }),
+    campaignId: uuid("campaign_id").notNull().references(() => ugcCampaigns.id, { onDelete: "restrict" }),
+    status: text("status", { enum: ["pending", "paid", "cancelled"] }).notNull(),
+    amountCents: integer("amount_cents").notNull(),
+    breakdown: jsonb("breakdown").notNull(),
+    paidAt: timestamp("paid_at", { withTimezone: true, mode: "date" }),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("ugc_payments_creator_campaign_uidx").on(table.creatorId, table.campaignId),
+    index("ugc_payments_status_idx").on(table.status),
+    check("ugc_payments_status_check", sql`${table.status} in ('pending','paid','cancelled')`),
+  ],
+)
+
 export type UserRow = typeof users.$inferSelect
 export type AuthSessionRow = typeof authSessions.$inferSelect
 export type AuthChallengeRow = typeof authChallenges.$inferSelect
@@ -234,3 +409,11 @@ export type StudyAssetRow = typeof studyAssets.$inferSelect
 export type StudyNodeRow = typeof studyNodes.$inferSelect
 export type StudyEdgeRow = typeof studyEdges.$inferSelect
 export type ProductAnalyticsEventRow = typeof productAnalyticsEvents.$inferSelect
+export type UgcUserRow = typeof ugcUsers.$inferSelect
+export type UgcCampaignRow = typeof ugcCampaigns.$inferSelect
+export type UgcGroupRow = typeof ugcGroups.$inferSelect
+export type UgcGroupMemberRow = typeof ugcGroupMembers.$inferSelect
+export type UgcMeetRow = typeof ugcMeets.$inferSelect
+export type UgcVideoRow = typeof ugcVideos.$inferSelect
+export type UgcVideoDataRow = typeof ugcVideoData.$inferSelect
+export type UgcPaymentRow = typeof ugcPayments.$inferSelect

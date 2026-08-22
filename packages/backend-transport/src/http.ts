@@ -6,16 +6,18 @@ import { PublicAuthHandlers, PublicSessionHandlers, SessionAuthorizationLive } f
 import { PublicFeatureFlagHandlers } from "./modules/feature-flags/http.js"
 import { PublicProductAnalyticsHandlers } from "./modules/product-analytics/http.js"
 import { PublicStudyCatalogHandlers } from "./modules/study-catalog/http.js"
+import { PublicUgcHandlers } from "./modules/ugc-management/http.js"
 
 export const makePublicApiRoutes = (openapiPath: `/${string}` = "/openapi.json") => HttpApiBuilder.layer(PublicApi, {
   openapiPath,
 }).pipe(
   Layer.provide(PublicAuthHandlers),
   Layer.provide(PublicSessionHandlers),
-  Layer.provide(SessionAuthorizationLive),
   Layer.provide(PublicStudyCatalogHandlers),
   Layer.provide(PublicFeatureFlagHandlers),
   Layer.provide(PublicProductAnalyticsHandlers),
+  Layer.provide(PublicUgcHandlers),
+  Layer.provide(SessionAuthorizationLive),
 )
 export const PublicApiRoutes = makePublicApiRoutes()
 

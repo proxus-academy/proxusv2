@@ -42,6 +42,14 @@ describe("admin embedded HTTP API", () => {
       expect((yield* manageRole(credentials.student.cookie)).status).toBe(403)
       expect((yield* manageRole(credentials.editor.cookie)).status).toBe(403)
       expect((yield* manageRole(credentials.admin.cookie)).status).toBe(204)
+
+      const ugcWorkspace = (cookie?: string) => request("/admin/ugc/workspace", {
+        headers: cookie === undefined ? {} : { cookie },
+      })
+      expect((yield* ugcWorkspace()).status).toBe(401)
+      expect((yield* ugcWorkspace(credentials.student.cookie)).status).toBe(403)
+      expect((yield* ugcWorkspace(credentials.editor.cookie)).status).toBe(403)
+      expect((yield* ugcWorkspace(credentials.admin.cookie)).status).toBe(200)
     }))),
   30_000)
 })

@@ -18,6 +18,8 @@ import { ProductAnalyticsProdLive } from "./product-analytics.prod.js"
 import { StudyCatalogDevLive } from "./study-catalog.dev.js"
 import { StudyCatalogProdLive } from "./study-catalog.prod.js"
 import { AuthDevLive, AuthProdLive } from "./auth.js"
+import { UgcDevLive } from "./ugc.dev.js"
+import { UgcProdLive } from "./ugc.prod.js"
 import { layer as localObjectStorageLayer } from "../infrastructure/object-storage/object-storage.local.js"
 import { LocalObjectStorageTransfers } from "../infrastructure/object-storage/object-storage.local.js"
 import { ObjectStorage } from "../infrastructure/object-storage/object-storage.js"
@@ -65,9 +67,11 @@ export const HttpDevLive = makeHttpLive(Layer.mergeAll(
   DevCatalogLive,
   ProductAnalyticsDevLive,
   FeatureFlagsDevLive,
+  UgcDevLive,
 ), AuthDevLive, devCatalogSupport, DevObjectStorageLive).pipe(Layer.provide(AuthDevLive), Layer.provide(devCatalogSupport))
 export const HttpProdLive = makeHttpLive(Layer.mergeAll(
   ProdCatalogLive,
   ProductAnalyticsProdLive,
   FeatureFlagsProdLive,
+  UgcProdLive,
 ), AuthProdLive, prodCatalogSupport, ProdObjectStorageLive).pipe(Layer.provide(AuthProdLive), Layer.provide(prodCatalogSupport))

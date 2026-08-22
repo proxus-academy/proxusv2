@@ -117,6 +117,9 @@ steps:
           [[ "$${status}" == "$${expected}" ]] || echo "$${path}: got $${status}, expected $${expected}" >> "$${failures}"
         }
         check /admin/ 200 text/html &
+        check /ugc 308 text/html &
+        check /ugc/ 200 text/html &
+        check /ugc/videos 200 text/html &
         check /ui 308 text/html &
         check /ui/ 200 text/html &
         check /ui/index.json 200 application/json &

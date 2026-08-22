@@ -1,0 +1,1 @@
+ALTER TABLE "ugc_meets" DROP CONSTRAINT "ugc_meets_reservation_check", ADD CONSTRAINT "ugc_meets_reservation_check" CHECK (("status" = 'available' and "creator_id" is null) or ("status" in ('reserved','attended','missed') and "creator_id" is not null) or "status" = 'cancelled');

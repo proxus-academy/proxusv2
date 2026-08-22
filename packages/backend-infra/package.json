@@ -6,6 +6,8 @@
     "./database/pglite": "./src/database/pglite.ts",
     "./database/postgres": "./src/database/postgres.ts",
     "./database/preview-initialize": "./src/database/preview-initialize.ts",
+    "./database/ugc-seed": "./src/database/ugc.seed.ts",
+    "./database/ugc-seed-pglite": "./src/database/ugc.seed.pglite.ts",
     "./auth": "./src/modules/auth/index.ts",
     "./auth/preview-runtime": "./src/modules/auth/preview-runtime.ts",
     "./auth/authentication-live": "./src/modules/auth/authentication.live.ts",
@@ -21,7 +23,10 @@
     "./study-catalog/postgres": "./src/modules/study-catalog/repository.postgres.layer.ts",
     "./product-analytics/memory": "./src/modules/product-analytics/repository.memory.ts",
     "./product-analytics/pglite": "./src/modules/product-analytics/repository.pglite.layer.ts",
-    "./product-analytics/bigquery": "./src/modules/product-analytics/repository.bigquery.ts"
+    "./product-analytics/bigquery": "./src/modules/product-analytics/repository.bigquery.ts",
+    "./ugc-management/pglite": "./src/modules/ugc-management/repository.pglite.layer.ts",
+    "./ugc-management/postgres": "./src/modules/ugc-management/repository.postgres.layer.ts",
+    "./ugc-management/services": "./src/modules/ugc-management/services.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",

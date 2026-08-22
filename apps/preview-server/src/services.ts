@@ -11,6 +11,7 @@ import { makeGoogleFlowLive } from "@proxus/backend-domain/auth/google-live"
 import { FeatureFlagSnapshotReaderLive } from "@proxus/backend-domain/feature-flags"
 import { ProductAnalyticsLive } from "@proxus/backend-domain/product-analytics"
 import { StudyCatalogLive } from "@proxus/backend-domain/study-catalog"
+import { UgcManagementServiceLive } from "@proxus/backend-domain/ugc-management"
 import { AdminSessionAuthorizationLive } from "@proxus/backend-admin-transport/session"
 import { RoleAssignmentsRepositoryPostgresLive } from "@proxus/backend-infra/access-control/postgres"
 import {
@@ -30,6 +31,8 @@ import { PostgresMigrationCheckLive, makePostgresProductionLive } from "@proxus/
 import { FeatureFlagSnapshotRepositoryPostgresLive } from "@proxus/backend-infra/feature-flags/postgres"
 import { ProductAnalyticsRepositoryMemory } from "@proxus/backend-infra/product-analytics/memory"
 import { StudyCatalogRepositoryPostgresLive } from "@proxus/backend-infra/study-catalog/postgres"
+import { UgcRepositoryPostgresLive } from "@proxus/backend-infra/ugc-management/postgres"
+import { UgcSupportingServicesLive } from "@proxus/backend-infra/ugc-management/services"
 import { AuthSessionView, makeAuthSessionCookies } from "@proxus/backend-transport/auth"
 import { ProductAnalyticsHttpContextDevelopment } from "@proxus/backend-transport/product-analytics"
 import { AccountSummary, CurrentSession } from "@proxus/shared/auth"
@@ -47,6 +50,7 @@ const persistence = Layer.mergeAll(
   StudyCatalogRepositoryPostgresLive,
   FeatureFlagSnapshotRepositoryPostgresLive,
   makeAuthPersistencePostgresLive(sessionPolicy.ttlMillis),
+  UgcRepositoryPostgresLive,
 ).pipe(Layer.provide(database))
 
 const AuthSessionViewLive = Layer.effect(AuthSessionView, Effect.gen(function*() {
@@ -106,12 +110,13 @@ const authSurface = Layer.mergeAll(
 const analytics = ProductAnalyticsLive.pipe(Layer.provide(ProductAnalyticsRepositoryMemory))
 const flags = FeatureFlagSnapshotReaderLive.pipe(Layer.provide(persistence))
 const adminUsers = AdminUsersServiceLive.pipe(Layer.provide(Layer.merge(persistence, access)))
+const ugc = UgcManagementServiceLive.pipe(Layer.provide(Layer.merge(persistence, UgcSupportingServicesLive)))
 
 const migrationCheck = PostgresMigrationCheckLive.pipe(Layer.provide(database))
 
 const sharedServices = Layer.merge(
   Layer.mergeAll(persistence, authSurface, access, catalog, studyPath),
-  Layer.mergeAll(analytics, ProductAnalyticsHttpContextDevelopment, flags, adminUsers, migrationCheck),
+  Layer.mergeAll(analytics, ProductAnalyticsHttpContextDevelopment, flags, adminUsers, ugc, migrationCheck),
 )
 const adminSession = AdminSessionAuthorizationLive.pipe(Layer.provide(sharedServices))
 

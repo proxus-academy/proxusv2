@@ -6,7 +6,8 @@
     ".": "./src/http.ts",
     "./session": "./src/session.ts",
     "./study-catalog": "./src/modules/study-catalog/http.ts",
-    "./access-control": "./src/modules/access-control/http.ts"
+    "./access-control": "./src/modules/access-control/http.ts",
+    "./ugc-management": "./src/modules/ugc-management/http.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",

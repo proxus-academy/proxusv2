@@ -15,6 +15,7 @@ import { Route as AdminAuthenticatedRouteImport } from './routes/admin/_authenti
 import { Route as AdminPublicRouteImport } from './routes/admin/_public'
 import { Route as AdminAuthenticatedIndexRouteImport } from './routes/admin/_authenticated/index'
 import { Route as AdminAuthenticatedNodesRouteImport } from './routes/admin/_authenticated/nodes'
+import { Route as AdminAuthenticatedUgcRouteImport } from './routes/admin/_authenticated/ugc'
 import { Route as AdminAuthenticatedUsersRouteImport } from './routes/admin/_authenticated/users'
 import { Route as AdminPublicLoginRouteImport } from './routes/admin/_public/login'
 
@@ -46,6 +47,11 @@ const AdminAuthenticatedNodesRoute = AdminAuthenticatedNodesRouteImport.update({
   path: '/nodes',
   getParentRoute: () => AdminAuthenticatedRoute,
 } as any)
+const AdminAuthenticatedUgcRoute = AdminAuthenticatedUgcRouteImport.update({
+  id: '/ugc',
+  path: '/ugc',
+  getParentRoute: () => AdminAuthenticatedRoute,
+} as any)
 const AdminAuthenticatedUsersRoute = AdminAuthenticatedUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -61,6 +67,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/admin/nodes': typeof AdminAuthenticatedNodesRoute
+  '/admin/ugc': typeof AdminAuthenticatedUgcRoute
   '/admin/users': typeof AdminAuthenticatedUsersRoute
   '/admin/login': typeof AdminPublicLoginRoute
   '/admin/': typeof AdminAuthenticatedIndexRoute
@@ -69,6 +76,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminAuthenticatedIndexRoute
   '/admin/nodes': typeof AdminAuthenticatedNodesRoute
+  '/admin/ugc': typeof AdminAuthenticatedUgcRoute
   '/admin/users': typeof AdminAuthenticatedUsersRoute
   '/admin/login': typeof AdminPublicLoginRoute
 }
@@ -79,6 +87,7 @@ export interface FileRoutesById {
   '/admin/_authenticated': typeof AdminAuthenticatedRouteWithChildren
   '/admin/_public': typeof AdminPublicRouteWithChildren
   '/admin/_authenticated/nodes': typeof AdminAuthenticatedNodesRoute
+  '/admin/_authenticated/ugc': typeof AdminAuthenticatedUgcRoute
   '/admin/_authenticated/users': typeof AdminAuthenticatedUsersRoute
   '/admin/_public/login': typeof AdminPublicLoginRoute
   '/admin/_authenticated/': typeof AdminAuthenticatedIndexRoute
@@ -89,11 +98,18 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/admin/nodes'
+    | '/admin/ugc'
     | '/admin/users'
     | '/admin/login'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/admin/nodes' | '/admin/users' | '/admin/login'
+  to:
+    | '/'
+    | '/admin'
+    | '/admin/nodes'
+    | '/admin/ugc'
+    | '/admin/users'
+    | '/admin/login'
   id:
     | '__root__'
     | '/'
@@ -101,6 +117,7 @@ export interface FileRouteTypes {
     | '/admin/_authenticated'
     | '/admin/_public'
     | '/admin/_authenticated/nodes'
+    | '/admin/_authenticated/ugc'
     | '/admin/_authenticated/users'
     | '/admin/_public/login'
     | '/admin/_authenticated/'
@@ -155,6 +172,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAuthenticatedNodesRouteImport
       parentRoute: typeof AdminAuthenticatedRoute
     }
+    '/admin/_authenticated/ugc': {
+      id: '/admin/_authenticated/ugc'
+      path: '/ugc'
+      fullPath: '/admin/ugc'
+      preLoaderRoute: typeof AdminAuthenticatedUgcRouteImport
+      parentRoute: typeof AdminAuthenticatedRoute
+    }
     '/admin/_authenticated/users': {
       id: '/admin/_authenticated/users'
       path: '/users'
@@ -174,12 +198,14 @@ declare module '@tanstack/react-router' {
 
 interface AdminAuthenticatedRouteChildren {
   AdminAuthenticatedNodesRoute: typeof AdminAuthenticatedNodesRoute
+  AdminAuthenticatedUgcRoute: typeof AdminAuthenticatedUgcRoute
   AdminAuthenticatedUsersRoute: typeof AdminAuthenticatedUsersRoute
   AdminAuthenticatedIndexRoute: typeof AdminAuthenticatedIndexRoute
 }
 
 const AdminAuthenticatedRouteChildren: AdminAuthenticatedRouteChildren = {
   AdminAuthenticatedNodesRoute: AdminAuthenticatedNodesRoute,
+  AdminAuthenticatedUgcRoute: AdminAuthenticatedUgcRoute,
   AdminAuthenticatedUsersRoute: AdminAuthenticatedUsersRoute,
   AdminAuthenticatedIndexRoute: AdminAuthenticatedIndexRoute,
 }

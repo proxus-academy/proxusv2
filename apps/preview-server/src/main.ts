@@ -32,6 +32,7 @@ const adminRoutes = prefixed(
 const healthRoute = HttpRouter.add("GET", "/healthz", HttpServerResponse.empty({ status: 204 }))
 const staticAssets = Layer.unwrap(Effect.gen(function*() {
   const adminRoot = yield* Config.string("ADMIN_ROOT").pipe(Config.withDefault("/app/admin"))
+  const ugcRoot = yield* Config.string("UGC_ROOT").pipe(Config.withDefault("/app/ugc"))
   const uiRoot = yield* Config.string("UI_ROOT").pipe(Config.withDefault("/app/ui"))
   const webRoot = yield* Config.string("WEB_ROOT").pipe(Config.withDefault("/app/web"))
   return Layer.mergeAll(
@@ -41,6 +42,18 @@ const staticAssets = Layer.unwrap(Effect.gen(function*() {
       index: "index.html",
       spa: true,
     }),
+    Layer.effectDiscard(Effect.gen(function*() {
+      const router = yield* HttpRouter.HttpRouter
+      const handler = (yield* HttpStaticServer.make({ root: ugcRoot, index: "index.html", spa: true })).pipe(
+        Effect.catch(HttpServerRespondable.toResponse),
+      )
+      yield* router.prefixed("/ugc").add("GET", "/*", Effect.gen(function*() {
+        const request = yield* HttpServerRequest.HttpServerRequest
+        return request.originalUrl === "/ugc"
+          ? HttpServerResponse.redirect("/ugc/", { status: 308 })
+          : yield* handler
+      }))
+    })),
     Layer.effectDiscard(Effect.gen(function*() {
       const router = yield* HttpRouter.HttpRouter
       const handler = (yield* HttpStaticServer.make({ root: uiRoot, index: "index.html" })).pipe(

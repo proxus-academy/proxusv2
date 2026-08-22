@@ -7,6 +7,7 @@ import * as PostgresDrizzle from "drizzle-orm/effect-postgres"
 import { Config, Effect, Layer } from "effect"
 import { makePostgresProductionLive, migratePostgres } from "./postgres.js"
 import { seedStudyCatalog } from "./study-catalog.seed.js"
+import { seedUgcPreviewFixtures } from "./ugc.seed.js"
 
 const day = 86_400_000
 
@@ -26,4 +27,5 @@ export const initializePreviewDatabase = Effect.gen(function*() {
   const path = yield* resolveAuthQaStudyPathPostgres(db)
   const persistenceContext = yield* Layer.build(persistence)
   yield* seedAuthQa(path).pipe(Effect.provide(persistenceContext))
+  yield* seedUgcPreviewFixtures(db)
 })

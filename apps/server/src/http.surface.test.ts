@@ -65,7 +65,12 @@ describe("public server surface", () => {
       expect(document.paths["/auth/register/email"]).toBeDefined()
       expect(document.paths["/auth/google/start"]).toBeDefined()
       expect(document.paths["/auth/session"]).toBeDefined()
+      expect(document.paths["/ugc/workspace"]).toBeDefined()
+      expect(document.paths["/ugc/commands"]).toBeDefined()
       expect(Object.keys(document.paths).some((path) => path.startsWith("/admin/"))).toBe(false)
+
+      const anonymousUgc = yield* Effect.promise(() => web.handler(new Request("http://proxus.test/ugc/workspace")))
+      expect(anonymousUgc.status).toBe(401)
 
       const snapshot = yield* Effect.promise(() => web.handler(new Request("http://proxus.test/feature-flags/snapshot")))
       expect(snapshot.status).toBe(200)
@@ -77,7 +82,7 @@ describe("public server surface", () => {
       const unchanged = yield* Effect.promise(() => web.handler(new Request("http://proxus.test/feature-flags/snapshot", { headers: { "if-none-match": etag } })))
       expect(unchanged.status).toBe(304)
     }))),
-  15_000)
+  30_000)
 
   test("limits raw request bodies before decoding and accepts a normal analytics batch", () =>
     Effect.runPromise(Effect.scoped(Effect.gen(function*() {

@@ -4,6 +4,9 @@
     ".": {
       "entry": ["scripts/*.mjs", "*.config.mjs"],
       "project": ["scripts/*.mjs", "*.config.mjs"],
+      // Reference submodules are deliberately outside this workspace and must
+      // not be discovered as root Vitest entries.
+      "ignore": [".repos/**"],
       // Installed by the trusted GitHub workflow and developer Google Cloud SDK, not pnpm.
       "ignoreBinaries": ["gcloud"]
     },
@@ -21,6 +24,10 @@
       // generated module surface intentionally exports framework-neutral helpers.
       "ignoreDependencies": ["tailwindcss"],
       "ignore": ["src/paraglide/**"]
+    },
+    "apps/ugc": {
+      // Tailwind is resolved indirectly by Vite and the shared theme CSS.
+      "ignoreDependencies": ["tailwindcss"]
     },
     "apps/*": {},
     "packages/*": {}

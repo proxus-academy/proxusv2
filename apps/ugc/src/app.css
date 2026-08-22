@@ -1,0 +1,19 @@
+@import "@proxus/ui/theme.css";
+@source "../../../packages/ui/src/**/*.{ts,tsx}";
+
+:root { color-scheme: light; }
+body { min-width: 320px; background: #f7f7fb; }
+.ugc-shell { min-height: 100svh; background: radial-gradient(circle at 85% -20%, rgba(121,62,249,.12), transparent 38rem), #f7f7fb; }
+.ugc-card { border: 1px solid rgba(15,23,42,.08); border-radius: 1.25rem; background: rgba(255,255,255,.94); box-shadow: 0 12px 35px rgba(35,25,66,.05); }
+.ugc-field { display: grid; gap: .4rem; }
+.ugc-field > span { font-size: .8rem; font-weight: 650; color: #475569; }
+.ugc-field input, .ugc-field select, .ugc-field textarea { min-height: 2.75rem; width: 100%; border: 1px solid #d8d9e3; border-radius: .75rem; background: white; padding: .65rem .8rem; color: #111827; }
+.ugc-field textarea { min-height: 6rem; }
+.ugc-field input:focus, .ugc-field select:focus, .ugc-field textarea:focus { outline: 2px solid rgba(121,62,249,.3); border-color: #793ef9; }
+.ugc-action { display: inline-flex; min-height: 2.65rem; align-items: center; justify-content: center; border-radius: .8rem; background: #793ef9; padding: .6rem 1rem; font-weight: 700; color: white; transition: transform 150ms ease, opacity 150ms ease; }
+.ugc-action:hover { transform: translateY(-1px); }
+.ugc-action:disabled { cursor: wait; opacity: .55; transform: none; }
+.ugc-action-secondary { background: #f0ebff; color: #6330dc; }
+.ugc-action-danger { background: #fff0f0; color: #b42318; }
+@media (max-width: 767px) { .ugc-page { padding-bottom: 5.5rem; } }
+@media (prefers-reduced-motion: reduce) { .ugc-action { transition: none; } }

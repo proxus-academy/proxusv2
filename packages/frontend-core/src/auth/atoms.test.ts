@@ -53,7 +53,8 @@ const setup = (options: { readonly unauthorizedSession?: boolean; readonly failS
   registry.mount(atoms.startGoogleAtom)
   registry.mount(atoms.completeGoogleCallbackAtom)
   registry.mount(atoms.requestPasswordResetAtom)
-  registry.mount(atoms.resetPasswordAtom)
+    registry.mount(atoms.resetPasswordAtom)
+    registry.mount(atoms.logoutAtom)
   return { atoms, registry, rotate: () => { current = rotated } }
 }
 
@@ -93,5 +94,16 @@ describe("legacy auth atoms using the typed PublicApi client", () => {
     registry.set(atoms.restoreSessionAtom, undefined)
     yield* flush
     expect(AsyncResult.getOrThrow(registry.get(atoms.sessionAtom))).toEqual(rotated)
+  })))
+
+  it("closes the server session before becoming anonymous", () => Effect.runPromise(Effect.gen(function*() {
+    const { atoms, registry } = setup()
+    registry.set(atoms.restoreSessionAtom, undefined)
+    yield* flush
+
+    registry.set(atoms.logoutAtom, undefined)
+    yield* flush
+
+    expect(AsyncResult.getOrThrow(registry.get(atoms.sessionAtom))).toBeNull()
   })))
 })

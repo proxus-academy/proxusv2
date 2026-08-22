@@ -53,6 +53,23 @@ Las comprobaciones de disponibilidad normalizan con las mismas reglas que el alt
 
 Los endpoints protegidos por `SessionAuthorization` responden `401` si la cookie falta o no resuelve una cuenta activa. La renovación deslizante puede rotar la cookie en cualquier respuesta autenticada; no existe endpoint de refresh.
 
+## UGC management
+
+La plataforma UGC usa la sesión pública existente y expone un workspace ajustado al actor. La aplicación dedicada consume el prefijo público; la pantalla UGC del admin consume exclusivamente el prefijo administrativo.
+
+| Method | Path | Actor | Operation |
+| --- | --- | --- | --- |
+| GET | `/ugc/workspace` | creador o manager | Leer solo las entidades visibles para la sesión |
+| POST | `/ugc/commands` | creador o manager | Ejecutar una acción semántica y devolver el workspace actualizado |
+| GET | `/admin/ugc/workspace` | admin global | Leer el workspace administrativo completo |
+| POST | `/admin/ugc/commands` | admin global | Ejecutar campañas, grupos, managers, reuniones o pagos |
+
+El cuerpo de una mutación es `{ command }`, donde `command` es la unión discriminada compartida en `@proxus/shared/ugc-management`. Los handlers solo adaptan HTTP; autorización, transiciones y escrituras coordinadas pertenecen al service. Los comandos que modifican varias entidades se ejecutan en una transacción del repository.
+
+El workspace contiene usuarios UGC, campañas, grupos, membresías, reuniones, vídeos, capturas históricas de métricas y pagos. La visibilidad del manager queda limitada a sus mercados, leads o solicitudes gestionadas y grupos asignados; un creador solo recibe sus propios datos y las reuniones que puede reservar. Las acciones administrativas exigen rol global de administrador en el servidor, independientemente de lo que muestre el cliente.
+
+Las transiciones inválidas devuelven `422`, las colisiones de capacidad, concurrencia o fechas devuelven `409`, la ausencia devuelve `404` y una acción fuera del ámbito del actor devuelve `403`. La base de datos refuerza claves foráneas y estados estructurales; las reglas temporales y de autorización se validan en el dominio.
+
 ## Public study catalog
 
 Prefix: `/study-catalog`
