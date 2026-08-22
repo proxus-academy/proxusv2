@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>PR #38 · Informe técnico UGC</title>
+    <link rel="stylesheet" href="assets/ugc-pr/report.css" />
+  </head>
+  <body>
+    <header class="topbar"><div class="topbar-inner"><a class="wordmark" href="ugc-mvp-pr-overview.html"><span class="mark">P</span> Proxus · UGC</a><nav class="topnav" aria-label="Índice técnico"><a href="#arquitectura">Arquitectura</a><a href="#dominio">Dominio</a><a href="#datos">Datos</a><a href="#api">API</a><a href="#testing">Testing</a><a href="#preview">Preview</a><a class="switch" href="ugc-mvp-product-report.html">← Informe de producto</a></nav></div></header>
+    <main>
+      <section class="hero" aria-labelledby="title">
+        <div><p class="eyebrow">PR #38 · Informe técnico</p><h1 id="title">Un dominio UGC transaccional y testeable.</h1><p class="hero-lead">La PR implementa estados y acciones como comandos tipados sobre un servicio Effect, con repositorios portables, persistencia Drizzle, autorización por actor y un workspace derivado para cada interfaz.</p><div class="actions"><a class="button" href="#arquitectura">Explorar arquitectura</a><a class="button secondary" href="ugc-mvp-product-report.html#galeria">Ver 60 capturas</a></div></div>
+        <aside class="hero-card"><div class="hero-card-top">Flujo normativo Proxus</div><div class="hero-card-body"><strong>HTTP handler → service → repository port → adapter</strong><p>La UI nunca modifica entidades directamente. Cada comando valida estado, alcance, fechas e invariantes antes de persistir.</p><div class="status-line"><span class="status-dot"></span> validate:pr + static + preview en verde</div></div></aside>
+      </section>
+      <div class="stats"><div class="stat"><strong>31</strong><span>comandos discriminados</span></div><div class="stat"><strong>8</strong><span>agregados/tablas UGC</span></div><div class="stat"><strong>4</strong><span>errores HTTP normalizados</span></div><div class="stat"><strong>17</strong><span>proyectos en static gate</span></div></div>
+
+      <section class="section-block" id="arquitectura">
+        <div class="section-head"><div><p class="eyebrow">01 · Arquitectura</p><h2>Separación de responsabilidades completa</h2></div><p>El bounded context <code>ugc-management</code> conserva el mismo nombre en contratos, dominio, infraestructura, transporte y frontend core. Cada aplicación compone únicamente las piezas que necesita.</p></div>
+        <div class="architecture"><article class="arch-layer"><small>01</small><h3>React + Effect Atom</h3><p>Consulta workspace, renderiza estados observables y despacha comandos.</p></article><article class="arch-layer"><small>02</small><h3>Transport HTTP</h3><p>Sesión, decoding, handler y traducción de errores públicos.</p></article><article class="arch-layer"><small>03</small><h3>UgcManagementService</h3><p>Autorización, transición, coordinación y cálculos de negocio.</p></article><article class="arch-layer"><small>04</small><h3>Repository adapters</h3><p>Memory, PGlite, PostgreSQL/Drizzle y transacciones.</p></article></div>
+        <div class="apps-map"><div class="app"><strong>apps/ugc · nueva SPA</strong><span>Creator y Manager en <code>/ugc/</code>; arquitectura React independiente.</span></div><div class="app"><strong>apps/admin · ampliada</strong><span>Superficie global en <code>/admin/ugc</code>, con adapters propios.</span></div><div class="app untouched"><strong>apps/web + apps/site · sin cambios</strong><span>No reciben rutas UGC ni lógica del nuevo bounded context.</span></div></div>
+      </section>
+
+      <section class="section-block">
+        <div class="section-head"><div><p class="eyebrow">02 · Ejecución</p><h2>Un comando, una transacción, un workspace nuevo</h2></div><p>La respuesta de una mutación ya contiene el estado visible posterior. Effect Atom reemplaza/invalida la consulta, de modo que todas las pantallas dependientes observan el mismo resultado.</p></div>
+        <div class="sequence"><article class="sequence-step"><small>1</small><h3>Evento UI</h3><p>La pantalla construye una clase de comando compartida.</p></article><article class="sequence-step"><small>2</small><h3>Decode + sesión</h3><p>HTTP valida el discriminante y resuelve AccountId/rol admin.</p></article><article class="sequence-step"><small>3</small><h3>Service/FSM</h3><p>Carga estado, verifica transición, scope y reglas cruzadas.</p></article><article class="sequence-step"><small>4</small><h3>Transaction</h3><p>Todos los inserts/updates confirman juntos o hacen rollback.</p></article><article class="sequence-step"><small>5</small><h3>Workspace scoped</h3><p>Se relee y filtra la vista para creator, manager o admin.</p></article></div>
+      </section>
+
+      <section class="section-block" id="dominio">
+        <div class="section-head"><div><p class="eyebrow">03 · FSM y comandos</p><h2>Estados persistidos con datos válidos por construcción</h2></div><p><code>ugc_users.status</code> conserva la transición estable y <code>data</code> es una unión discriminada. LeadData, ApplicantData, OnboardingData, TrialData, CreatorData, ManagerData y TerminalData impiden mezclar atributos de etapas incompatibles.</p></div>
+        <div class="state-model"><article class="state-box persisted"><h3>Persistencia</h3><p>Status + data discriminado + version.</p><div class="pills"><span class="pill">lead</span><span class="pill">applicant</span><span class="pill">onboarding</span><span class="pill">trial</span><span class="pill">creator</span><span class="pill">suspended</span><span class="pill">rejected</span><span class="pill">disqualified</span><span class="pill">exited</span></div></article><div class="state-arrow">＋ Clock<br />＋ meets<br />＋ memberships<br />→</div><article class="state-box derived"><h3>CreatorEffectiveStatus</h3><p>Proyección para presentación; no requiere jobs temporales.</p><div class="pills"><span class="pill">requirements_pending</span><span class="pill">meeting_scheduled</span><span class="pill">trial_warming</span><span class="pill">trial_publishing</span><span class="pill">campaign_scheduled</span><span class="pill">campaign_active</span><span class="pill">campaign_reconciliation</span></div></article></div>
+        <div class="table-wrap" style="margin-top:14px"><table><thead><tr><th>Familia</th><th>Comandos implementados</th><th>Actores</th></tr></thead><tbody>
+          <tr><td>Captación</td><td>SubmitApplication, CreateOutboundLead, AcceptApplication, RejectApplication</td><td>Creator / Manager / soporte Admin</td></tr>
+          <tr><td>Onboarding</td><td>CompleteRequirement, GenerateContract, SignContract, RegisterSocialAccount</td><td>Creator / Manager</td></tr>
+          <tr><td>Reuniones</td><td>CreateMeetSlot, ReserveMeet, EditMeet, RecordMeetAttendance</td><td>Creator / Manager / Admin editor</td></tr>
+          <tr><td>Trial</td><td>StartTrial, EvaluateTrial</td><td>Manager / soporte Admin</td></tr>
+          <tr><td>Managers</td><td>ConfigureManager, DisableManager</td><td>Admin</td></tr>
+          <tr><td>Campañas</td><td>CreateCampaign, PublishCampaign, CreateGroup, ImportGroupConfiguration, AssignCreatorToGroup</td><td>Admin / Manager</td></tr>
+          <tr><td>Contenido</td><td>SubmitVideo, ReviewVideo, RefreshVideoMetrics, FinalizeCampaign</td><td>Creator / Manager / soporte Admin</td></tr>
+          <tr><td>Pagos</td><td>GeneratePayments, AdjustPayment, MarkPaymentPaid</td><td>Admin</td></tr>
+          <tr><td>Ciclo de cuenta</td><td>SuspendCreator, ResumeCreator, ExitCreator</td><td>Manager / Admin</td></tr>
+        </tbody></table></div>
+      </section>
+
+      <section class="section-block">
+        <div class="section-head"><div><p class="eyebrow">04 · Invariantes</p><h2>Las restricciones viven debajo de la UI</h2></div><p>Los botones muestran el camino feliz, pero el service vuelve a validar cada supuesto. Las restricciones estructurales también tienen checks, índices y foreign keys en PostgreSQL.</p></div>
+        <div class="rules"><div class="rule"><strong>Scope de manager</strong><span>Mercados, leads propios, onboarding aceptado, meetings y grupos propios.</span></div><div class="rule"><strong>Grupo obligatorio</strong><span>La campaña de un creator siempre se alcanza por UgcGroupMember.</span></div><div class="rule"><strong>Capacidad</strong><span>Los miembros activos/removidos se cuentan antes de insertar.</span></div><div class="rule"><strong>No solapamiento</strong><span>Se comparan ventanas startsAt–submissionsCloseAt de todas sus memberships.</span></div><div class="rule"><strong>Ventanas de vídeo</strong><span>Trial y campaña bloquean entregas fuera de fechas o formatos.</span></div><div class="rule"><strong>Reunión coherente</strong><span>Available no tiene creator; reserved/attended/missed sí.</span></div><div class="rule"><strong>Conciliación completa</strong><span>FinalizeCampaign exige reconciliationEndsAt alcanzado.</span></div><div class="rule"><strong>Pago idempotente</strong><span>Unique creator/campaign y omisión de liquidaciones existentes.</span></div><div class="rule"><strong>Optimistic locking</strong><span>Version evita sobrescribir agregados modificados concurrentemente.</span></div></div>
+      </section>
+
+      <section class="section-block" id="datos">
+        <div class="section-head"><div><p class="eyebrow">05 · Persistencia</p><h2>Ocho tablas, relaciones explícitas</h2></div><p>JSONB se limita a datos variables/versionados. Las relaciones que soportan reglas, consultas e histórico permanecen normalizadas.</p></div>
+        <div class="entity-map"><div class="entity primary user"><strong>ugc_users</strong><span>auth + type + status + data + version</span></div><div class="connector a">1 ↔ N</div><div class="entity primary member"><strong>ugc_group_members</strong><span>creator + group + tier + status</span></div><div class="connector b">N ↔ 1</div><div class="entity group"><strong>ugc_groups</strong><span>campaign + manager + capacity</span></div><div class="entity meet"><strong>ugc_meets</strong><span>manager + creator? + outcome</span></div><div class="entity campaign"><strong>ugc_campaigns</strong><span>dates + countries + tiers + bonuses</span></div><div class="entity video"><strong>ugc_videos</strong><span>creator + campaign? + links + review</span></div><div class="connector c">1 ↔ N</div><div class="entity video-data"><strong>ugc_video_data</strong><span>views snapshot + source + capturedAt</span></div><div class="entity payment"><strong>ugc_payments</strong><span>creator + campaign + breakdown</span></div></div>
+        <div class="table-wrap" style="margin-top:14px"><table><thead><tr><th>Tabla</th><th>JSONB</th><th>Índices / constraints destacados</th></tr></thead><tbody>
+          <tr><td>ugc_users</td><td>data + dataVersion</td><td>Cuenta/email únicos, type/status pair, country, optimistic version.</td></tr>
+          <tr><td>ugc_campaigns</td><td>countries, formats, tiers, bonusRules</td><td>Fechas estrictamente ordenadas; status/dates index.</td></tr>
+          <tr><td>ugc_groups</td><td>—</td><td>Nombre único por campaña, manager FK, capacity &gt; 0.</td></tr>
+          <tr><td>ugc_group_members</td><td>—</td><td>Unique group/creator e índice por creator.</td></tr>
+          <tr><td>ugc_meets</td><td>—</td><td>Reservation check, duración positiva, índices de agenda.</td></tr>
+          <tr><td>ugc_videos</td><td>—</td><td>Al menos un link, status y creator/campaign indexes.</td></tr>
+          <tr><td>ugc_video_data</td><td>—</td><td>Views no negativas, source tipado, video/capturedAt.</td></tr>
+          <tr><td>ugc_payments</td><td>breakdown financiero</td><td>Unique creator/campaign y status index.</td></tr>
+        </tbody></table></div>
+      </section>
+
+      <section class="section-block" id="api">
+        <div class="section-head"><div><p class="eyebrow">06 · API y scoping</p><h2>Dos operaciones por superficie</h2></div><p>Se evita una API CRUD por entidad. Workspace lee una proyección coherente; Commands ejecuta comportamiento y devuelve esa misma proyección actualizada.</p></div>
+        <div class="card"><div class="endpoint"><span class="method">GET</span><span class="endpoint-path">/api/ugc/workspace</span><p>Creator/Manager autenticado, filtrado por actor.</p></div><div class="endpoint"><span class="method post">POST</span><span class="endpoint-path">/api/ugc/commands</span><p>Unión discriminada de 31 comandos; errores 403/404/409/422/500.</p></div><div class="endpoint"><span class="method">GET</span><span class="endpoint-path">/admin-api/admin/ugc/workspace</span><p>Workspace global tras AccessControl administrator.</p></div><div class="endpoint"><span class="method post">POST</span><span class="endpoint-path">/admin-api/admin/ugc/commands</span><p>Comandos administrativos con doble autorización.</p></div></div>
+        <div class="grid-3" style="margin-top:14px"><article class="card card-pad"><h3>Creator scope</h3><p>Perfil, managers compatibles, reuniones reservables/propias, memberships, campañas, vídeos, métricas y pagos propios.</p></article><article class="card card-pad"><h3>Manager scope</h3><p>Grupos propios, agenda propia, creators vinculados, candidatos de mercado y contenido del equipo.</p></article><article class="card card-pad"><h3>Admin scope</h3><p>Estado completo para configuración y operación global.</p></article></div>
+      </section>
+
+      <section class="section-block">
+        <div class="section-head"><div><p class="eyebrow">07 · Ports</p><h2>Integraciones reemplazables sin contaminar el dominio</h2></div><p>Los servicios externos quedan detrás de capacidades pequeñas. El MVP puede probarse de forma determinista y la integración real puede añadirse sin cambiar comandos o handlers.</p></div>
+        <div class="grid-3"><article class="card card-pad"><h3>UgcIdGenerator</h3><p>Genera UUIDs; en tests permite secuencias deterministas.</p></article><article class="card card-pad"><h3>UgcContractRenderer</h3><p>Renderiza el contrato usando el generador de referencia de <code>/tmp</code> y guarda snapshot.</p></article><article class="card card-pad"><h3>UgcVideoMetricsProvider</h3><p>Implementación mock estable hoy; seam preparado para RapidAPI.</p></article></div>
+      </section>
+
+      <section class="section-block" id="testing">
+        <div class="section-head"><div><p class="eyebrow">08 · Testing</p><h2>Matriz de flujos, contratos y límites</h2></div><p>Las pruebas cubren comportamiento observable y restricciones, no detalles internos de React o Effect Atom.</p></div>
+        <div class="quality-grid"><article class="quality-card"><span class="check">✓</span><h3>Service journeys</h3><p>Inbound completo; outbound + dos ausencias; reject; suspend/resume/exit; importación.</p></article><article class="quality-card"><span class="check">✓</span><h3>Reglas cruzadas</h3><p>Mercados, ownership, capacidad, overlap, campañas futuras y compatibilidad de manager.</p></article><article class="quality-card"><span class="check">✓</span><h3>Repository contract</h3><p>Round-trip de ocho entidades, stale writes, check de reuniones y rollback.</p></article><article class="quality-card"><span class="check">✓</span><h3>HTTP contract</h3><p>APIs pública/admin, OpenAPI, 401 anónimo y matriz student/editor/admin.</p></article><article class="quality-card"><span class="check">✓</span><h3>Frontend behavior</h3><p>Cinco estados del inicio, CSV y logout server-side.</p></article><article class="quality-card"><span class="check">✓</span><h3>Static gates</h3><p>Effect diagnostics, TS, Oxlint, React Doctor, boundaries, Knip y workspace contracts.</p></article><article class="quality-card"><span class="check">✓</span><h3>Build gates</h3><p><code>pnpm validate:pr</code> y builds UGC/Admin/Storybook.</p></article><article class="quality-card"><span class="check">✓</span><h3>Runtime preview</h3><p>11 smoke checks sobre PostgreSQL: SPAs, fallbacks, Storybook y OpenAPI.</p></article></div>
+      </section>
+
+      <section class="section-block">
+        <div class="section-head"><div><p class="eyebrow">09 · Evidencia UI</p><h2>La arquitectura termina en interfaces reales</h2></div><p>Estas capturas representativas provienen del runtime de la PR. El <a href="ugc-mvp-product-report.html#galeria">informe de producto contiene las 60 capturas</a>.</p></div>
+        <div class="evidence-list">
+          <article class="evidence-card"><div class="evidence-heading"><span class="evidence-index">C</span><h3>Creator · campaña activa</h3><p>Estado derivado desde status, fechas, membership y campaña.</p></div><div class="capture-pair"><figure><img loading="lazy" src="assets/ugc-pr/creator/14-campaign-active--desktop.png" alt="Creator con campaña activa en escritorio" /><figcaption>Desktop</figcaption></figure><figure><img loading="lazy" src="assets/ugc-pr/creator/14-campaign-active--mobile.png" alt="Creator con campaña activa en móvil" /><figcaption>Mobile</figcaption></figure></div></article>
+          <article class="evidence-card"><div class="evidence-heading"><span class="evidence-index">M</span><h3>Manager · pipeline scoped</h3><p>Solo candidatos y creators que el workspace permite gestionar.</p></div><div class="capture-pair"><figure><img loading="lazy" src="assets/ugc-pr/manager/pipeline--desktop.png" alt="Pipeline manager en escritorio" /><figcaption>Desktop</figcaption></figure><figure><img loading="lazy" src="assets/ugc-pr/manager/pipeline--mobile.png" alt="Pipeline manager en móvil" /><figcaption>Mobile</figcaption></figure></div></article>
+          <article class="evidence-card"><div class="evidence-heading"><span class="evidence-index">A</span><h3>Admin · campañas</h3><p>Configuración global sobre la API administrativa existente.</p></div><div class="capture-pair"><figure><img loading="lazy" src="assets/ugc-pr/admin/campaigns--desktop.png" alt="Campañas admin en escritorio" /><figcaption>Desktop</figcaption></figure><figure><img loading="lazy" src="assets/ugc-pr/admin/campaigns--mobile.png" alt="Campañas admin en móvil" /><figcaption>Mobile</figcaption></figure></div></article>
+        </div>
+      </section>
+
+      <section class="section-block" id="preview">
+        <div class="section-head"><div><p class="eyebrow">10 · Preview</p><h2>Un runtime empaquetado para revisar la PR</h2></div><p>La preview es un composition root exclusivo: un proceso Effect sirve ambas APIs, tres SPAs y Storybook desde Cloud Run, contra una base PostgreSQL dedicada.</p></div>
+        <div class="preview"><div class="preview-gate"><div><div class="lock">●</div><strong>Cloud Run + Google IAP</strong><p>Acceso por grupo, identidad sin claves JSON y sin invoker anónimo al finalizar el deploy.</p></div></div><div class="routes"><div class="route"><code>/ugc/*</code><strong>UGC SPA</strong><span>Incluye fallback de rutas anidadas</span></div><div class="route"><code>/admin/*</code><strong>Admin SPA</strong><span>Gestión UGC integrada</span></div><div class="route"><code>/api/*</code><strong>Public API</strong><span>Auth + Creator/Manager</span></div><div class="route"><code>/admin-api/*</code><strong>Admin API</strong><span>AccessControl administrator</span></div><div class="route"><code>/ui/*</code><strong>Storybook</strong><span>Estados visuales de Creator</span></div><div class="route"><code>PostgreSQL 17</code><strong>DB por PR</strong><span>Migraciones y seeds sintéticos</span></div></div></div>
+      </section>
+
+      <section class="section-block">
+        <div class="section-head"><div><p class="eyebrow">11 · Límites</p><h2>Entregado frente a diferido</h2></div><p>Los seams existen donde aportan testabilidad inmediata; no se añaden capas vacías para capacidades hipotéticas.</p></div>
+        <div class="scope-grid"><article class="scope-card in"><h3>Entregado</h3><ul><li>Dominio, persistencia, APIs y UIs end-to-end.</li><li>Contrato renderizado y snapshot firmado.</li><li>Métricas mock deterministas e histórico.</li><li>Fijo, views, top N, ajuste y CSV.</li><li>Seeds, preview y pruebas de transición.</li></ul></article><article class="scope-card out"><h3>Diferido conscientemente</h3><ul><li>Provider RapidAPI real.</li><li>Evento externo dependiente de otra PR.</li><li>Cálculo automático de referrals.</li><li>Acciones UI de cancel/archive.</li><li>Event log/auditoría independiente.</li></ul></article></div>
+      </section>
+
+      <footer class="footer"><span>Proxus v2 · PR #38 · Informe técnico UGC</span><span><a href="ugc-mvp-product-report.html">Volver al informe de producto →</a></span></footer>
+    </main>
+  </body>
+</html>
