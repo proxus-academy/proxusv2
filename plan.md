@@ -977,3 +977,15 @@ El modelo es correcto si:
 - Todos los JSON se decodifican mediante schemas versionados.
 - Se puede explicar quién cambió una entidad y por qué.
 - Añadir un estado o regla modifica una FSM y sus tests, no reparte condicionales por handlers y componentes.
+
+## Decisiones cerradas: trial, contratos e incentivos
+
+- El trial sucede fuera de campaña. Sus condiciones se obtienen de una configuración general versionada por mercado y se congelan dentro de `ugc_user.data` al iniciarlo.
+- La reunión de onboarding ocurre antes de generar el contrato y registrar TikTok e Instagram. Tras completar esos pasos, el manager inicia el trial; no introduce manualmente fechas, duración ni número de vídeos.
+- Un trial se considera completado cuando alcanza dentro de plazo el objetivo de vídeos validados. Si queda incompleto no genera pago; si se completa, genera la compensación configurada aunque la evaluación final sea `passed` o `failed`.
+- El lead outbound conserva el manager de origen durante todo el journey. Cuando completa y supera el trial genera de forma idempotente el bonus de conversión configurado para ese manager.
+- Cada contrato guarda las condiciones renderizadas y una clave canónica de sus condiciones materiales. Una asignación a campaña solo pide nueva firma cuando cambian objetivo, compensación, moneda, formatos, plataformas, bonus o condiciones legales. Grupo, manager, nombre y calendario de campaña no fuerzan una firma.
+- Una membresía puede quedar `awaiting_contract`. En ese estado reserva la plaza y participa en las comprobaciones de capacidad y solapamiento, pero no permite publicar hasta que el creador firma.
+- La política global de managers permite porcentajes distintos sobre fijo, bonus de views, ranking, referidos y ajustes. Cada campaña conserva el snapshot vigente al crearse para evitar recálculos retroactivos.
+- `ugc_payment` representa pagos a creadores y managers mediante `recipient_user_id`, `related_creator_id`, `kind`, `source_key`, moneda y un desglose congelado. `source_key` hace idempotentes la compensación del trial, la liquidación de campaña, la comisión del manager y el bonus outbound.
+- Tras suspensión, descalificación o salida, Vídeos, Pagos y Perfil permanecen en solo lectura durante los días configurados por mercado; al vencer el plazo se vuelven a bloquear.

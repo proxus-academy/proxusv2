@@ -17,7 +17,7 @@ export const UgcIdGeneratorLive = Layer.succeed(UgcIdGenerator, UgcIdGenerator.o
 }))
 
 export const UgcContractRendererLive = Layer.succeed(UgcContractRenderer, UgcContractRenderer.of({
-  render: ({ creator, locale, documentType, documentNumber, address, paymentMethod }) => Effect.succeed([
+  render: ({ creator, locale, documentType, documentNumber, address, paymentMethod, terms }) => Effect.succeed([
     "CONTRATO DE COLABORACIÓN",
     locale === "es-ES" ? "PROGRAMA DE CREADORES PROXUS · ESPAÑA" : "PROGRAMA DE CREADORES PROXUS · LATAM",
     "",
@@ -25,6 +25,8 @@ export const UgcContractRendererLive = Layer.succeed(UgcContractRenderer, UgcCon
     `Documento: ${documentType} ${documentNumber}`,
     `Domicilio: ${address}`,
     `Forma de pago: ${paymentMethod === "grade" ? "Grade" : "Factura"}`,
+    `Compensación: ${(terms.compensationCents / 100).toFixed(2)} ${terms.currency} por ${terms.contentTarget} contenidos.`,
+    `Plataformas: ${terms.requiredPlatforms.join(" e ")}.`,
     "",
     "El Creador colaborará en campañas UGC de PROXUS mediante la creación de contenido orgánico auténtico.",
     "Cada asignación concreta su grupo, manager, tier, calendario, formatos, compensación fija y bonus aplicables.",

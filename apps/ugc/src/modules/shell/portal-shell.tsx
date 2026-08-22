@@ -6,7 +6,7 @@ import { BriefcaseBusiness, Home, LogOut, UserRound, Video, WalletCards } from "
 import { Effect, Exit } from "effect"
 import type { ReactNode } from "react"
 import { ugcAuth } from "../auth/state.js"
-import { canAccessCreatorLibrary } from "../creator/creator-access.js"
+import { canAccessCreatorLibrary, canAccessCreatorProfile } from "../creator/creator-access.js"
 
 const baseNavigation = [
   { to: "/ugc", label: "Inicio", icon: Home },
@@ -22,9 +22,14 @@ export function PortalShell({ session, children }: { readonly session: CurrentSe
   const matchRoute = useMatchRoute()
   const manager = workspace._tag === "Success" && workspace.value.role === "manager"
   const libraryUnlocked = workspace._tag === "Success" && canAccessCreatorLibrary(workspace.value)
-  const navigation = libraryUnlocked
-    ? manager ? [...baseNavigation, { to: "/ugc/manager" as const, label: "Gestión", icon: BriefcaseBusiness }] : baseNavigation
-    : []
+  const profileUnlocked = workspace._tag === "Success" && canAccessCreatorProfile(workspace.value)
+  const navigation = manager
+    ? [...baseNavigation, { to: "/ugc/manager" as const, label: "Gestión", icon: BriefcaseBusiness }]
+    : libraryUnlocked
+      ? baseNavigation
+      : profileUnlocked
+        ? [baseNavigation[0], baseNavigation[3]]
+        : []
   const signOut = () => Effect.runFork(Effect.promise(() => logout()).pipe(Effect.flatMap((exit) => Exit.isSuccess(exit) ? Effect.promise(() => navigate({ to: "/ugc/login", replace: true })) : Effect.void)))
   return <div className="ugc-shell">
     <header className="sticky top-0 z-30 border-b border-black/[.07] bg-white/90 backdrop-blur-xl">

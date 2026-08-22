@@ -1,9 +1,11 @@
 import { UgcUser, UgcWorkspace, makeUgcUserId } from "@proxus/shared/ugc-management"
 import { describe, expect, test } from "vitest"
-import { canAccessCreatorLibrary } from "./creator-access.js"
+import { canAccessCreatorLibrary, canAccessCreatorProfile } from "./creator-access.js"
 
 const asOf = "2026-08-22T12:00:00.000Z"
 const creatorId = makeUgcUserId("72000000-0000-4000-8000-000000000001")
+const contractPolicy = { contentRetentionMonths: 3, creatorNoticeDays: 5, paidMediaRightsAmountCents: 3_000, paidMediaRightsDurationMonths: 3, exclusivityRequired: true } as const
+const terms = { contentTarget: 8, compensationCents: 7_200, currency: "EUR", formats: ["testimonial"], requiredPlatforms: ["tiktok", "instagram"], bonusRules: [], maxVideosPerDay: 2, minVideosPerWeek: 1, contractPolicy } as const
 const user = (status: UgcUser["status"], data: UgcUser["data"]) => new UgcUser({
   id: creatorId,
   authUserId: null,
@@ -29,6 +31,7 @@ const workspace = (currentUser: UgcUser) => new UgcWorkspace({
   videos: [],
   videoData: [],
   payments: [],
+  programConfigurations: [],
 })
 const trial = (publishingStartsAt: string) => user("trial", {
   _tag: "TrialData",
@@ -36,9 +39,20 @@ const trial = (publishingStartsAt: string) => user("trial", {
   publishingStartsAt,
   publishingEndsAt: "2026-08-30T12:00:00.000Z",
   requiredVideoCount: 8,
+  completionCompensationCents: 7_200,
+  currency: "EUR",
+  maxVideosPerDay: 2,
+  minVideosPerWeek: 1,
+  allowedFormats: ["testimonial"],
+  requiredPlatforms: ["tiktok", "instagram"],
+  outboundTrialPassBonusCents: 2_000,
   contract: {
     generatedAt: asOf,
     signedAt: asOf,
+    scope: "trial",
+    campaignId: null,
+    termsKey: "trial-es-v1",
+    terms,
     locale: "es-ES",
     documentType: "DNI",
     documentNumber: "12345678A",
@@ -46,7 +60,9 @@ const trial = (publishingStartsAt: string) => user("trial", {
     paymentMethod: "grade",
     renderedDocument: "Contrato",
   },
+  contracts: [],
   profile: { tiktokHandle: "@lucia", instagramHandle: "@lucia", phone: null },
+  acquisition: { source: "inbound", outboundManagerId: null },
 })
 
 describe("canAccessCreatorLibrary", () => {
@@ -61,10 +77,12 @@ describe("canAccessCreatorLibrary", () => {
       approvedAt: asOf,
       tierId: "tier-1",
       profile: { tiktokHandle: "@lucia", instagramHandle: "@lucia", phone: null },
+      contracts: [],
+      acquisition: { source: "inbound", outboundManagerId: null },
     })))).toBe(true)
   })
 
-  test("locks terminal creator states", () => {
+  test("keeps historical navigation until the configured retention deadline", () => {
     expect(canAccessCreatorLibrary(workspace(user("suspended", {
       _tag: "TerminalData",
       reason: "Cuenta en revisión",
@@ -72,6 +90,36 @@ describe("canAccessCreatorLibrary", () => {
       decidedBy: creatorId,
       previousStatus: "creator",
       previousCreatorData: null,
+      historyAvailableUntil: "2026-11-20T12:00:00.000Z",
+      profile: null,
+      contracts: [],
+    })))).toBe(true)
+    expect(canAccessCreatorLibrary(workspace(user("exited", {
+      _tag: "TerminalData",
+      reason: "Colaboración finalizada",
+      decidedAt: "2026-05-01T12:00:00.000Z",
+      decidedBy: creatorId,
+      previousStatus: "creator",
+      previousCreatorData: null,
+      historyAvailableUntil: "2026-08-01T12:00:00.000Z",
+      profile: null,
+      contracts: [],
     })))).toBe(false)
+  })
+
+  test("does not expose historical tabs to an applicant rejected before trial", () => {
+    const rejected = workspace(user("rejected", {
+      _tag: "TerminalData",
+      reason: "Solicitud no aceptada",
+      decidedAt: asOf,
+      decidedBy: creatorId,
+      previousStatus: "applicant",
+      previousCreatorData: null,
+      historyAvailableUntil: "2026-11-20T12:00:00.000Z",
+      profile: { tiktokHandle: "@lucia", instagramHandle: null, phone: null },
+      contracts: [],
+    }))
+    expect(canAccessCreatorLibrary(rejected)).toBe(false)
+    expect(canAccessCreatorProfile(rejected)).toBe(false)
   })
 })

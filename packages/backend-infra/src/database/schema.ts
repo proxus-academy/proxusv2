@@ -305,14 +305,15 @@ export const ugcGroupMembers = pgTable(
     groupId: uuid("group_id").notNull().references(() => ugcGroups.id, { onDelete: "restrict" }),
     creatorId: uuid("creator_id").notNull().references(() => ugcUsers.id, { onDelete: "restrict" }),
     tierId: text("tier_id").notNull(),
-    status: text("status", { enum: ["scheduled", "active", "completed", "removed"] }).notNull(),
+    status: text("status", { enum: ["awaiting_contract", "scheduled", "active", "completed", "removed"] }).notNull(),
+    agreementTermsKey: text("agreement_terms_key").notNull(),
     joinedAt: timestamp("joined_at", { withTimezone: true, mode: "date" }).notNull(),
     completedAt: timestamp("completed_at", { withTimezone: true, mode: "date" }),
   },
   (table) => [
     uniqueIndex("ugc_group_members_group_creator_uidx").on(table.groupId, table.creatorId),
     index("ugc_group_members_creator_idx").on(table.creatorId),
-    check("ugc_group_members_status_check", sql`${table.status} in ('scheduled','active','completed','removed')`),
+    check("ugc_group_members_status_check", sql`${table.status} in ('awaiting_contract','scheduled','active','completed','removed')`),
   ],
 )
 
@@ -384,19 +385,40 @@ export const ugcPayments = pgTable(
   "ugc_payments",
   {
     id: uuid("id").primaryKey(),
-    creatorId: uuid("creator_id").notNull().references(() => ugcUsers.id, { onDelete: "restrict" }),
-    campaignId: uuid("campaign_id").notNull().references(() => ugcCampaigns.id, { onDelete: "restrict" }),
+    recipientUserId: uuid("recipient_user_id").notNull().references(() => ugcUsers.id, { onDelete: "restrict" }),
+    relatedCreatorId: uuid("related_creator_id").references(() => ugcUsers.id, { onDelete: "restrict" }),
+    campaignId: uuid("campaign_id").references(() => ugcCampaigns.id, { onDelete: "restrict" }),
+    kind: text("kind", { enum: ["trial_compensation", "creator_campaign", "manager_campaign_commission", "manager_outbound_conversion"] }).notNull(),
+    sourceKey: text("source_key").notNull(),
     status: text("status", { enum: ["pending", "paid", "cancelled"] }).notNull(),
     amountCents: integer("amount_cents").notNull(),
+    currency: text("currency", { enum: ["EUR", "USD"] }).notNull(),
     breakdown: jsonb("breakdown").notNull(),
     paidAt: timestamp("paid_at", { withTimezone: true, mode: "date" }),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).notNull(),
   },
   (table) => [
-    uniqueIndex("ugc_payments_creator_campaign_uidx").on(table.creatorId, table.campaignId),
+    uniqueIndex("ugc_payments_source_key_uidx").on(table.sourceKey),
+    index("ugc_payments_recipient_idx").on(table.recipientUserId),
     index("ugc_payments_status_idx").on(table.status),
     check("ugc_payments_status_check", sql`${table.status} in ('pending','paid','cancelled')`),
+    check("ugc_payments_kind_check", sql`${table.kind} in ('trial_compensation','creator_campaign','manager_campaign_commission','manager_outbound_conversion')`),
+  ],
+)
+
+export const ugcProgramConfigurations = pgTable(
+  "ugc_program_configurations",
+  {
+    market: text("market").primaryKey(),
+    data: jsonb("data").notNull(),
+    dataVersion: integer("data_version").notNull().default(1),
+    version: integer("version").notNull().default(1),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).notNull(),
+  },
+  (table) => [
+    check("ugc_program_configurations_market_check", sql`${table.market} ~ '^[A-Z]{2}$'`),
+    check("ugc_program_configurations_versions_check", sql`${table.dataVersion} > 0 and ${table.version} > 0`),
   ],
 )
 
@@ -417,3 +439,4 @@ export type UgcMeetRow = typeof ugcMeets.$inferSelect
 export type UgcVideoRow = typeof ugcVideos.$inferSelect
 export type UgcVideoDataRow = typeof ugcVideoData.$inferSelect
 export type UgcPaymentRow = typeof ugcPayments.$inferSelect
+export type UgcProgramConfigurationRow = typeof ugcProgramConfigurations.$inferSelect

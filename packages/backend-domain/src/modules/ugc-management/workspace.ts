@@ -11,7 +11,7 @@ export const scopeWorkspace = (
 ) => {
   if (admin) return new UgcWorkspace({ asOf, role: "admin", currentUser, ...state })
   if (currentUser === null) {
-    return new UgcWorkspace({ asOf, role: "none", currentUser: null, ...state, users: [], campaigns: [], groups: [], memberships: [], meets: [], videos: [], videoData: [], payments: [] })
+    return new UgcWorkspace({ asOf, role: "none", currentUser: null, ...state, users: [], campaigns: [], groups: [], memberships: [], meets: [], videos: [], videoData: [], payments: [], programConfigurations: [] })
   }
   if (currentUser.userType === "manager") {
     const groups = state.groups.filter((group) => group.managerId === currentUser.id)
@@ -41,7 +41,8 @@ export const scopeWorkspace = (
       meets: state.meets.filter((meet) => meet.managerId === currentUser.id),
       videos,
       videoData: state.videoData.filter((item) => videoIds.has(item.videoId)),
-      payments: state.payments.filter((payment) => creatorIds.has(payment.creatorId)),
+      payments: state.payments.filter((payment) => payment.recipientUserId === currentUser.id || (payment.relatedCreatorId !== null && creatorIds.has(payment.relatedCreatorId))),
+      programConfigurations: state.programConfigurations.filter((configuration) => currentUser.data._tag === "ManagerData" && currentUser.data.markets.includes(configuration.market)),
     })
   }
   const memberships = state.memberships.filter((membership) => membership.creatorId === currentUser.id)
@@ -64,6 +65,7 @@ export const scopeWorkspace = (
     meets: state.meets.filter((meet) => meet.creatorId === currentUser.id || (meet.creatorId === null && compatibleManagers.some((manager) => manager.id === meet.managerId))),
     videos,
     videoData: state.videoData.filter((item) => videoIds.has(item.videoId)),
-    payments: state.payments.filter((payment) => payment.creatorId === currentUser.id),
+    payments: state.payments.filter((payment) => payment.recipientUserId === currentUser.id),
+    programConfigurations: [],
   })
 }

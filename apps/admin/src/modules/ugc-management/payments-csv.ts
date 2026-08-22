@@ -9,11 +9,11 @@ export const pendingPaymentsCsv = (
 ) => {
   const rows = payments.reduce<Array<ReadonlyArray<string | number>>>((pending, payment) => {
     if (payment.status !== "pending") return pending
-    const creator = users.find((user) => user.id === payment.creatorId)
+    const recipient = users.find((user) => user.id === payment.recipientUserId)
     const campaign = campaigns.find((item) => item.id === payment.campaignId)
-    pending.push([payment.id, creator?.displayName ?? payment.creatorId, creator?.email ?? "", campaign?.name ?? payment.campaignId, payment.amountCents, "EUR", payment.status])
+    pending.push([payment.id, payment.kind, recipient?.displayName ?? payment.recipientUserId, recipient?.email ?? "", campaign?.name ?? "Prueba", payment.amountCents, payment.currency, payment.status])
     return pending
-  }, [["payment_id", "creator", "email", "campaign", "amount_cents", "currency", "status"]])
+  }, [["payment_id", "type", "recipient", "email", "campaign", "amount_cents", "currency", "status"]])
   return rows.map((row) => row.map(csvCell).join(",")).join("\n")
 }
 

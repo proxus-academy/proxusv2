@@ -1,4 +1,4 @@
-import type { ContractSnapshot, UgcUser, UgcVideo } from "@proxus/shared/ugc-management"
+import type { AgreementTerms, ContractSnapshot, UgcUser, UgcVideo } from "@proxus/shared/ugc-management"
 import { Context, Effect, Layer, Ref } from "effect"
 
 export class UgcIdGenerator extends Context.Service<UgcIdGenerator, {
@@ -12,6 +12,7 @@ export interface ContractRenderInput {
   readonly documentNumber: string
   readonly address: string
   readonly paymentMethod: ContractSnapshot["paymentMethod"]
+  readonly terms: AgreementTerms
 }
 
 export class UgcContractRenderer extends Context.Service<UgcContractRenderer, {

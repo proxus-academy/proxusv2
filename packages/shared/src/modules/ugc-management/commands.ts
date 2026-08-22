@@ -5,6 +5,7 @@ import {
   CampaignTier,
   CountryCode,
   IsoDateTime,
+  UgcProgramConfigurationData,
   UgcCampaignId,
   UgcGroupId,
   UgcMeetId,
@@ -63,15 +64,16 @@ export class RecordMeetAttendance extends Schema.TaggedClass<RecordMeetAttendanc
 }) {}
 export class StartTrial extends Schema.TaggedClass<StartTrial>()("StartTrial", {
   creatorId: UgcUserId,
-  publishingStartsAt: IsoDateTime,
-  publishingEndsAt: IsoDateTime,
-  requiredVideoCount: positiveInt,
 }) {}
 export class EvaluateTrial extends Schema.TaggedClass<EvaluateTrial>()("EvaluateTrial", {
   creatorId: UgcUserId,
-  outcome: Schema.Literals(["passed", "failed"]),
-  tierId: required,
+  outcome: Schema.Literals(["passed", "failed", "incomplete"]),
+  tierId: Schema.NullOr(required),
   reason: Schema.NullOr(required),
+}) {}
+export class ConfigureUgcProgram extends Schema.TaggedClass<ConfigureUgcProgram>()("ConfigureUgcProgram", {
+  market: CountryCode,
+  data: UgcProgramConfigurationData,
 }) {}
 export class ConfigureManager extends Schema.TaggedClass<ConfigureManager>()("ConfigureManager", {
   authUserId: AccountId,
@@ -148,6 +150,7 @@ export const UgcCommand = Schema.Union([
   RecordMeetAttendance,
   StartTrial,
   EvaluateTrial,
+  ConfigureUgcProgram,
   ConfigureManager,
   DisableManager,
   CreateCampaign,

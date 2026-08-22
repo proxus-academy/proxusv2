@@ -51,6 +51,7 @@ const longText = Schema.String.pipe(Schema.check(Schema.isMinLength(1)), Schema.
 const email = Schema.String.pipe(Schema.check(Schema.isPattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)))
 const nonNegativeInt = Schema.Int.pipe(Schema.check(Schema.isGreaterThanOrEqualTo(0)))
 const positiveInt = Schema.Int.pipe(Schema.check(Schema.isGreaterThan(0)))
+const basisPoints = Schema.Int.pipe(Schema.check(Schema.isBetween({ minimum: 0, maximum: 10_000 })))
 
 export const UgcUserType = Schema.Literals(["creator", "manager"])
 export type UgcUserType = typeof UgcUserType.Type
@@ -84,9 +85,48 @@ export const CreatorProfile = Schema.Struct({
 })
 export type CreatorProfile = typeof CreatorProfile.Type
 
+export const Currency = Schema.Literals(["EUR", "USD"])
+export type Currency = typeof Currency.Type
+
+export const RequiredPlatform = Schema.Literals(["tiktok", "instagram"])
+export type RequiredPlatform = typeof RequiredPlatform.Type
+
+export const CampaignBonusRule = Schema.Union([
+  Schema.TaggedStruct("views", { threshold: positiveInt, amountCents: positiveInt }),
+  Schema.TaggedStruct("topN", { positions: positiveInt, amountCents: positiveInt }),
+  Schema.TaggedStruct("referrals", { threshold: positiveInt, amountCents: positiveInt }),
+])
+export type CampaignBonusRule = typeof CampaignBonusRule.Type
+
+export const ContractPolicy = Schema.Struct({
+  contentRetentionMonths: positiveInt,
+  creatorNoticeDays: positiveInt,
+  paidMediaRightsAmountCents: nonNegativeInt,
+  paidMediaRightsDurationMonths: positiveInt,
+  exclusivityRequired: Schema.Boolean,
+})
+export type ContractPolicy = typeof ContractPolicy.Type
+
+export const AgreementTerms = Schema.Struct({
+  contentTarget: positiveInt,
+  compensationCents: nonNegativeInt,
+  currency: Currency,
+  formats: Schema.Array(shortText),
+  requiredPlatforms: Schema.Array(RequiredPlatform),
+  bonusRules: Schema.Array(CampaignBonusRule),
+  maxVideosPerDay: Schema.NullOr(positiveInt),
+  minVideosPerWeek: Schema.NullOr(positiveInt),
+  contractPolicy: ContractPolicy,
+})
+export type AgreementTerms = typeof AgreementTerms.Type
+
 export const ContractSnapshot = Schema.Struct({
   generatedAt: IsoDateTime,
   signedAt: Schema.NullOr(IsoDateTime),
+  scope: Schema.Literals(["trial", "campaign"]),
+  campaignId: Schema.NullOr(UgcCampaignId),
+  termsKey: Schema.String,
+  terms: AgreementTerms,
   locale: Schema.Literals(["es-ES", "es-LATAM"]),
   documentType: Schema.Literals(["DNI", "NIE", "Pasaporte", "Otro"]),
   documentNumber: shortText,
@@ -95,6 +135,12 @@ export const ContractSnapshot = Schema.Struct({
   renderedDocument: longText,
 })
 export type ContractSnapshot = typeof ContractSnapshot.Type
+
+export const CreatorAcquisition = Schema.Struct({
+  source: Schema.Literals(["inbound", "outbound"]),
+  outboundManagerId: Schema.NullOr(UgcUserId),
+})
+export type CreatorAcquisition = typeof CreatorAcquisition.Type
 
 export const ManagerData = Schema.TaggedStruct("ManagerData", {
   markets: Schema.Array(CountryCode),
@@ -108,6 +154,7 @@ export const LeadData = Schema.TaggedStruct("LeadData", {
 })
 export const ApplicantData = Schema.TaggedStruct("ApplicantData", {
   source: Schema.Literals(["inbound", "outbound"]),
+  outboundManagerId: Schema.NullOr(UgcUserId),
   appliedAt: IsoDateTime,
   profile: CreatorProfile,
 })
@@ -118,19 +165,31 @@ export const OnboardingData = Schema.TaggedStruct("OnboardingData", {
   requirements: Schema.Array(CreatorRequirement),
   missedMeetCount: nonNegativeInt,
   contract: Schema.NullOr(ContractSnapshot),
+  acquisition: CreatorAcquisition,
 })
 export const TrialData = Schema.TaggedStruct("TrialData", {
   startedAt: IsoDateTime,
   publishingStartsAt: IsoDateTime,
   publishingEndsAt: IsoDateTime,
   requiredVideoCount: positiveInt,
+  completionCompensationCents: nonNegativeInt,
+  currency: Currency,
+  maxVideosPerDay: positiveInt,
+  minVideosPerWeek: positiveInt,
+  allowedFormats: Schema.Array(shortText),
+  requiredPlatforms: Schema.Array(RequiredPlatform),
+  outboundTrialPassBonusCents: nonNegativeInt,
   contract: ContractSnapshot,
+  contracts: Schema.Array(ContractSnapshot),
   profile: CreatorProfile,
+  acquisition: CreatorAcquisition,
 })
 export const CreatorData = Schema.TaggedStruct("CreatorData", {
   approvedAt: IsoDateTime,
   tierId: shortText,
   profile: CreatorProfile,
+  contracts: Schema.Array(ContractSnapshot),
+  acquisition: CreatorAcquisition,
 })
 export const TerminalData = Schema.TaggedStruct("TerminalData", {
   reason: longText,
@@ -138,6 +197,9 @@ export const TerminalData = Schema.TaggedStruct("TerminalData", {
   decidedBy: UgcUserId,
   previousStatus: UgcUserStatus,
   previousCreatorData: Schema.NullOr(CreatorData),
+  historyAvailableUntil: IsoDateTime,
+  profile: Schema.NullOr(CreatorProfile),
+  contracts: Schema.Array(ContractSnapshot),
 })
 
 export const UgcUserData = Schema.Union([
@@ -176,19 +238,22 @@ export const CampaignTier = Schema.Struct({
 })
 export type CampaignTier = typeof CampaignTier.Type
 
-export const CampaignBonusRule = Schema.Union([
-  Schema.TaggedStruct("views", { threshold: positiveInt, amountCents: positiveInt }),
-  Schema.TaggedStruct("topN", { positions: positiveInt, amountCents: positiveInt }),
-  Schema.TaggedStruct("referrals", { threshold: positiveInt, amountCents: positiveInt }),
-])
-export type CampaignBonusRule = typeof CampaignBonusRule.Type
-
 export const CampaignData = Schema.Struct({
   countries: Schema.Array(CountryCode),
   formats: Schema.Array(shortText),
   tiers: Schema.Array(CampaignTier),
   bonusRules: Schema.Array(CampaignBonusRule),
-  currency: Schema.Literal("EUR"),
+  currency: Currency,
+  contractPolicy: ContractPolicy,
+  requiredPlatforms: Schema.Array(RequiredPlatform),
+  managerIncentives: Schema.Struct({
+    fixedPercentBasisPoints: basisPoints,
+    viewsBonusPercentBasisPoints: basisPoints,
+    rankingBonusPercentBasisPoints: basisPoints,
+    referralBonusPercentBasisPoints: basisPoints,
+    manualAdjustmentPercentBasisPoints: basisPoints,
+    outboundTrialPassBonusCents: nonNegativeInt,
+  }),
 })
 export type CampaignData = typeof CampaignData.Type
 
@@ -217,13 +282,14 @@ export class UgcGroup extends Schema.Class<UgcGroup>("UgcGroup")({
   updatedAt: IsoDateTime,
 }) {}
 
-export const UgcGroupMemberStatus = Schema.Literals(["scheduled", "active", "completed", "removed"])
+export const UgcGroupMemberStatus = Schema.Literals(["awaiting_contract", "scheduled", "active", "completed", "removed"])
 export class UgcGroupMember extends Schema.Class<UgcGroupMember>("UgcGroupMember")({
   id: UgcGroupMemberId,
   groupId: UgcGroupId,
   creatorId: UgcUserId,
   tierId: shortText,
   status: UgcGroupMemberStatus,
+  agreementTermsKey: Schema.String,
   joinedAt: IsoDateTime,
   completedAt: Schema.NullOr(IsoDateTime),
 }) {}
@@ -268,6 +334,12 @@ export class UgcVideoData extends Schema.Class<UgcVideoData>("UgcVideoData")({
 }) {}
 
 export const PaymentStatus = Schema.Literals(["pending", "paid", "cancelled"])
+export const PaymentKind = Schema.Literals([
+  "trial_compensation",
+  "creator_campaign",
+  "manager_campaign_commission",
+  "manager_outbound_conversion",
+])
 export const PaymentBreakdown = Schema.Struct({
   fixedAmountCents: nonNegativeInt,
   viewsBonusCents: nonNegativeInt,
@@ -280,13 +352,43 @@ export type PaymentBreakdown = typeof PaymentBreakdown.Type
 
 export class UgcPayment extends Schema.Class<UgcPayment>("UgcPayment")({
   id: UgcPaymentId,
-  creatorId: UgcUserId,
-  campaignId: UgcCampaignId,
+  recipientUserId: UgcUserId,
+  relatedCreatorId: Schema.NullOr(UgcUserId),
+  campaignId: Schema.NullOr(UgcCampaignId),
+  kind: PaymentKind,
+  sourceKey: shortText,
   status: PaymentStatus,
   amountCents: Schema.Int,
+  currency: Currency,
   breakdown: PaymentBreakdown,
   paidAt: Schema.NullOr(IsoDateTime),
   createdAt: IsoDateTime,
+  updatedAt: IsoDateTime,
+}) {}
+
+export const TrialProgramTerms = Schema.Struct({
+  durationDays: positiveInt,
+  warmingDays: nonNegativeInt,
+  requiredVideoCount: positiveInt,
+  maxVideosPerDay: positiveInt,
+  minVideosPerWeek: positiveInt,
+  formats: Schema.Array(shortText),
+  requiredPlatforms: Schema.Array(RequiredPlatform),
+  completionCompensationCents: nonNegativeInt,
+  currency: Currency,
+})
+export const ManagerIncentivePolicy = CampaignData.fields.managerIncentives
+export const UgcProgramConfigurationData = Schema.Struct({
+  trial: TrialProgramTerms,
+  contractPolicy: ContractPolicy,
+  managerIncentives: ManagerIncentivePolicy,
+  historyRetentionDays: positiveInt,
+})
+export type UgcProgramConfigurationData = typeof UgcProgramConfigurationData.Type
+export class UgcProgramConfiguration extends Schema.Class<UgcProgramConfiguration>("UgcProgramConfiguration")({
+  market: CountryCode,
+  data: UgcProgramConfigurationData,
+  version: positiveInt,
   updatedAt: IsoDateTime,
 }) {}
 
@@ -303,6 +405,7 @@ export class UgcWorkspace extends Schema.Class<UgcWorkspace>("UgcWorkspace")({
   videos: Schema.Array(UgcVideo),
   videoData: Schema.Array(UgcVideoData),
   payments: Schema.Array(UgcPayment),
+  programConfigurations: Schema.Array(UgcProgramConfiguration),
 }) {}
 
 export const CreatorEffectiveStatus = Schema.Literals([

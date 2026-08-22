@@ -5,6 +5,7 @@ import {
   UgcGroupMember,
   UgcMeet,
   UgcPayment,
+  UgcProgramConfiguration,
   UgcUser,
   UgcVideo,
   UgcVideoData,
@@ -13,6 +14,7 @@ import {
   type UgcGroupMember as UgcGroupMemberType,
   type UgcMeet as UgcMeetType,
   type UgcPayment as UgcPaymentType,
+  type UgcProgramConfiguration as UgcProgramConfigurationType,
   type UgcUser as UgcUserType,
   type UgcVideo as UgcVideoType,
   type UgcVideoData as UgcVideoDataType,
@@ -27,6 +29,7 @@ import {
   ugcGroups,
   ugcMeets,
   ugcPayments,
+  ugcProgramConfigurations,
   ugcUsers,
   ugcVideoData,
   ugcVideos,
@@ -35,6 +38,7 @@ import {
   type UgcGroupRow,
   type UgcMeetRow,
   type UgcPaymentRow,
+  type UgcProgramConfigurationRow,
   type UgcUserRow,
   type UgcVideoDataRow,
   type UgcVideoRow,
@@ -55,6 +59,7 @@ const decodeMeet = (row: UgcMeetRow) => Schema.decodeUnknownEffect(UgcMeet)({ ..
 const decodeVideo = (row: UgcVideoRow) => Schema.decodeUnknownEffect(UgcVideo)({ ...row, submittedAt: iso(row.submittedAt), reviewedAt: row.reviewedAt === null ? null : iso(row.reviewedAt), createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })
 const decodeVideoData = (row: UgcVideoDataRow) => Schema.decodeUnknownEffect(UgcVideoData)({ ...row, capturedAt: iso(row.capturedAt) })
 const decodePayment = (row: UgcPaymentRow) => Schema.decodeUnknownEffect(UgcPayment)({ ...row, paidAt: row.paidAt === null ? null : iso(row.paidAt), createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })
+const decodeProgramConfiguration = (row: UgcProgramConfigurationRow) => Schema.decodeUnknownEffect(UgcProgramConfiguration)({ ...row, updatedAt: iso(row.updatedAt) })
 
 const userValues = (value: UgcUserType): typeof ugcUsers.$inferInsert => ({ ...value, dataVersion: 1, createdAt: date(value.createdAt), updatedAt: date(value.updatedAt) })
 const campaignValues = (value: UgcCampaignType): typeof ugcCampaigns.$inferInsert => ({ ...value, dataVersion: 1, startsAt: date(value.startsAt), submissionsCloseAt: date(value.submissionsCloseAt), reconciliationEndsAt: date(value.reconciliationEndsAt), createdAt: date(value.createdAt), updatedAt: date(value.updatedAt) })
@@ -64,6 +69,7 @@ const meetValues = (value: UgcMeetType): typeof ugcMeets.$inferInsert => ({ ...v
 const videoValues = (value: UgcVideoType): typeof ugcVideos.$inferInsert => ({ ...value, submittedAt: date(value.submittedAt), reviewedAt: value.reviewedAt === null ? null : date(value.reviewedAt), createdAt: date(value.createdAt), updatedAt: date(value.updatedAt) })
 const videoDataValues = (value: UgcVideoDataType): typeof ugcVideoData.$inferInsert => ({ ...value, capturedAt: date(value.capturedAt) })
 const paymentValues = (value: UgcPaymentType): typeof ugcPayments.$inferInsert => ({ ...value, paidAt: value.paidAt === null ? null : date(value.paidAt), createdAt: date(value.createdAt), updatedAt: date(value.updatedAt) })
+const programConfigurationValues = (value: UgcProgramConfigurationType): typeof ugcProgramConfigurations.$inferInsert => ({ ...value, dataVersion: 1, updatedAt: date(value.updatedAt) })
 
 export const makeUgcRepositoryDrizzle = (db: Database): UgcRepository["Service"] => UgcRepository.of({
   transaction: (use) => db.transaction((transaction) => use(makeUgcRepositoryDrizzle(transaction))).pipe(fail("transaction")),
@@ -113,5 +119,11 @@ export const makeUgcRepositoryDrizzle = (db: Database): UgcRepository["Service"]
     findById: (id) => db.select().from(ugcPayments).where(eq(ugcPayments.id, id)).limit(1).pipe(Effect.flatMap((rows) => Option.match(Option.fromIterable(rows), { onNone: () => Effect.succeed(Option.none()), onSome: (row) => decodePayment(row).pipe(Effect.map(Option.some)) })), fail("payments.findById")),
     insert: (value) => db.insert(ugcPayments).values(paymentValues(value)).pipe(Effect.asVoid, fail("payments.insert")),
     update: (value) => db.update(ugcPayments).set(paymentValues(value)).where(eq(ugcPayments.id, value.id)).pipe(Effect.asVoid, fail("payments.update")),
+  },
+  programConfigurations: {
+    list: () => db.select().from(ugcProgramConfigurations).orderBy(asc(ugcProgramConfigurations.market)).pipe(Effect.flatMap((rows) => Effect.forEach(rows, decodeProgramConfiguration)), fail("programConfigurations.list")),
+    findByMarket: (market) => db.select().from(ugcProgramConfigurations).where(eq(ugcProgramConfigurations.market, market)).limit(1).pipe(Effect.flatMap((rows) => Option.match(Option.fromIterable(rows), { onNone: () => Effect.succeed(Option.none()), onSome: (row) => decodeProgramConfiguration(row).pipe(Effect.map(Option.some)) })), fail("programConfigurations.findByMarket")),
+    insert: (value) => db.insert(ugcProgramConfigurations).values(programConfigurationValues(value)).pipe(Effect.asVoid, fail("programConfigurations.insert")),
+    update: (value, expectedVersion) => db.update(ugcProgramConfigurations).set(programConfigurationValues(value)).where(and(eq(ugcProgramConfigurations.market, value.market), eq(ugcProgramConfigurations.version, expectedVersion))).returning({ market: ugcProgramConfigurations.market }).pipe(Effect.flatMap((rows) => rows.length === 1 ? Effect.void : Effect.fail(new UgcOptimisticConflict({ entity: "ugc_program_configuration", id: value.market }))), failWrite("programConfigurations.update")),
   },
 })

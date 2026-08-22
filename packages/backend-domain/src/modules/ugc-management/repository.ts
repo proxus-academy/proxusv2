@@ -9,6 +9,7 @@ import type {
   UgcPayment,
   UgcPaymentId,
   UgcUser,
+  UgcProgramConfiguration,
   UgcUserId,
   UgcVideo,
   UgcVideoData,
@@ -77,6 +78,12 @@ export interface UgcRepositoryContract {
     readonly insert: (payment: UgcPayment) => Effect.Effect<void, UgcRepositoryError>
     readonly update: (payment: UgcPayment) => Effect.Effect<void, UgcRepositoryError>
   }
+  readonly programConfigurations: {
+    readonly list: () => Effect.Effect<ReadonlyArray<UgcProgramConfiguration>, UgcRepositoryError>
+    readonly findByMarket: (market: string) => Effect.Effect<Option.Option<UgcProgramConfiguration>, UgcRepositoryError>
+    readonly insert: (configuration: UgcProgramConfiguration) => Effect.Effect<void, UgcRepositoryError>
+    readonly update: (configuration: UgcProgramConfiguration, expectedVersion: number) => Effect.Effect<void, WriteError>
+  }
 }
 
 export class UgcRepository extends Context.Service<UgcRepository, UgcRepositoryContract>()(
@@ -92,10 +99,11 @@ export interface UgcMemoryState {
   readonly videos: ReadonlyArray<UgcVideo>
   readonly videoData: ReadonlyArray<UgcVideoData>
   readonly payments: ReadonlyArray<UgcPayment>
+  readonly programConfigurations: ReadonlyArray<UgcProgramConfiguration>
 }
 
 export const emptyUgcMemoryState: UgcMemoryState = {
-  users: [], campaigns: [], groups: [], memberships: [], meets: [], videos: [], videoData: [], payments: [],
+  users: [], campaigns: [], groups: [], memberships: [], meets: [], videos: [], videoData: [], payments: [], programConfigurations: [],
 }
 
 const replaceById = <A extends { readonly id: string }>(items: ReadonlyArray<A>, value: A) =>
@@ -107,9 +115,11 @@ export const makeMemoryUgcRepository = (initial: UgcMemoryState = emptyUgcMemory
     const list = <K extends keyof UgcMemoryState>(key: K) => Ref.get(state).pipe(Effect.map((all) => all[key]))
     const insert = <K extends keyof UgcMemoryState>(key: K, value: UgcMemoryState[K][number]) =>
       Ref.update(state, (all) => ({ ...all, [key]: [...all[key], value] }))
-    const update = <K extends keyof UgcMemoryState>(key: K, value: UgcMemoryState[K][number]) =>
-      // SAFETY: every UgcMemoryState collection and every value accepted for its key contains the same readonly string id contract.
-      Ref.update(state, (all) => ({ ...all, [key]: replaceById(all[key] as ReadonlyArray<{ id: string }>, value as { id: string }) }))
+    const update = <A extends { readonly id: string }>(
+      select: (all: UgcMemoryState) => ReadonlyArray<A>,
+      replace: (all: UgcMemoryState, values: ReadonlyArray<A>) => UgcMemoryState,
+      value: A,
+    ) => Ref.update(state, (all) => replace(all, replaceById(select(all), value)))
     const findIn = <A extends { readonly id: string }>(items: ReadonlyArray<A>, id: string): Option.Option<A> =>
       Option.fromNullishOr(items.find((item) => item.id === id))
 
@@ -128,7 +138,7 @@ export const makeMemoryUgcRepository = (initial: UgcMemoryState = emptyUgcMemory
         update: (value, expectedVersion) => Ref.get(state).pipe(Effect.flatMap((all) => {
           const current = all.users.find((item) => item.id === value.id)
           return current?.version === expectedVersion
-            ? update("users", value)
+            ? update((state) => state.users, (state, users) => ({ ...state, users }), value)
             : Effect.fail(new UgcOptimisticConflict({ entity: "ugc_user", id: value.id }))
         })),
       },
@@ -139,16 +149,30 @@ export const makeMemoryUgcRepository = (initial: UgcMemoryState = emptyUgcMemory
         update: (value, expectedVersion) => Ref.get(state).pipe(Effect.flatMap((all) => {
           const current = all.campaigns.find((item) => item.id === value.id)
           return current?.version === expectedVersion
-            ? update("campaigns", value)
+            ? update((state) => state.campaigns, (state, campaigns) => ({ ...state, campaigns }), value)
             : Effect.fail(new UgcOptimisticConflict({ entity: "campaign", id: value.id }))
         })),
       },
-      groups: { list: () => list("groups"), findById: (id) => list("groups").pipe(Effect.map((items) => findIn(items, id))), insert: (value) => insert("groups", value), update: (value) => update("groups", value) },
-      memberships: { list: () => list("memberships"), insert: (value) => insert("memberships", value), update: (value) => update("memberships", value) },
-      meets: { list: () => list("meets"), findById: (id) => list("meets").pipe(Effect.map((items) => findIn(items, id))), insert: (value) => insert("meets", value), update: (value) => update("meets", value) },
-      videos: { list: () => list("videos"), findById: (id) => list("videos").pipe(Effect.map((items) => findIn(items, id))), insert: (value) => insert("videos", value), update: (value) => update("videos", value) },
+      groups: { list: () => list("groups"), findById: (id) => list("groups").pipe(Effect.map((items) => findIn(items, id))), insert: (value) => insert("groups", value), update: (value) => update((state) => state.groups, (state, groups) => ({ ...state, groups }), value) },
+      memberships: { list: () => list("memberships"), insert: (value) => insert("memberships", value), update: (value) => update((state) => state.memberships, (state, memberships) => ({ ...state, memberships }), value) },
+      meets: { list: () => list("meets"), findById: (id) => list("meets").pipe(Effect.map((items) => findIn(items, id))), insert: (value) => insert("meets", value), update: (value) => update((state) => state.meets, (state, meets) => ({ ...state, meets }), value) },
+      videos: { list: () => list("videos"), findById: (id) => list("videos").pipe(Effect.map((items) => findIn(items, id))), insert: (value) => insert("videos", value), update: (value) => update((state) => state.videos, (state, videos) => ({ ...state, videos }), value) },
       videoData: { list: () => list("videoData"), insert: (value) => insert("videoData", value) },
-      payments: { list: () => list("payments"), findById: (id) => list("payments").pipe(Effect.map((items) => findIn(items, id))), insert: (value) => insert("payments", value), update: (value) => update("payments", value) },
+      payments: { list: () => list("payments"), findById: (id) => list("payments").pipe(Effect.map((items) => findIn(items, id))), insert: (value) => insert("payments", value), update: (value) => update((state) => state.payments, (state, payments) => ({ ...state, payments }), value) },
+      programConfigurations: {
+        list: () => list("programConfigurations"),
+        findByMarket: (market) => list("programConfigurations").pipe(Effect.map((items) => Option.fromNullishOr(items.find((item) => item.market === market)))),
+        insert: (value) => insert("programConfigurations", value),
+        update: (value, expectedVersion) => Ref.get(state).pipe(Effect.flatMap((all) => {
+          const current = all.programConfigurations.find((item) => item.market === value.market)
+          return current?.version === expectedVersion
+            ? Ref.update(state, (currentState) => ({
+              ...currentState,
+              programConfigurations: currentState.programConfigurations.map((item) => item.market === value.market ? value : item),
+            }))
+            : Effect.fail(new UgcOptimisticConflict({ entity: "ugc_program_configuration", id: value.market }))
+        })),
+      },
     }
     return UgcRepository.of(repository)
   }))

@@ -80,9 +80,17 @@ const profile = {
   phone: "+34 612 345 678",
 } as const
 
+const contractPolicy = { contentRetentionMonths: 3, creatorNoticeDays: 5, paidMediaRightsAmountCents: 3_000, paidMediaRightsDurationMonths: 3, exclusivityRequired: true } as const
+const managerIncentives = { fixedPercentBasisPoints: 500, viewsBonusPercentBasisPoints: 500, rankingBonusPercentBasisPoints: 500, referralBonusPercentBasisPoints: 0, manualAdjustmentPercentBasisPoints: 0, outboundTrialPassBonusCents: 2_000 } as const
+const trialTerms = { contentTarget: 8, compensationCents: 7_200, currency: "EUR", formats: ["testimonial", "review", "routine"], requiredPlatforms: ["tiktok", "instagram"], bonusRules: [], maxVideosPerDay: 2, minVideosPerWeek: 1, contractPolicy } as const
+
 const contract: ContractSnapshot = {
   generatedAt: "2026-08-18T10:00:00.000Z",
   signedAt: "2026-08-19T10:00:00.000Z",
+  scope: "trial" as const,
+  campaignId: null,
+  termsKey: "trial-es-v1",
+  terms: trialTerms,
   locale: "es-ES" as const,
   documentType: "DNI" as const,
   documentNumber: "00000000T",
@@ -96,6 +104,8 @@ const creatorData = {
   approvedAt: "2026-08-10T10:00:00.000Z",
   tierId: "tier-2",
   profile,
+  contracts: [contract],
+  acquisition: { source: "inbound" as const, outboundManagerId: null },
 }
 
 const user = (status: UgcUserStatus, data: UgcUserData) => new UgcUser({
@@ -132,6 +142,9 @@ const campaign = (
     tiers: [{ id: "tier-2", label: "Tier 2", videoTarget: 8, fixedAmountCents: 24_000 }],
     bonusRules: [{ _tag: "views", threshold: 10_000, amountCents: 5_000 }],
     currency: "EUR",
+    contractPolicy,
+    requiredPlatforms: ["tiktok", "instagram"],
+    managerIncentives,
   },
   version: 1,
   createdAt: "2026-08-01T10:00:00.000Z",
@@ -155,6 +168,7 @@ const membership = new UgcGroupMember({
   creatorId,
   tierId: "tier-2",
   status: "active",
+  agreementTermsKey: "campaign-tier-2-v1",
   joinedAt: "2026-08-12T10:00:00.000Z",
   completedAt: null,
 })
@@ -207,6 +221,7 @@ const baseWorkspace = (currentUser: UgcUser | null, extra: Partial<UgcWorkspace>
   videos: [],
   videoData: [],
   payments: [],
+  programConfigurations: [],
   ...extra,
 })
 
@@ -221,6 +236,7 @@ const onboarding = (
   requirements,
   missedMeetCount: 0,
   contract: snapshot,
+  acquisition: { source: "inbound", outboundManagerId: null },
 })
 
 const incompleteRequirements = [
@@ -230,7 +246,7 @@ const incompleteRequirements = [
   { id: "social", label: "Registrar cuenta social", completedAt: null },
 ]
 
-const completeRequirements = incompleteRequirements.map((requirement) => ({ ...requirement, completedAt: asOf }))
+const preMeetRequirements = incompleteRequirements.map((requirement) => requirement.id === "training" ? { ...requirement, completedAt: asOf } : requirement)
 
 const terminal = (status: "rejected" | "disqualified" | "suspended" | "exited", reason: string) => user(status, {
   _tag: "TerminalData",
@@ -239,6 +255,9 @@ const terminal = (status: "rejected" | "disqualified" | "suspended" | "exited", 
   decidedBy: managerId,
   previousStatus: status === "rejected" ? "applicant" : "creator",
   previousCreatorData: status === "rejected" ? null : creatorData,
+  historyAvailableUntil: "2026-11-20T12:00:00.000Z",
+  profile: status === "rejected" ? null : profile,
+  contracts: status === "rejected" ? [] : [contract],
 })
 
 const campaignWorkspace = (
@@ -253,16 +272,19 @@ const campaignWorkspace = (
 
 export function creatorWorkspaceFor(scenario: CreatorAppScenario): UgcWorkspace {
   if (scenario === "application") return baseWorkspace(null)
-  if (scenario === "applicationPending") return baseWorkspace(user("applicant", { _tag: "ApplicantData", source: "inbound", appliedAt: "2026-08-18T10:00:00.000Z", profile }))
+  if (scenario === "applicationPending") return baseWorkspace(user("applicant", { _tag: "ApplicantData", source: "inbound", outboundManagerId: null, appliedAt: "2026-08-18T10:00:00.000Z", profile }))
   if (scenario === "applicationRejected") return baseWorkspace(terminal("rejected", "No hay campañas compatibles con tu perfil en este momento."))
   if (scenario === "onboarding") return baseWorkspace(onboarding(incompleteRequirements, null))
-  if (scenario === "contractReady") return baseWorkspace(onboarding(incompleteRequirements.map((item) => item.id === "training" ? { ...item, completedAt: asOf } : item), { ...contract, signedAt: null }))
+  if (scenario === "contractReady") {
+    const creator = onboarding(preMeetRequirements, { ...contract, signedAt: null })
+    return baseWorkspace(creator, { meets: [new UgcMeet({ id: makeUgcMeetId("71000000-0000-4000-8000-000000000033"), managerId, creatorId, status: "attended", startsAt: "2026-08-20T10:00:00.000Z", durationMinutes: 30, notes: null, createdAt: asOf, updatedAt: asOf })] })
+  }
   if (scenario === "meetingPending") {
-    const creator = onboarding(completeRequirements, contract)
+    const creator = onboarding(preMeetRequirements, null)
     return baseWorkspace(creator, { meets: [new UgcMeet({ id: makeUgcMeetId("71000000-0000-4000-8000-000000000031"), managerId, creatorId: null, status: "available", startsAt: "2026-08-25T10:00:00.000Z", durationMinutes: 30, notes: null, createdAt: asOf, updatedAt: asOf })] })
   }
   if (scenario === "meetingScheduled") {
-    const creator = onboarding(completeRequirements, contract)
+    const creator = onboarding(preMeetRequirements, null)
     return baseWorkspace(creator, { meets: [new UgcMeet({ id: makeUgcMeetId("71000000-0000-4000-8000-000000000032"), managerId, creatorId, status: "reserved", startsAt: "2026-08-25T10:00:00.000Z", durationMinutes: 30, notes: null, createdAt: asOf, updatedAt: asOf })] })
   }
   if (scenario === "trialWarming" || scenario === "trialPublishing" || scenario === "trialReview") {
@@ -271,7 +293,7 @@ export function creatorWorkspaceFor(scenario: CreatorAppScenario): UgcWorkspace 
       : scenario === "trialPublishing"
         ? ["2026-08-20T10:00:00.000Z", "2026-08-30T10:00:00.000Z"]
         : ["2026-08-10T10:00:00.000Z", "2026-08-21T10:00:00.000Z"]
-    return baseWorkspace(user("trial", { _tag: "TrialData", startedAt: "2026-08-18T10:00:00.000Z", publishingStartsAt: dates[0], publishingEndsAt: dates[1], requiredVideoCount: 8, contract, profile }), scenario === "trialPublishing" ? { videos: videos.slice(0, 2).map((item) => new UgcVideo({ ...item, campaignId: null })) } : {})
+    return baseWorkspace(user("trial", { _tag: "TrialData", startedAt: "2026-08-18T10:00:00.000Z", publishingStartsAt: dates[0], publishingEndsAt: dates[1], requiredVideoCount: 8, completionCompensationCents: 7_200, currency: "EUR", maxVideosPerDay: 2, minVideosPerWeek: 1, allowedFormats: ["testimonial", "review", "routine"], requiredPlatforms: ["tiktok", "instagram"], outboundTrialPassBonusCents: 2_000, contract, contracts: [contract], profile, acquisition: { source: "inbound", outboundManagerId: null } }), scenario === "trialPublishing" ? { videos: videos.slice(0, 2).map((item) => new UgcVideo({ ...item, campaignId: null })) } : {})
   }
   if (scenario === "disqualified") return baseWorkspace(terminal("disqualified", "El periodo de prueba ha finalizado sin alcanzar los criterios necesarios."))
   if (scenario === "waitingCampaign") return baseWorkspace(user("creator", creatorData))
@@ -282,6 +304,6 @@ export function creatorWorkspaceFor(scenario: CreatorAppScenario): UgcWorkspace 
   if (scenario === "exited") return baseWorkspace(terminal("exited", "La colaboración se cerró el 12 de agosto."), { campaigns: [campaign(previousCampaignId, "Summer Skin", "finalized", "2026-07-01T10:00:00.000Z", "2026-07-20T10:00:00.000Z", "2026-07-27T10:00:00.000Z")], videos, videoData })
 
   const previousCampaign = campaign(previousCampaignId, "Summer Skin", "finalized", "2026-07-01T10:00:00.000Z", "2026-07-20T10:00:00.000Z", "2026-07-27T10:00:00.000Z")
-  const payment = new UgcPayment({ id: makeUgcPaymentId("71000000-0000-4000-8000-000000000041"), creatorId, campaignId: previousCampaignId, status: "pending", amountCents: 32_500, breakdown: { fixedAmountCents: 24_000, viewsBonusCents: 8_500, rankingBonusCents: 0, referralBonusCents: 0, manualAdjustmentCents: 0, adjustmentReason: null }, paidAt: null, createdAt: asOf, updatedAt: asOf })
+  const payment = new UgcPayment({ id: makeUgcPaymentId("71000000-0000-4000-8000-000000000041"), recipientUserId: creatorId, relatedCreatorId: creatorId, campaignId: previousCampaignId, kind: "creator_campaign", sourceKey: "creator-campaign:summer-skin", status: "pending", amountCents: 32_500, currency: "EUR", breakdown: { fixedAmountCents: 24_000, viewsBonusCents: 8_500, rankingBonusCents: 0, referralBonusCents: 0, manualAdjustmentCents: 0, adjustmentReason: null }, paidAt: null, createdAt: asOf, updatedAt: asOf })
   return baseWorkspace(user("creator", creatorData), { campaigns: [previousCampaign], videos, videoData, payments: scenario === "payments" ? [payment] : [] })
 }

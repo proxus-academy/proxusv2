@@ -5,6 +5,7 @@ import {
   AssignCreatorToGroup,
   CompleteRequirement,
   ConfigureManager,
+  ConfigureUgcProgram,
   CreateCampaign,
   CreateGroup,
   CreateMeetSlot,
@@ -32,12 +33,17 @@ import {
   SubmitVideo,
   SuspendCreator,
   UgcUser,
+  UgcMeet,
+  UgcVideo,
+  makeUgcMeetId,
   makeUgcUserId,
+  makeUgcVideoId,
   type UgcWorkspace,
 } from "@proxus/shared/ugc-management"
 import { Clock, Effect, Layer } from "effect"
 import { describe, expect, test } from "vitest"
 import { makeDeterministicUgcIdGenerator, UgcContractRendererTest, UgcVideoMetricsProviderTest } from "./ports.js"
+import { agreementTermsKey } from "./policy.js"
 import { emptyUgcMemoryState, makeMemoryUgcRepository, type UgcMemoryState } from "./repository.js"
 import { UgcManagementServiceLive } from "./service.live.js"
 import { UgcManagementService } from "./service.js"
@@ -47,6 +53,20 @@ const entityIds = Array.from({ length: 96 }, (_, index) => `10000000-0000-4000-8
 const managerAccount = account(1)
 const creatorAccount = account(2)
 const adminAccount = account(3)
+const contractPolicy = { contentRetentionMonths: 3, creatorNoticeDays: 5, paidMediaRightsAmountCents: 3_000, paidMediaRightsDurationMonths: 3, exclusivityRequired: true } as const
+const managerIncentives = { fixedPercentBasisPoints: 500, viewsBonusPercentBasisPoints: 500, rankingBonusPercentBasisPoints: 500, referralBonusPercentBasisPoints: 0, manualAdjustmentPercentBasisPoints: 0, outboundTrialPassBonusCents: 2_000 } as const
+const programData = {
+  trial: { durationDays: 8, warmingDays: 1, requiredVideoCount: 1, maxVideosPerDay: 2, minVideosPerWeek: 1, formats: ["testimonial"], requiredPlatforms: ["tiktok", "instagram"] as const, completionCompensationCents: 7_200, currency: "EUR" as const },
+  contractPolicy,
+  managerIncentives,
+  historyRetentionDays: 90,
+}
+const signedLegacyTerms = { contentTarget: 1, compensationCents: 1_000, currency: "EUR" as const, formats: ["testimonial"], requiredPlatforms: ["tiktok", "instagram"] as const, bonusRules: [], maxVideosPerDay: 2, minVideosPerWeek: 1, contractPolicy }
+const signedLegacyContract = {
+  generatedAt: "2026-08-01T00:00:00.000Z", signedAt: "2026-08-01T01:00:00.000Z", scope: "trial" as const, campaignId: null, termsKey: agreementTermsKey(signedLegacyTerms),
+  terms: signedLegacyTerms,
+  locale: "es-ES" as const, documentType: "DNI" as const, documentNumber: "12345678Z", address: "Madrid", paymentMethod: "grade" as const, renderedDocument: "Contrato firmado",
+}
 
 const withService = <A, E>(
   initial: UgcMemoryState,
@@ -100,13 +120,14 @@ const manager = new UgcUser({
 const approvedCreator = (id: string, authUserId: ReturnType<typeof account>, displayName: string) => new UgcUser({
   id: makeUgcUserId(id), authUserId, userType: "creator", status: "creator",
   displayName, email: `${displayName.toLowerCase().replaceAll(" ", ".")}@proxus.test`, countryCode: "ES",
-  data: { _tag: "CreatorData", approvedAt: "2026-08-01T00:00:00.000Z", tierId: "tier-1", profile: { tiktokHandle: `@${displayName.toLowerCase().replaceAll(" ", "")}`, instagramHandle: null, phone: null } },
+  data: { _tag: "CreatorData", approvedAt: "2026-08-01T00:00:00.000Z", tierId: "tier-1", profile: { tiktokHandle: `@${displayName.toLowerCase().replaceAll(" ", "")}`, instagramHandle: null, phone: null }, contracts: [signedLegacyContract], acquisition: { source: "inbound", outboundManagerId: null } },
   version: 1, createdAt: "2026-08-01T00:00:00.000Z", updatedAt: "2026-08-01T00:00:00.000Z",
 })
 
 describe("UgcManagementServiceLive", () => {
   test("executes the complete inbound creator, campaign, video and payment journey", () => Effect.runPromise(
     withService({ ...emptyUgcMemoryState, users: [manager] }, (service, setNow) => Effect.gen(function*() {
+      yield* service.execute(adminAccount, new ConfigureUgcProgram({ market: "ES", data: programData }), true)
       let workspace = yield* service.execute(creatorAccount, new SubmitApplication({
         displayName: "Clara Creator", email: "clara@proxus.test", countryCode: "ES",
         tiktokHandle: "@clara", instagramHandle: null, phone: "+34600000000",
@@ -117,6 +138,11 @@ describe("UgcManagementServiceLive", () => {
       workspace = yield* service.execute(managerAccount, new AcceptApplication({ creatorId }))
       expect(workspace.users.find((user) => user.id === creatorId)?.status).toBe("onboarding")
       yield* service.execute(creatorAccount, new CompleteRequirement({ requirementId: "training" }))
+      workspace = yield* service.execute(managerAccount, new CreateMeetSlot({ startsAt: "2026-08-23T10:00:00.000Z", durationMinutes: 30 }))
+      const meetId = required(workspace.meets[0], "a meeting slot").id
+      yield* service.execute(creatorAccount, new ReserveMeet({ meetId }))
+      yield* service.execute(adminAccount, new EditMeet({ meetId, startsAt: "2026-08-23T10:30:00.000Z", durationMinutes: 45 }), true)
+      yield* service.execute(managerAccount, new RecordMeetAttendance({ meetId, outcome: "attended", notes: "Buen encaje" }))
       yield* service.execute(managerAccount, new GenerateContract({
         creatorId, locale: "es-ES", documentType: "DNI", documentNumber: "12345678Z",
         address: "Calle Proxus 1, Madrid", paymentMethod: "grade",
@@ -124,19 +150,12 @@ describe("UgcManagementServiceLive", () => {
       yield* service.execute(creatorAccount, new SignContract({}))
       workspace = yield* service.execute(creatorAccount, new RegisterSocialAccount({ tiktokHandle: "@clara.nueva", instagramHandle: "@clara.ig" }))
       expect(current(workspace).data).toMatchObject({ _tag: "OnboardingData", profile: { tiktokHandle: "@clara.nueva" } })
-
-      workspace = yield* service.execute(managerAccount, new CreateMeetSlot({ startsAt: "2026-08-23T10:00:00.000Z", durationMinutes: 30 }))
-      const meetId = required(workspace.meets[0], "a meeting slot").id
-      yield* service.execute(creatorAccount, new ReserveMeet({ meetId }))
-      yield* service.execute(adminAccount, new EditMeet({ meetId, startsAt: "2026-08-23T10:30:00.000Z", durationMinutes: 45 }), true)
-      yield* service.execute(managerAccount, new RecordMeetAttendance({ meetId, outcome: "attended", notes: "Buen encaje" }))
-      yield* service.execute(managerAccount, new StartTrial({
-        creatorId, publishingStartsAt: "2026-08-24T00:00:00.000Z", publishingEndsAt: "2026-09-01T00:00:00.000Z", requiredVideoCount: 8,
-      }))
+      yield* service.execute(managerAccount, new StartTrial({ creatorId }))
 
       setNow("2026-08-25T12:00:00.000Z")
-      workspace = yield* service.execute(creatorAccount, new SubmitVideo({ campaignId: null, format: "testimonial", reference: "trial-01", tiktokUrl: "https://tiktok.test/trial", instagramUrl: null }))
+      workspace = yield* service.execute(creatorAccount, new SubmitVideo({ campaignId: null, format: "testimonial", reference: "trial-01", tiktokUrl: "https://tiktok.test/trial", instagramUrl: "https://instagram.test/trial" }))
       expect(workspace.videos).toHaveLength(1)
+      yield* service.execute(managerAccount, new ReviewVideo({ videoId: required(workspace.videos[0], "the trial video").id, outcome: "accepted", notes: null }))
       setNow("2026-09-02T12:00:00.000Z")
       yield* service.execute(managerAccount, new EvaluateTrial({ creatorId, outcome: "passed", tierId: "tier-1", reason: null }))
 
@@ -152,11 +171,12 @@ describe("UgcManagementServiceLive", () => {
       workspace = yield* service.workspace(adminAccount, true)
       const groupId = required(workspace.groups[0], "the campaign group").id
       yield* service.execute(managerAccount, new AssignCreatorToGroup({ creatorId, groupId, tierId: "tier-1" }))
+      yield* service.execute(creatorAccount, new SignContract({}))
       workspace = yield* service.execute(adminAccount, new PublishCampaign({ campaignId }), true)
       expect(workspace.groups[0]?.status).toBe("active")
 
       setNow("2026-09-11T12:00:00.000Z")
-      workspace = yield* service.execute(creatorAccount, new SubmitVideo({ campaignId, format: "testimonial", reference: "campaign-01", tiktokUrl: "https://tiktok.test/campaign", instagramUrl: null }))
+      workspace = yield* service.execute(creatorAccount, new SubmitVideo({ campaignId, format: "testimonial", reference: "campaign-01", tiktokUrl: "https://tiktok.test/campaign", instagramUrl: "https://instagram.test/campaign" }))
       const campaignVideo = required(workspace.videos.find((video) => video.campaignId === campaignId), "the campaign video")
       yield* service.execute(managerAccount, new ReviewVideo({ videoId: campaignVideo.id, outcome: "accepted", notes: null }))
       yield* service.execute(managerAccount, new RefreshVideoMetrics({ videoId: campaignVideo.id }))
@@ -164,12 +184,15 @@ describe("UgcManagementServiceLive", () => {
       setNow("2026-09-26T12:00:00.000Z")
       yield* service.execute(managerAccount, new FinalizeCampaign({ campaignId }))
       workspace = yield* service.execute(adminAccount, new GeneratePayments({ campaignId }), true)
-      expect(workspace.payments[0]).toMatchObject({ status: "pending", amountCents: 48_000 })
-      const paymentId = required(workspace.payments[0], "the generated payment").id
+      const creatorCampaignPayment = required(workspace.payments.find((payment) => payment.kind === "creator_campaign"), "the generated creator campaign payment")
+      expect(creatorCampaignPayment).toMatchObject({ status: "pending", amountCents: 48_000 })
+      expect(workspace.payments.some((payment) => payment.kind === "trial_compensation" && payment.amountCents === 7_200)).toBe(true)
+      expect(workspace.payments.some((payment) => payment.kind === "manager_campaign_commission" && payment.amountCents === 2_400)).toBe(true)
+      const paymentId = creatorCampaignPayment.id
       workspace = yield* service.execute(adminAccount, new AdjustPayment({ paymentId, amountCents: -2_000, reason: "Ajuste validado" }), true)
-      expect(workspace.payments[0]?.amountCents).toBe(46_000)
+      expect(workspace.payments.find((payment) => payment.id === paymentId)?.amountCents).toBe(46_000)
       workspace = yield* service.execute(adminAccount, new MarkPaymentPaid({ paymentId }), true)
-      expect(workspace.payments[0]?.status).toBe("paid")
+      expect(workspace.payments.find((payment) => payment.id === paymentId)?.status).toBe("paid")
       expect(workspace.campaigns[0]?.status).toBe("finalized")
       expect(workspace.groups[0]?.status).toBe("completed")
     })),
@@ -188,9 +211,6 @@ describe("UgcManagementServiceLive", () => {
       expect(current(workspace).data).toMatchObject({ _tag: "ApplicantData", source: "outbound" })
       yield* service.execute(managerAccount, new AcceptApplication({ creatorId }))
       yield* service.execute(creatorAccount, new CompleteRequirement({ requirementId: "training" }))
-      yield* service.execute(managerAccount, new GenerateContract({ creatorId, locale: "es-ES", documentType: "DNI", documentNumber: "12345678Z", address: "Calle Test 1", paymentMethod: "grade" }))
-      yield* service.execute(creatorAccount, new SignContract({}))
-      yield* service.execute(creatorAccount, new RegisterSocialAccount({ tiktokHandle: "@lucia", instagramHandle: null }))
       for (const startsAt of ["2026-08-23T10:00:00.000Z", "2026-08-24T10:00:00.000Z"]) {
         workspace = yield* service.execute(managerAccount, new CreateMeetSlot({ startsAt, durationMinutes: 30 }))
         const available = required(workspace.meets.find((meet) => meet.status === "available"), "an available meeting")
@@ -198,6 +218,44 @@ describe("UgcManagementServiceLive", () => {
         workspace = yield* service.execute(managerAccount, new RecordMeetAttendance({ meetId: available.id, outcome: "missed", notes: null }))
       }
       expect(workspace.users.find((user) => user.id === creatorId)?.status).toBe("disqualified")
+    })),
+  ))
+
+  test("pays a completed trial, rewards its outbound origin manager and leaves an incomplete trial unpaid", () => Effect.runPromise(Effect.gen(function*() {
+    const outboundCreatorId = makeUgcUserId("20000000-0000-4000-8000-000000000020")
+    const trialCreator = new UgcUser({
+      id: outboundCreatorId, authUserId: creatorAccount, userType: "creator", status: "trial", displayName: "Outbound Trial", email: "outbound.trial@proxus.test", countryCode: "ES",
+      data: { _tag: "TrialData", startedAt: "2026-08-01T00:00:00.000Z", publishingStartsAt: "2026-08-02T00:00:00.000Z", publishingEndsAt: "2026-08-21T00:00:00.000Z", requiredVideoCount: 1, completionCompensationCents: 7_200, currency: "EUR", maxVideosPerDay: 2, minVideosPerWeek: 1, allowedFormats: ["testimonial"], requiredPlatforms: ["tiktok", "instagram"], outboundTrialPassBonusCents: 2_000, contract: signedLegacyContract, contracts: [signedLegacyContract], profile: { tiktokHandle: "@outbound", instagramHandle: "@outbound", phone: null }, acquisition: { source: "outbound", outboundManagerId: manager.id } },
+      version: 1, createdAt: "2026-08-01T00:00:00.000Z", updatedAt: "2026-08-21T00:00:00.000Z",
+    })
+    const attended = new UgcMeet({ id: makeUgcMeetId("20000000-0000-4000-8000-000000000021"), managerId: manager.id, creatorId: outboundCreatorId, status: "attended", startsAt: "2026-08-01T00:00:00.000Z", durationMinutes: 30, notes: null, createdAt: "2026-08-01T00:00:00.000Z", updatedAt: "2026-08-01T00:00:00.000Z" })
+    const accepted = new UgcVideo({ id: makeUgcVideoId("20000000-0000-4000-8000-000000000022"), creatorId: outboundCreatorId, campaignId: null, status: "accepted", format: "testimonial", reference: "trial-complete", tiktokUrl: "https://tiktok.test/complete", instagramUrl: "https://instagram.test/complete", submittedAt: "2026-08-10T00:00:00.000Z", reviewedAt: "2026-08-11T00:00:00.000Z", reviewNotes: null, createdAt: "2026-08-10T00:00:00.000Z", updatedAt: "2026-08-11T00:00:00.000Z" })
+    const completed = yield* withService({ ...emptyUgcMemoryState, users: [manager, trialCreator], meets: [attended], videos: [accepted] }, (service) => service.execute(managerAccount, new EvaluateTrial({ creatorId: outboundCreatorId, outcome: "passed", tierId: "tier-1", reason: null })))
+    expect(completed.payments).toEqual(expect.arrayContaining([
+      expect.objectContaining({ kind: "trial_compensation", recipientUserId: outboundCreatorId, amountCents: 7_200 }),
+      expect.objectContaining({ kind: "manager_outbound_conversion", recipientUserId: manager.id, relatedCreatorId: outboundCreatorId, amountCents: 2_000 }),
+    ]))
+
+    const incomplete = yield* withService({ ...emptyUgcMemoryState, users: [manager, trialCreator], meets: [attended] }, (service) => service.execute(managerAccount, new EvaluateTrial({ creatorId: outboundCreatorId, outcome: "incomplete", tierId: null, reason: "No completó el objetivo" })))
+    expect(incomplete.payments).toEqual([])
+    expect(incomplete.users.find((user) => user.id === outboundCreatorId)?.status).toBe("disqualified")
+  })))
+
+  test("renews a creator into a campaign without signing when material terms are unchanged", () => Effect.runPromise(
+    withService({ ...emptyUgcMemoryState, users: [manager, approvedCreator("20000000-0000-4000-8000-000000000030", creatorAccount, "Renovación") ] }, (service) => Effect.gen(function*() {
+      yield* service.execute(adminAccount, new CreateCampaign({
+        name: "Mismas condiciones", startsAt: "2026-09-01T00:00:00.000Z", submissionsCloseAt: "2026-09-10T00:00:00.000Z", reconciliationEndsAt: "2026-09-17T00:00:00.000Z",
+        countries: ["ES"], formats: ["testimonial"], tiers: [{ id: "tier-1", label: "Tier 1", videoTarget: 1, fixedAmountCents: 1_000 }], bonusRules: [],
+      }), true)
+      let workspace = yield* service.workspace(adminAccount, true)
+      const campaign = required(workspace.campaigns[0], "the unchanged campaign")
+      yield* service.execute(adminAccount, new CreateGroup({ campaignId: campaign.id, managerId: manager.id, name: "Renovación", capacity: 5 }), true)
+      workspace = yield* service.workspace(adminAccount, true)
+      const group = required(workspace.groups[0], "the renewal group")
+      const creator = required(workspace.users.find((user) => user.authUserId === creatorAccount), "the renewal creator")
+      workspace = yield* service.execute(managerAccount, new AssignCreatorToGroup({ creatorId: creator.id, groupId: group.id, tierId: "tier-1" }))
+      expect(workspace.memberships[0]?.status).toBe("scheduled")
+      expect(workspace.users.find((user) => user.id === creator.id)?.data).toMatchObject({ _tag: "CreatorData", contracts: [signedLegacyContract] })
     })),
   ))
 
@@ -264,7 +322,7 @@ describe("UgcManagementServiceLive", () => {
       users: [manager, new UgcUser({
         id: makeUgcUserId("20000000-0000-4000-8000-000000000002"), authUserId: creatorAccount, userType: "creator", status: "creator",
         displayName: "Cora", email: "cora@proxus.test", countryCode: "ES",
-        data: { _tag: "CreatorData", approvedAt: "2026-08-01T00:00:00.000Z", tierId: "gold", profile: { tiktokHandle: "@cora", instagramHandle: null, phone: null } },
+        data: { _tag: "CreatorData", approvedAt: "2026-08-01T00:00:00.000Z", tierId: "gold", profile: { tiktokHandle: "@cora", instagramHandle: null, phone: null }, contracts: [], acquisition: { source: "inbound", outboundManagerId: null } },
         version: 1, createdAt: "2026-08-01T00:00:00.000Z", updatedAt: "2026-08-01T00:00:00.000Z",
       })],
     }, (service) => Effect.gen(function*() {
