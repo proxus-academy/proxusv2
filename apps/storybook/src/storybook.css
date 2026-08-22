@@ -1,3 +1,5 @@
 @import "@proxus/ui/theme.css";
+@import "../../ugc/src/ugc.css";
 @source "../../../packages/ui/src/**/*.{ts,tsx}";
 @source "../../web/src/**/*.{ts,tsx}";
+@source "../../ugc/src/**/*.{ts,tsx}";

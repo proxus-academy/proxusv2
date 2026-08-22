@@ -23,7 +23,11 @@ const campaignFor = (workspace: UgcWorkspace, creatorId: string, campaignId: str
   workspace.memberships.find((member) => member.creatorId === creatorId && member.status !== "removed" && workspace.groups.some((group) => group.id === member.groupId && group.campaignId === campaignId))
 
 export function CreatorHomeScreen() {
-  return <WorkspaceState>{(workspace) => workspace.role === "none" ? <ApplicationForm /> : workspace.role === "manager" ? <ManagerHome workspace={workspace} /> : <CreatorState workspace={workspace} />}</WorkspaceState>
+  return <WorkspaceState>{(workspace) => <CreatorHomeView workspace={workspace} />}</WorkspaceState>
+}
+
+function CreatorHomeView({ workspace }: { readonly workspace: UgcWorkspace }) {
+  return workspace.role === "none" ? <ApplicationForm /> : workspace.role === "manager" ? <ManagerHome workspace={workspace} /> : <CreatorState workspace={workspace} />
 }
 
 function ApplicationForm() {
